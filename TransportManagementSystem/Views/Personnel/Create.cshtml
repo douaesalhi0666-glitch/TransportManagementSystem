@@ -76,22 +76,11 @@
     <div class="row">
         <div class="col-md-6">
             <div class="form-group">
-                <label>Mot de passe temporaire</label>
-                <input asp-for="Password" type="password" class="form-control" placeholder="Entrez un mot de passe temporaire" />
-                <small class="text-muted">Un email sera envoyé pour créer un nouveau mot de passe</small>
-                <span asp-validation-for="Password" class="text-danger"></span>
-            </div>
-        </div>
-        <div class="col-md-6">
-            <div class="form-group">
                 <label>Code employé</label>
                 <input asp-for="Personnel_EmployeeCode" class="form-control" />
                 <span asp-validation-for="Personnel_EmployeeCode" class="text-danger"></span>
             </div>
         </div>
-    </div>
-
-    <div class="row">
         <div class="col-md-6">
             <div class="form-group">
                 <label>Département</label>
@@ -99,6 +88,9 @@
                 <span asp-validation-for="Personnel_Department" class="text-danger"></span>
             </div>
         </div>
+    </div>
+
+    <div class="row">
         <div class="col-md-6">
             <div class="form-group">
                 <label>Statut</label>
@@ -109,9 +101,6 @@
                 <span asp-validation-for="Personnel_Status" class="text-danger"></span>
             </div>
         </div>
-    </div>
-
-    <div class="row">
         <div class="col-md-6">
             <div class="form-group">
                 <label>Ville</label>
