@@ -43,10 +43,15 @@
                 <label>Identifiant (ID)</label>
                 <input type="number" name="id" class="form-control" required />
             </div>
+            <div class="mb-3">
+                <label>Mot de passe <span class="text-muted">(requis uniquement pour l'admin)</span></label>
+                <input type="password" name="password" class="form-control" />
+                <small class="text-muted">Laissez vide si vous n'êtes pas administrateur.</small>
+            </div>
             <button type="submit" class="btn btn-primary w-100">Se connecter</button>
         </form>
         <hr />
-        <p class="text-center small">admin@transport.com / ID: 1</p>
+        <p class="text-center small">admin@transport.com / ID: 1 / mot de passe : admin123</p>
     </div>
 </body>
 </html>
