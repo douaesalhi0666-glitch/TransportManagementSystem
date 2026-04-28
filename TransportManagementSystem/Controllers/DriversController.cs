@@ -2,19 +2,16 @@
 using Microsoft.EntityFrameworkCore;
 using TransportManagementSystem.Data;
 using TransportManagementSystem.Models;
-using TransportManagementSystem.Services;
 
 namespace TransportManagementSystem.Controllers
 {
     public class DriversController : Controller
     {
         private readonly ApplicationDbContext _context;
-        private readonly EmailService _emailService;
 
         public DriversController(ApplicationDbContext context)
         {
             _context = context;
-            _emailService = new EmailService();
         }
 
         // GET: Drivers
@@ -45,29 +42,12 @@ namespace TransportManagementSystem.Controllers
                     return View(driver);
                 }
 
-                // Hash the password if provided
-                if (!string.IsNullOrEmpty(driver.Password))
-                {
-                    driver.Driver_PasswordHash = PasswordService.HashPassword(driver.Password);
-                }
-
-                // Generate reset token for email
-                driver.Driver_ResetToken = PasswordService.GenerateResetToken();
-                driver.Driver_ResetTokenExpiry = DateTime.Now.AddHours(24);
-                driver.Driver_EmailConfirmed = false;
+                // Plus de hachage de mot de passe, plus de token, plus d'email
                 driver.Driver_CreatedAt = DateTime.Now;
                 driver.Driver_UpdatedAt = DateTime.Now;
 
                 _context.Add(driver);
                 await _context.SaveChangesAsync();
-
-                // Send reset password email
-                if (!string.IsNullOrEmpty(driver.Driver_Email))
-                {
-                    var baseUrl = "https://localhost:7137";
-                    var resetLink = $"{baseUrl}/Account/ResetPassword?token={driver.Driver_ResetToken}&email={driver.Driver_Email}&role=driver";
-                    await _emailService.SendResetPasswordEmail(driver.Driver_Email, driver.Driver_FirstName + " " + driver.Driver_LastName, resetLink);
-                }
 
                 return RedirectToAction(nameof(Index));
             }
@@ -107,10 +87,7 @@ namespace TransportManagementSystem.Controllers
                     var existingDriver = await _context.Drivers.AsNoTracking().FirstOrDefaultAsync(d => d.Driver_id == id);
                     if (existingDriver != null)
                     {
-                        driver.Driver_PasswordHash = existingDriver.Driver_PasswordHash;
-                        driver.Driver_ResetToken = existingDriver.Driver_ResetToken;
-                        driver.Driver_ResetTokenExpiry = existingDriver.Driver_ResetTokenExpiry;
-                        driver.Driver_EmailConfirmed = existingDriver.Driver_EmailConfirmed;
+                        // Conserver les anciennes valeurs pour les champs qui ne doivent pas être écrasés
                         driver.Driver_CreatedAt = existingDriver.Driver_CreatedAt;
                         driver.Driver_UpdatedAt = DateTime.Now;
 

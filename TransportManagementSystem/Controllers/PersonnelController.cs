@@ -2,19 +2,16 @@
 using Microsoft.EntityFrameworkCore;
 using TransportManagementSystem.Data;
 using TransportManagementSystem.Models;
-using TransportManagementSystem.Services;
 
 namespace TransportManagementSystem.Controllers
 {
     public class PersonnelController : Controller
     {
         private readonly ApplicationDbContext _context;
-        private readonly EmailService _emailService;
 
         public PersonnelController(ApplicationDbContext context)
         {
             _context = context;
-            _emailService = new EmailService();
         }
 
         // GET: Personnel
@@ -63,29 +60,12 @@ namespace TransportManagementSystem.Controllers
                     return View(personnel);
                 }
 
-                // Hash the password if provided
-                if (!string.IsNullOrEmpty(personnel.Password))
-                {
-                    personnel.Personnel_PasswordHash = PasswordService.HashPassword(personnel.Password);
-                }
-
-                // Generate reset token for email
-                personnel.Personnel_ResetToken = PasswordService.GenerateResetToken();
-                personnel.Personnel_ResetTokenExpiry = DateTime.Now.AddHours(24);
-                personnel.Personnel_EmailConfirmed = false;
+                // Plus de mot de passe, plus de token, plus d'email
                 personnel.Personnel_CreatedAt = DateTime.Now;
                 personnel.Personnel_UpdatedAt = DateTime.Now;
 
                 _context.Add(personnel);
                 await _context.SaveChangesAsync();
-
-                // Send reset password email
-                if (!string.IsNullOrEmpty(personnel.Personnel_Email))
-                {
-                    var baseUrl = "https://localhost:7137";
-                    var resetLink = $"{baseUrl}/Account/ResetPassword?token={personnel.Personnel_ResetToken}&email={personnel.Personnel_Email}&role=personnel";
-                    await _emailService.SendResetPasswordEmail(personnel.Personnel_Email, personnel.Personnel_FirstName + " " + personnel.Personnel_LastName, resetLink);
-                }
 
                 return RedirectToAction(nameof(Index));
             }
@@ -125,10 +105,7 @@ namespace TransportManagementSystem.Controllers
                     var existingPersonnel = await _context.Personnel.AsNoTracking().FirstOrDefaultAsync(p => p.Personnel_Id == id);
                     if (existingPersonnel != null)
                     {
-                        personnel.Personnel_PasswordHash = existingPersonnel.Personnel_PasswordHash;
-                        personnel.Personnel_ResetToken = existingPersonnel.Personnel_ResetToken;
-                        personnel.Personnel_ResetTokenExpiry = existingPersonnel.Personnel_ResetTokenExpiry;
-                        personnel.Personnel_EmailConfirmed = existingPersonnel.Personnel_EmailConfirmed;
+                        // Conserver les anciennes dates de création, mettre à jour la date de modification
                         personnel.Personnel_CreatedAt = existingPersonnel.Personnel_CreatedAt;
                         personnel.Personnel_UpdatedAt = DateTime.Now;
 
