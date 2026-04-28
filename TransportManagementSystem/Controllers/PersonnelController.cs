@@ -24,26 +24,14 @@ namespace TransportManagementSystem.Controllers
         // GET: Personnel/Details/5
         public async Task<IActionResult> Details(int? id)
         {
-            if (id == null)
-            {
-                return NotFound();
-            }
-
-            var personnel = await _context.Personnel
-                .FirstOrDefaultAsync(m => m.Personnel_Id == id);
-            if (personnel == null)
-            {
-                return NotFound();
-            }
-
+            if (id == null) return NotFound();
+            var personnel = await _context.Personnel.FirstOrDefaultAsync(m => m.Personnel_Id == id);
+            if (personnel == null) return NotFound();
             return View(personnel);
         }
 
         // GET: Personnel/Create
-        public IActionResult Create()
-        {
-            return View();
-        }
+        public IActionResult Create() => View();
 
         // POST: Personnel/Create
         [HttpPost]
@@ -52,21 +40,18 @@ namespace TransportManagementSystem.Controllers
         {
             if (ModelState.IsValid)
             {
-                // Check if ID already exists
-                var existingPersonnel = await _context.Personnel.FindAsync(personnel.Personnel_Id);
-                if (existingPersonnel != null)
+                var existing = await _context.Personnel.FindAsync(personnel.Personnel_Id);
+                if (existing != null)
                 {
-                    ModelState.AddModelError("Personnel_Id", "Cet ID existe déjà. Veuillez entrer un ID unique.");
+                    ModelState.AddModelError("Personnel_Id", "Cet ID existe déjà.");
                     return View(personnel);
                 }
 
-                // Plus de mot de passe, plus de token, plus d'email
                 personnel.Personnel_CreatedAt = DateTime.Now;
                 personnel.Personnel_UpdatedAt = DateTime.Now;
 
                 _context.Add(personnel);
                 await _context.SaveChangesAsync();
-
                 return RedirectToAction(nameof(Index));
             }
             return View(personnel);
@@ -75,16 +60,9 @@ namespace TransportManagementSystem.Controllers
         // GET: Personnel/Edit/5
         public async Task<IActionResult> Edit(int? id)
         {
-            if (id == null)
-            {
-                return NotFound();
-            }
-
+            if (id == null) return NotFound();
             var personnel = await _context.Personnel.FindAsync(id);
-            if (personnel == null)
-            {
-                return NotFound();
-            }
+            if (personnel == null) return NotFound();
             return View(personnel);
         }
 
@@ -93,36 +71,25 @@ namespace TransportManagementSystem.Controllers
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> Edit(int id, Personnel personnel)
         {
-            if (id != personnel.Personnel_Id)
-            {
-                return NotFound();
-            }
+            if (id != personnel.Personnel_Id) return NotFound();
 
             if (ModelState.IsValid)
             {
                 try
                 {
-                    var existingPersonnel = await _context.Personnel.AsNoTracking().FirstOrDefaultAsync(p => p.Personnel_Id == id);
-                    if (existingPersonnel != null)
+                    var existing = await _context.Personnel.AsNoTracking().FirstOrDefaultAsync(p => p.Personnel_Id == id);
+                    if (existing != null)
                     {
-                        // Conserver les anciennes dates de création, mettre à jour la date de modification
-                        personnel.Personnel_CreatedAt = existingPersonnel.Personnel_CreatedAt;
+                        personnel.Personnel_CreatedAt = existing.Personnel_CreatedAt;
                         personnel.Personnel_UpdatedAt = DateTime.Now;
-
                         _context.Update(personnel);
                         await _context.SaveChangesAsync();
                     }
                 }
                 catch (DbUpdateConcurrencyException)
                 {
-                    if (!PersonnelExists(personnel.Personnel_Id))
-                    {
-                        return NotFound();
-                    }
-                    else
-                    {
-                        throw;
-                    }
+                    if (!PersonnelExists(personnel.Personnel_Id)) return NotFound();
+                    else throw;
                 }
                 return RedirectToAction(nameof(Index));
             }
@@ -132,18 +99,9 @@ namespace TransportManagementSystem.Controllers
         // GET: Personnel/Delete/5
         public async Task<IActionResult> Delete(int? id)
         {
-            if (id == null)
-            {
-                return NotFound();
-            }
-
-            var personnel = await _context.Personnel
-                .FirstOrDefaultAsync(m => m.Personnel_Id == id);
-            if (personnel == null)
-            {
-                return NotFound();
-            }
-
+            if (id == null) return NotFound();
+            var personnel = await _context.Personnel.FirstOrDefaultAsync(m => m.Personnel_Id == id);
+            if (personnel == null) return NotFound();
             return View(personnel);
         }
 
@@ -153,17 +111,11 @@ namespace TransportManagementSystem.Controllers
         public async Task<IActionResult> DeleteConfirmed(int id)
         {
             var personnel = await _context.Personnel.FindAsync(id);
-            if (personnel != null)
-            {
-                _context.Personnel.Remove(personnel);
-                await _context.SaveChangesAsync();
-            }
+            if (personnel != null) _context.Personnel.Remove(personnel);
+            await _context.SaveChangesAsync();
             return RedirectToAction(nameof(Index));
         }
 
-        private bool PersonnelExists(int id)
-        {
-            return _context.Personnel.Any(e => e.Personnel_Id == id);
-        }
+        private bool PersonnelExists(int id) => _context.Personnel.Any(e => e.Personnel_Id == id);
     }
 }
