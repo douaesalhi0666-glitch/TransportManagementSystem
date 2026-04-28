@@ -17,12 +17,9 @@
             <th>ID</th>
             <th>Nom</th>
             <th>Code</th>
+            <th>Description</th>
             <th>Distance (km)</th>
             <th>Durée (min)</th>
-            <th>Départ Lat</th>
-            <th>Départ Lng</th>
-            <th>Arrivée Lat</th>
-            <th>Arrivée Lng</th>
             <th>Statut</th>
             <th>Actions</th>
         </tr>
@@ -34,12 +31,9 @@
                 <td>@item.Trajectory_Id</td>
                 <td>@item.Trajectory_Name</td>
                 <td>@item.Trajectory_Code</td>
+                <td>@item.Trajectory_Description</td>
                 <td>@item.Trajectory_DistanceKm</td>
                 <td>@item.Trajectory_EstimatedDurationMinutes</td>
-                <td>@item.Trajectory_StartLatitude</td>
-                <td>@item.Trajectory_StartLongitude</td>
-                <td>@item.Trajectory_EndLatitude</td>
-                <td>@item.Trajectory_EndLongitude</td>
                 <td>
                     @if (item.Trajectory_Status == "Active")
                     {

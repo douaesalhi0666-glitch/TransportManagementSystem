@@ -56,9 +56,8 @@
         <div class="col-md-6">
             <div class="form-group">
                 <label>Mot de passe temporaire</label>
-                <input asp-for="Password" type="password" class="form-control" placeholder="Entrez un mot de passe temporaire" />
+                <input name="tempPassword" type="password" class="form-control" placeholder="Entrez un mot de passe temporaire" />
                 <small class="text-muted">Un email sera envoyé pour créer un nouveau mot de passe</small>
-                <span asp-validation-for="Password" class="text-danger"></span>
             </div>
         </div>
         <div class="col-md-6">

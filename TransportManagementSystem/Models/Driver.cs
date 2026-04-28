@@ -50,18 +50,16 @@ namespace TransportManagementSystem.Models
         [Display(Name = "ID Bus assigné")]
         public int? Driver_AssignedBusId { get; set; }
 
+        // Password management fields
+        public string? Driver_PasswordHash { get; set; }
+        public string? Driver_ResetToken { get; set; }
+        public DateTime? Driver_ResetTokenExpiry { get; set; }
+        public bool Driver_EmailConfirmed { get; set; }
+
         [Display(Name = "Date de création")]
         public DateTime? Driver_CreatedAt { get; set; }
 
         [Display(Name = "Date de modification")]
         public DateTime? Driver_UpdatedAt { get; set; }
-        [Display(Name = "Mot de passe")]
-        [DataType(DataType.Password)]
-        public string? Password { get; set; }
-
-        public string? Driver_PasswordHash { get; set; }
-        public string? Driver_ResetToken { get; set; }
-        public DateTime? Driver_ResetTokenExpiry { get; set; }
-        public bool Driver_EmailConfirmed { get; set; }
     }
 }

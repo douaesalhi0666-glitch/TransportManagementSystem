@@ -2,7 +2,7 @@
 using Microsoft.EntityFrameworkCore;
 using TransportManagementSystem.Data;
 using TransportManagementSystem.Models;
-using TransportManagementSystem.Services;  // Pour PasswordService
+using TransportManagementSystem.Services;
 
 namespace TransportManagementSystem.Controllers
 {
@@ -25,28 +25,27 @@ namespace TransportManagementSystem.Controllers
             return View();
         }
 
-        // POST: Login (avec mot de passe pour l'admin uniquement)
+        // POST: Login
         [HttpPost]
-        public async Task<IActionResult> Login(string email, int id, string password)
+        public async Task<IActionResult> Login(string email, string password)
         {
-            // ---------- ADMIN (ID = 1) ----------
-            if (id == 1 && email == "admin@transport.com")
-            {
-                var admin = await _context.Admins.FirstOrDefaultAsync(a => a.Admin_Id == 1);
-                if (admin != null && !string.IsNullOrEmpty(password) && PasswordService.VerifyPassword(password, admin.Admin_PasswordHash))
-                {
-                    HttpContext.Session.SetString("UserEmail", email);
-                    HttpContext.Session.SetString("UserRole", "Admin");
-                    HttpContext.Session.SetString("UserName", "Administrateur");
-                    return RedirectToAction("Index", "Dashboard");
-                }
-                ViewBag.Error = "Email ou mot de passe administrateur incorrect";
-                return View();
-            }
+            // Check in Admin table
+            var admin = await _context.Admin_tbl
+                .FirstOrDefaultAsync(a => a.Admin_Email == email);
 
-            // ---------- DRIVER (sans mot de passe) ----------
-            var driver = await _context.Drivers.FirstOrDefaultAsync(d => d.Driver_Email == email);
-            if (driver != null && driver.Driver_id == id)
+            if (admin != null && admin.Admin_PasswordHash == password)
+            {
+                HttpContext.Session.SetString("UserEmail", email);
+                HttpContext.Session.SetString("UserRole", "Admin");
+                HttpContext.Session.SetString("UserName", admin.Admin_Name);
+                return RedirectToAction("Index", "Dashboard");
+            }
+            
+            // Check in Drivers table
+            var driver = await _context.Drivers
+                .FirstOrDefaultAsync(d => d.Driver_Email == email);
+
+            if (driver != null)
             {
                 HttpContext.Session.SetString("UserEmail", email);
                 HttpContext.Session.SetString("UserRole", "Driver");
@@ -55,9 +54,11 @@ namespace TransportManagementSystem.Controllers
                 return RedirectToAction("Index", "Dashboard");
             }
 
-            // ---------- PERSONNEL (sans mot de passe) ----------
-            var personnel = await _context.Personnel.FirstOrDefaultAsync(p => p.Personnel_Email == email);
-            if (personnel != null && personnel.Personnel_Id == id)
+            // Check in Personnel table
+            var personnel = await _context.Personnel
+                .FirstOrDefaultAsync(p => p.Personnel_Email == email);
+
+            if (personnel != null)
             {
                 HttpContext.Session.SetString("UserEmail", email);
                 HttpContext.Session.SetString("UserRole", "Personnel");
@@ -66,7 +67,7 @@ namespace TransportManagementSystem.Controllers
                 return RedirectToAction("Index", "Dashboard");
             }
 
-            ViewBag.Error = "Email ou identifiant incorrect";
+            ViewBag.Error = "Email ou mot de passe incorrect";
             return View();
         }
 
@@ -75,6 +76,74 @@ namespace TransportManagementSystem.Controllers
         {
             HttpContext.Session.Clear();
             return RedirectToAction("Login");
+        }
+
+        // GET: Reset Password page
+        public IActionResult ResetPassword(string token, string email, string role)
+        {
+            ViewBag.Token = token;
+            ViewBag.Email = email;
+            ViewBag.Role = role;
+            return View();
+        }
+
+        // POST: Reset Password
+        [HttpPost]
+        public async Task<IActionResult> ResetPassword(string token, string email, string role, string newPassword, string confirmPassword)
+        {
+            if (newPassword != confirmPassword)
+            {
+                ViewBag.Error = "Les mots de passe ne correspondent pas.";
+                ViewBag.Token = token;
+                ViewBag.Email = email;
+                ViewBag.Role = role;
+                return View();
+            }
+
+            if (role == "driver")
+            {
+                var driver = await _context.Drivers
+                    .FirstOrDefaultAsync(d => d.Driver_Email == email && d.Driver_ResetToken == token);
+
+                if (driver == null || driver.Driver_ResetTokenExpiry < DateTime.Now)
+                {
+                    ViewBag.Error = "Lien invalide ou expiré.";
+                    return View();
+                }
+
+                driver.Driver_PasswordHash = PasswordService.HashPassword(newPassword);
+                driver.Driver_ResetToken = null;
+                driver.Driver_ResetTokenExpiry = null;
+                driver.Driver_EmailConfirmed = true;
+                await _context.SaveChangesAsync();
+
+                ViewBag.Success = "Votre mot de passe a été modifié avec succès.";
+            }
+            else if (role == "personnel")
+            {
+                var personnel = await _context.Personnel
+                    .FirstOrDefaultAsync(p => p.Personnel_Email == email && p.Personnel_ResetToken == token);
+
+                if (personnel == null || personnel.Personnel_ResetTokenExpiry < DateTime.Now)
+                {
+                    ViewBag.Error = "Lien invalide ou expiré.";
+                    return View();
+                }
+
+                personnel.Personnel_PasswordHash = PasswordService.HashPassword(newPassword);
+                personnel.Personnel_ResetToken = null;
+                personnel.Personnel_ResetTokenExpiry = null;
+                personnel.Personnel_EmailConfirmed = true;
+                await _context.SaveChangesAsync();
+
+                ViewBag.Success = "Votre mot de passe a été modifié avec succès.";
+            }
+            else
+            {
+                ViewBag.Error = "Rôle invalide.";
+            }
+            
+            return View();
         }
     }
 }

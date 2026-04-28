@@ -66,6 +66,12 @@ namespace TransportManagementSystem.Models
         [Display(Name = "Longitude")]
         public decimal? Personnel_Longitude { get; set; }
 
+        // Password management fields
+        public string? Personnel_PasswordHash { get; set; }
+        public string? Personnel_ResetToken { get; set; }
+        public DateTime? Personnel_ResetTokenExpiry { get; set; }
+        public bool Personnel_EmailConfirmed { get; set; }
+
         [Display(Name = "Date de création")]
         public DateTime? Personnel_CreatedAt { get; set; }
 

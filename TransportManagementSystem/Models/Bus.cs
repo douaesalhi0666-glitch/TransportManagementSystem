@@ -8,6 +8,8 @@ namespace TransportManagementSystem.Models
     public class Bus
     {
         [Key]
+
+
         public int Bus_Id { get; set; }
 
         [Required]

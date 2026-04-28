@@ -14,36 +14,41 @@ namespace TransportManagementSystem.Data
         public DbSet<Driver> Drivers { get; set; }
         public DbSet<Bus> Buses { get; set; }
         public DbSet<Trajectory> Trajectories { get; set; }
-        public DbSet<Admin> Admins { get; set; }   // Nouvelle ligne
+        public DbSet<Admin> Admin_tbl { get; set; }  // ← ADD THIS LINE
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             base.OnModelCreating(modelBuilder);
 
-            // Personnel
-            modelBuilder.Entity<Personnel>()
-                .ToTable("Personnel_tbl", "Security")
-                .HasKey(e => e.Personnel_Id);
+            modelBuilder.Entity<Personnel>(entity =>
+            {
+                entity.ToTable("Personnel_tbl", "Security");
+                entity.HasKey(e => e.Personnel_Id);
+            });
 
-            // Driver
-            modelBuilder.Entity<Driver>()
-                .ToTable("Driver_tbl", "Security")
-                .HasKey(e => e.Driver_id);
+            modelBuilder.Entity<Driver>(entity =>
+            {
+                entity.ToTable("Driver_tbl", "Security");
+                entity.HasKey(e => e.Driver_id);
+            });
 
-            // Bus
-            modelBuilder.Entity<Bus>()
-                .ToTable("Bus_tbl", "Transport")
-                .HasKey(e => e.Bus_Id);
+            modelBuilder.Entity<Bus>(entity =>
+            {
+                entity.ToTable("Bus_tbl", "Transport");
+                entity.HasKey(e => e.Bus_Id);
+            });
 
-            // Trajectory
-            modelBuilder.Entity<Trajectory>()
-                .ToTable("Trajectory_tbl", "Transport")
-                .HasKey(e => e.Trajectory_Id);
+            modelBuilder.Entity<Trajectory>(entity =>
+            {
+                entity.ToTable("Trajectory_tbl", "Transport");
+                entity.HasKey(e => e.Trajectory_Id);
+            });
 
-            // Admin (nouvelle entité)
-            modelBuilder.Entity<Admin>()
-                .ToTable("Admin_tbl", "Security")
-                .HasKey(e => e.Admin_Id);
+            modelBuilder.Entity<Admin>(entity =>
+            {
+                entity.ToTable("Admin_tbl", "Security");
+                entity.HasKey(e => e.Admin_Id);
+            });
         }
     }
 }

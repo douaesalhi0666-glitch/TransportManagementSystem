@@ -7,7 +7,6 @@ namespace TransportManagementSystem.Models
     public class Admin
     {
         [Key]
-        [DatabaseGenerated(DatabaseGeneratedOption.None)]
         public int Admin_Id { get; set; }
 
         [Required]
@@ -16,5 +15,8 @@ namespace TransportManagementSystem.Models
 
         [Required]
         public string Admin_PasswordHash { get; set; } = string.Empty;
+
+        [Required]
+        public string Admin_Name { get; set; } = string.Empty;
     }
 }

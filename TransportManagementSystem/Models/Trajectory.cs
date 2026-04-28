@@ -35,6 +35,7 @@ namespace TransportManagementSystem.Models
 
         [Column(TypeName = "decimal(10,2)")]
         public decimal? Trajectory_DistanceKm { get; set; }
+       
 
         public int? Trajectory_EstimatedDurationMinutes { get; set; }
 

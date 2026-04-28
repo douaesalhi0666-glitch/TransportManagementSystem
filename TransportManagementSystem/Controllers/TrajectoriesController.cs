@@ -28,6 +28,7 @@ namespace TransportManagementSystem.Controllers
         }
 
         // POST: Trajectories/Create
+        // POST: Trajectories/Create
         [HttpPost]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> Create(Trajectory trajectory)
@@ -36,6 +37,7 @@ namespace TransportManagementSystem.Controllers
             {
                 trajectory.Trajectory_CreatedAt = DateTime.Now;
                 trajectory.Trajectory_UpdatedAt = DateTime.Now;
+
                 _context.Add(trajectory);
                 await _context.SaveChangesAsync();
                 return RedirectToAction(nameof(Index));
@@ -129,5 +131,6 @@ namespace TransportManagementSystem.Controllers
         {
             return _context.Trajectories.Any(e => e.Trajectory_Id == id);
         }
+
     }
 }
