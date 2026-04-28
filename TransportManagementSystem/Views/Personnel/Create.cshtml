@@ -1,0 +1,134 @@
+﻿@model TransportManagementSystem.Models.Personnel
+
+@{
+    ViewData["Title"] = "Ajouter un personnel";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+<h1>Ajouter un personnel</h1>
+
+<form asp-action="Create">
+    <div asp-validation-summary="ModelOnly" class="text-danger"></div>
+
+    <!-- ID Field - Manual Entry -->
+    <div class="form-group mb-3">
+        <label>ID Personnel <span class="text-danger">*</span></label>
+        <input asp-for="Personnel_Id" type="number" class="form-control" placeholder="Ex: 2001" />
+        <small class="text-muted">Entrez un ID unique pour ce personnel</small>
+        <span asp-validation-for="Personnel_Id" class="text-danger"></span>
+    </div>
+
+    <div class="row">
+        <div class="col-md-6">
+            <div class="form-group">
+                <label>Prénom</label>
+                <input asp-for="Personnel_FirstName" class="form-control" />
+                <span asp-validation-for="Personnel_FirstName" class="text-danger"></span>
+            </div>
+        </div>
+        <div class="col-md-6">
+            <div class="form-group">
+                <label>Nom</label>
+                <input asp-for="Personnel_LastName" class="form-control" />
+                <span asp-validation-for="Personnel_LastName" class="text-danger"></span>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-md-6">
+            <div class="form-group">
+                <label>Genre</label>
+                <select asp-for="Personnel_Gender" class="form-control">
+                    <option value="">Sélectionner...</option>
+                    <option value="Male">Homme</option>
+                    <option value="Female">Femme</option>
+                </select>
+                <span asp-validation-for="Personnel_Gender" class="text-danger"></span>
+            </div>
+        </div>
+        <div class="col-md-6">
+            <div class="form-group">
+                <label>Date de naissance</label>
+                <input asp-for="Personnel_DateOfBirth" type="date" class="form-control" />
+                <span asp-validation-for="Personnel_DateOfBirth" class="text-danger"></span>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-md-6">
+            <div class="form-group">
+                <label>Email</label>
+                <input asp-for="Personnel_Email" class="form-control" type="email" />
+                <span asp-validation-for="Personnel_Email" class="text-danger"></span>
+            </div>
+        </div>
+        <div class="col-md-6">
+            <div class="form-group">
+                <label>Téléphone</label>
+                <input asp-for="Personnel_PhoneNumber" class="form-control" />
+                <span asp-validation-for="Personnel_PhoneNumber" class="text-danger"></span>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-md-6">
+            <div class="form-group">
+                <label>Mot de passe temporaire</label>
+                <input asp-for="Password" type="password" class="form-control" placeholder="Entrez un mot de passe temporaire" />
+                <small class="text-muted">Un email sera envoyé pour créer un nouveau mot de passe</small>
+                <span asp-validation-for="Password" class="text-danger"></span>
+            </div>
+        </div>
+        <div class="col-md-6">
+            <div class="form-group">
+                <label>Code employé</label>
+                <input asp-for="Personnel_EmployeeCode" class="form-control" />
+                <span asp-validation-for="Personnel_EmployeeCode" class="text-danger"></span>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-md-6">
+            <div class="form-group">
+                <label>Département</label>
+                <input asp-for="Personnel_Department" class="form-control" />
+                <span asp-validation-for="Personnel_Department" class="text-danger"></span>
+            </div>
+        </div>
+        <div class="col-md-6">
+            <div class="form-group">
+                <label>Statut</label>
+                <select asp-for="Personnel_Status" class="form-control">
+                    <option value="Active">Actif</option>
+                    <option value="Inactive">Inactif</option>
+                </select>
+                <span asp-validation-for="Personnel_Status" class="text-danger"></span>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-md-6">
+            <div class="form-group">
+                <label>Ville</label>
+                <input asp-for="Personnel_City" class="form-control" />
+                <span asp-validation-for="Personnel_City" class="text-danger"></span>
+            </div>
+        </div>
+    </div>
+
+    <div class="form-group">
+        <label>Adresse</label>
+        <input asp-for="Personnel_Address" class="form-control" />
+        <span asp-validation-for="Personnel_Address" class="text-danger"></span>
+    </div>
+
+    <div class="form-group mt-3">
+        <input type="submit" value="Créer" class="btn btn-primary" />
+        <a href="/Personnel/Index" class="btn btn-secondary">Retour</a>
+    </div>
+</form>

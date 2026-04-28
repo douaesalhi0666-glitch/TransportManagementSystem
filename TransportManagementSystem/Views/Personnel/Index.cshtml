@@ -1,0 +1,47 @@
+﻿@model IEnumerable<TransportManagementSystem.Models.Personnel>
+
+@{
+    ViewData["Title"] = "Personnel";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+<h1>Gestion du Personnel</h1>
+
+<p>
+    <a href="https://localhost:7137/Personnel/Create" class="btn btn-primary">Ajouter un personnel</a>
+</p>
+
+<table class="table table-striped">
+    <thead>
+        <tr>
+            <th>ID</th>
+            <th>Prénom</th>
+            <th>Nom</th>
+            <th>Email</th>
+            <th>Code employé</th>
+            <th>Département</th>
+            <th>Statut</th>
+            <th>Actions</th>
+        </tr>
+    </thead>
+    <tbody>
+        @foreach (var item in Model)
+        {
+            <tr>
+                <td>@item.Personnel_Id</td>
+                <td>@item.Personnel_FirstName</td>
+                <td>@item.Personnel_LastName</td>
+                <td>@item.Personnel_Email</td>
+                <td>@item.Personnel_EmployeeCode</td>
+                <td>@item.Personnel_Department</td>
+                <td>@item.Personnel_Status</td>
+                <td>
+                    <a href="https://localhost:7137/Personnel/Edit/@item.Personnel_Id" class="btn btn-sm btn-warning">Modifier</a>
+                    <a href="https://localhost:7137/Personnel/Delete/@item.Personnel_Id" class="btn btn-sm btn-danger">Supprimer</a>
+                </td>
+            </tr>
+        }
+    </tbody>
+</table>
+
+<a href="https://localhost:7137/Dashboard/AdminDashboard" class="btn btn-secondary">Retour au Dashboard</a>

@@ -1,0 +1,64 @@
+﻿@model IEnumerable<TransportManagementSystem.Models.Bus>
+
+@{
+    ViewData["Title"] = "Bus";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+<h1>Gestion des Bus</h1>
+
+<p>
+    <a href="/Buses/Create" class="btn btn-primary">Ajouter un bus</a>
+</p>
+
+<table class="table table-striped">
+    <thead>
+        <tr>
+            <th>ID</th>
+            <th>Code</th>
+            <th>Plaque</th>
+            <th>Marque</th>
+            <th>Modèle</th>
+            <th>Année</th>
+            <th>Capacité</th>
+            <th>Statut</th>
+            <th>Actions</th>
+        </tr>
+    </thead>
+    <tbody>
+        @foreach (var item in Model)
+        {
+            <tr>
+                <td>@item.Bus_Id</td>
+                <td>@item.Bus_Code</td>
+                <td>@item.Bus_PlateNumber</td>
+                <td>@item.Bus_Brand</td>
+                <td>@item.Bus_Model</td>
+                <td>@item.Bus_Year</td>
+                <td>@item.Bus_Capacity</td>
+                <td>
+                    @if (item.Bus_Status == "In Service")
+                    {
+                        <span class="badge bg-success">En service</span>
+                    }
+                    else if (item.Bus_Status == "Maintenance")
+                    {
+                        <span class="badge bg-warning">Maintenance</span>
+                    }
+                    else
+                    {
+                        <span class="badge bg-danger">Hors service</span>
+                    }
+                </td>
+                <td>
+                    <a href="/Buses/Edit/@item.Bus_Id" class="btn btn-sm btn-warning">Modifier</a>
+                    <form asp-action="Delete" asp-route-id="@item.Bus_Id" method="post" style="display:inline;">
+                        <input type="submit" value="Supprimer" class="btn btn-sm btn-danger" onclick="return confirm('Êtes-vous sûr de vouloir supprimer ce bus ?');" />
+                    </form>
+                </td>
+            </tr>
+        }
+    </tbody>
+</table>
+
+<a href="/Dashboard/AdminDashboard" class="btn btn-secondary">Retour au Dashboard</a>

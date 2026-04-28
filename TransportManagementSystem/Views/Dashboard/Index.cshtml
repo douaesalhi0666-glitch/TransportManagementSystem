@@ -1,0 +1,91 @@
+﻿@{
+    ViewData["Title"] = "Dashboard";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+<div class="container">
+    <div class="alert alert-success">
+        <h2>Bonjour, @ViewBag.UserName !</h2>
+        <p>Rôle: <strong>@ViewBag.UserRole</strong></p>
+    </div>
+
+    @if (ViewBag.UserRole == "Admin")
+    {
+        <div class="row mt-4">
+            <div class="col-md-3">
+                <div class="card text-white bg-primary">
+                    <div class="card-body">
+                        <h5>👥 Personnel</h5>
+                        <p>Gérer les employés</p>
+                        <a href="/Personnel" class="btn btn-light btn-sm">Accéder</a>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card text-white bg-success">
+                    <div class="card-body">
+                        <h5>🚛 Chauffeurs</h5>
+                        <p>Gérer les chauffeurs</p>
+                        <a href="/Drivers" class="btn btn-light btn-sm">Accéder</a>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card text-white bg-warning">
+                    <div class="card-body">
+                        <h5>🚌 Bus</h5>
+                        <p>Gérer les bus</p>
+                        <a href="/Buses" class="btn btn-light btn-sm">Accéder</a>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card text-white bg-info">
+                    <div class="card-body">
+                        <h5>🗺️ Trajets</h5>
+                        <p>Gérer les itinéraires</p>
+                        <a href="/Trajectories" class="btn btn-light btn-sm">Accéder</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    }
+
+    @if (ViewBag.UserRole == "Driver")
+    {
+        <div class="row mt-4">
+            <div class="col-md-12">
+                <div class="card">
+                    <div class="card-header bg-info text-white">
+                        <h4>🚌 Mon Bus</h4>
+                    </div>
+                    <div class="card-body">
+                        <p>Les informations de votre bus apparaîtront ici.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    }
+
+    @if (ViewBag.UserRole == "Personnel")
+    {
+        <div class="row mt-4">
+            <div class="col-md-12">
+                <div class="card border-warning">
+                    <div class="card-header bg-warning">
+                        <h4>🔔 Alertes de proximité</h4>
+                    </div>
+                    <div class="card-body">
+                        <p>Vous recevrez des alertes quand votre bus approche.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    }
+
+    <div class="row mt-4">
+        <div class="col-12">
+            <a href="/Account/Logout" class="btn btn-danger">🔓 Se déconnecter</a>
+        </div>
+    </div>
+</div>

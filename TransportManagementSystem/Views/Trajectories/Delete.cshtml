@@ -1,0 +1,40 @@
+﻿@model TransportManagementSystem.Models.Trajectory
+
+@{
+    ViewData["Title"] = "Supprimer un trajet";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+<h1>Supprimer un trajet</h1>
+
+<div class="alert alert-danger">
+    <h3>Êtes-vous sûr de vouloir supprimer ce trajet ?</h3>
+</div>
+
+<div>
+    <dl class="row">
+        <dt class="col-sm-3">ID</dt>
+        <dd class="col-sm-9">@Model.Trajectory_Id</dd>
+
+        <dt class="col-sm-3">Nom</dt>
+        <dd class="col-sm-9">@Model.Trajectory_Name</dd>
+
+        <dt class="col-sm-3">Code</dt>
+        <dd class="col-sm-9">@Model.Trajectory_Code</dd>
+
+        <dt class="col-sm-3">Distance</dt>
+        <dd class="col-sm-9">@Model.Trajectory_DistanceKm km</dd>
+
+        <dt class="col-sm-3">Durée</dt>
+        <dd class="col-sm-9">@Model.Trajectory_EstimatedDurationMinutes minutes</dd>
+
+        <dt class="col-sm-3">Statut</dt>
+        <dd class="col-sm-9">@Model.Trajectory_Status</dd>
+    </dl>
+
+    <form method="post" action="/Trajectories/DeleteConfirmed">
+        <input type="hidden" name="id" value="@Model.Trajectory_Id" />
+        <input type="submit" value="Supprimer" class="btn btn-danger" />
+        <a href="/Trajectories/Index" class="btn btn-secondary">Retour</a>
+    </form>
+</div>

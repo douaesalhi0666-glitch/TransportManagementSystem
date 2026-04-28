@@ -1,0 +1,60 @@
+﻿@{
+    ViewData["Title"] = "Driver Dashboard";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+<div class="container">
+    <div class="alert alert-info">
+        <h2>🚛 Bonjour, @ViewBag.UserName !</h2>
+        <p>Vous êtes connecté en tant que <strong>Chauffeur</strong></p>
+    </div>
+
+    <div class="row mt-4">
+        <div class="col-md-12">
+            <div class="card">
+                <div class="card-header bg-primary text-white">
+                    <h4>🚌 Mon Bus</h4>
+                </div>
+                <div class="card-body">
+                    <p>Les informations de votre bus apparaîtront ici.</p>
+                    <button class="btn btn-primary" onclick="updateLocation()">📍 Mettre à jour ma position</button>
+                    <div id="locationMsg" class="mt-2"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row mt-4">
+        <div class="col-md-12">
+            <div class="card">
+                <div class="card-header bg-success text-white">
+                    <h4>🗺️ Mon Trajet</h4>
+                </div>
+                <div class="card-body">
+                    <p>Votre trajet apparaîtra ici.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row mt-4">
+        <div class="col-12">
+            <a href="/Account/Logout" class="btn btn-danger">🔓 Se déconnecter</a>
+        </div>
+    </div>
+</div>
+
+<script>
+    function updateLocation() {
+        if (navigator.geolocation) {
+            navigator.geolocation.getCurrentPosition(function(pos) {
+                document.getElementById('locationMsg').innerHTML =
+                    '<div class="alert alert-success">✅ Position mise à jour: ' +
+                    pos.coords.latitude.toFixed(6) + ', ' + pos.coords.longitude.toFixed(6) + '</div>';
+            });
+        } else {
+            document.getElementById('locationMsg').innerHTML =
+                '<div class="alert alert-danger">❌ Géolocalisation non supportée</div>';
+        }
+    }
+</script>

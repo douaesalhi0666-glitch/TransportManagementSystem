@@ -1,0 +1,46 @@
+﻿@{
+    ViewData["Title"] = "Personnel Dashboard";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+<div class="container">
+    <div class="alert alert-success">
+        <h2>👥 Bonjour, @ViewBag.UserName !</h2>
+        <p>Vous êtes connecté en tant que <strong>Personnel</strong></p>
+    </div>
+
+    <div class="row mt-4">
+        <div class="col-md-12">
+            <div class="card border-warning">
+                <div class="card-header bg-warning text-white">
+                    <h4>🔔 Alertes de proximité</h4>
+                </div>
+                <div class="card-body">
+                    <div class="alert alert-info">
+                        🟢 En attente de l'approche de votre bus...
+                    </div>
+                    <p class="small">Vous recevrez une alerte lorsque votre bus sera à 500m puis à 200m.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row mt-4">
+        <div class="col-md-12">
+            <div class="card">
+                <div class="card-header bg-info text-white">
+                    <h4>🗺️ Mon Trajet</h4>
+                </div>
+                <div class="card-body">
+                    <p>Les informations de votre trajet apparaîtront ici.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row mt-4">
+        <div class="col-12">
+            <a href="/Account/Logout" class="btn btn-danger">🔓 Se déconnecter</a>
+        </div>
+    </div>
+</div>

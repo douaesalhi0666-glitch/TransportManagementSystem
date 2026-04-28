@@ -1,0 +1,63 @@
+﻿@{
+    ViewData["Title"] = "Admin Dashboard";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+<div class="container">
+    <div class="alert alert-success">
+        <h2>👑 Bonjour, @ViewBag.UserName !</h2>
+        <p>Vous êtes connecté en tant qu'<strong>Administrateur</strong></p>
+    </div>
+
+    <div class="row mt-4">
+        <!-- Personnel Card -->
+        <div class="col-md-3 mb-3">
+            <div class="card text-white bg-primary">
+                <div class="card-body">
+                    <h5>👥 Personnel</h5>
+                    <p>Gérer les employés</p>
+                    <a href="/Personnel/Index" class="btn btn-light btn-sm">Accéder</a>
+                </div>
+            </div>
+        </div>
+
+        <!-- Chauffeurs Card -->
+        <div class="col-md-3 mb-3">
+            <div class="card text-white bg-success">
+                <div class="card-body">
+                    <h5>🚛 Chauffeurs</h5>
+                    <p>Gérer les chauffeurs</p>
+                    <a href="/Drivers/Index" class="btn btn-light btn-sm">Accéder</a>
+                </div>
+            </div>
+        </div>
+
+        <!-- Bus Card -->
+        <div class="col-md-3 mb-3">
+            <div class="card text-white bg-warning">
+                <div class="card-body">
+                    <h5>🚌 Bus</h5>
+                    <p>Gérer les bus</p>
+                    <a href="/Buses/Index" class="btn btn-light btn-sm">Accéder</a>
+                </div>
+            </div>
+        </div>
+
+        <!-- Trajets Card -->
+        <div class="col-md-3 mb-3">
+            <div class="card text-white bg-info">
+                <div class="card-body">
+                    <h5>🗺️ Trajets</h5>
+                    <p>Gérer les itinéraires</p>
+                    <a href="/Trajectories/Index" class="btn btn-light btn-sm">Accéder</a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row mt-4">
+        <div class="col-12">
+            <a href="/Account/Logout" class="btn btn-danger">🔓 Se déconnecter</a>
+        </div>
+    </div>
+</div>

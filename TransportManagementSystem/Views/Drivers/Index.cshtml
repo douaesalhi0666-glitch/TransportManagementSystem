@@ -1,0 +1,64 @@
+﻿@model IEnumerable<TransportManagementSystem.Models.Driver>
+
+@{
+    ViewData["Title"] = "Chauffeurs";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+<h1>Gestion des Chauffeurs</h1>
+
+<p>
+    <a href="/Drivers/Create" class="btn btn-primary">Ajouter un chauffeur</a>
+</p>
+
+<table class="table table-striped">
+    <thead>
+        <tr>
+            <th>ID</th>
+            <th>Prénom</th>
+            <th>Nom</th>
+            <th>Email</th>
+            <th>Téléphone</th>
+            <th>Permis</th>
+            <th>Expérience</th>
+            <th>Statut</th>
+            <th>Actions</th>
+        </tr>
+    </thead>
+    <tbody>
+        @foreach (var item in Model)
+        {
+            <tr>
+                <td>@item.Driver_id</td>
+                <td>@item.Driver_FirstName</td>
+                <td>@item.Driver_LastName</td>
+                <td>@item.Driver_Email</td>
+                <td>@item.Driver_PhoneNumber</td>
+                <td>@item.Driver_LicenseNumber</td>
+                <td>@item.Driver_ExperienceYears</td>
+                <td>
+                    @if (item.Driver_Status == "Available")
+                    {
+                        <span class="badge bg-success">Disponible</span>
+                    }
+                    else if (item.Driver_Status == "On Route")
+                    {
+                        <span class="badge bg-warning">En route</span>
+                    }
+                    else
+                    {
+                        <span class="badge bg-danger">Hors service</span>
+                    }
+                </td>
+                <td>
+                    <a href="/Drivers/Edit/@item.Driver_id" class="btn btn-sm btn-warning">Modifier</a>
+                    <form asp-action="Delete" asp-route-id="@item.Driver_id" method="post" style="display:inline;">
+                        <input type="submit" value="Supprimer" class="btn btn-sm btn-danger" onclick="return confirm('Êtes-vous sûr de vouloir supprimer ce chauffeur ?');" />
+                    </form>
+                </td>
+            </tr>
+        }
+    </tbody>
+</table>
+
+<a href="/Dashboard/AdminDashboard" class="btn btn-secondary">Retour au Dashboard</a>

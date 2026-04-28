@@ -1,0 +1,64 @@
+﻿@model IEnumerable<TransportManagementSystem.Models.Trajectory>
+
+@{
+    ViewData["Title"] = "Trajets";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+<h1>Gestion des Trajets</h1>
+
+<p>
+    <a href="/Trajectories/Create" class="btn btn-primary">Ajouter un trajet</a>
+</p>
+
+<table class="table table-striped">
+    <thead>
+        <tr>
+            <th>ID</th>
+            <th>Nom</th>
+            <th>Code</th>
+            <th>Distance (km)</th>
+            <th>Durée (min)</th>
+            <th>Départ Lat</th>
+            <th>Départ Lng</th>
+            <th>Arrivée Lat</th>
+            <th>Arrivée Lng</th>
+            <th>Statut</th>
+            <th>Actions</th>
+        </tr>
+    </thead>
+    <tbody>
+        @foreach (var item in Model)
+        {
+            <tr>
+                <td>@item.Trajectory_Id</td>
+                <td>@item.Trajectory_Name</td>
+                <td>@item.Trajectory_Code</td>
+                <td>@item.Trajectory_DistanceKm</td>
+                <td>@item.Trajectory_EstimatedDurationMinutes</td>
+                <td>@item.Trajectory_StartLatitude</td>
+                <td>@item.Trajectory_StartLongitude</td>
+                <td>@item.Trajectory_EndLatitude</td>
+                <td>@item.Trajectory_EndLongitude</td>
+                <td>
+                    @if (item.Trajectory_Status == "Active")
+                    {
+                        <span class="badge bg-success">Actif</span>
+                    }
+                    else
+                    {
+                        <span class="badge bg-danger">Inactif</span>
+                    }
+                </td>
+                <td>
+                    <a href="/Trajectories/Edit/@item.Trajectory_Id" class="btn btn-sm btn-warning">Modifier</a>
+                    <form asp-action="Delete" asp-route-id="@item.Trajectory_Id" method="post" style="display:inline;">
+                        <input type="submit" value="Supprimer" class="btn btn-sm btn-danger" onclick="return confirm('Êtes-vous sûr de vouloir supprimer ce trajet ?');" />
+                    </form>
+                </td>
+            </tr>
+        }
+    </tbody>
+</table>
+
+<a href="/Dashboard/AdminDashboard" class="btn btn-secondary">Retour au Dashboard</a>

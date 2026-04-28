@@ -1,0 +1,86 @@
+﻿@model TransportManagementSystem.Models.Bus
+
+@{
+    ViewData["Title"] = "Ajouter un bus";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+<h1>Ajouter un bus</h1>
+
+<form asp-action="Create">
+    <div asp-validation-summary="ModelOnly" class="text-danger"></div>
+
+    <!-- ID Field (Auto-generated) -->
+    <div class="form-group mb-3">
+        <label>ID Bus</label>
+        <input class="form-control" value="Auto-généré" disabled />
+        <small class="text-muted">L'ID est généré automatiquement</small>
+    </div>
+
+    <div class="row">
+        <div class="col-md-6">
+            <div class="form-group">
+                <label>Code du bus</label>
+                <input asp-for="Bus_Code" class="form-control" placeholder="Ex: BUS-001" />
+                <span asp-validation-for="Bus_Code" class="text-danger"></span>
+            </div>
+        </div>
+        <div class="col-md-6">
+            <div class="form-group">
+                <label>Plaque d'immatriculation</label>
+                <input asp-for="Bus_PlateNumber" class="form-control" placeholder="Ex: ABC-123" />
+                <span asp-validation-for="Bus_PlateNumber" class="text-danger"></span>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-md-6">
+            <div class="form-group">
+                <label>Marque</label>
+                <input asp-for="Bus_Brand" class="form-control" placeholder="Ex: Mercedes, Volvo, Scania" />
+                <span asp-validation-for="Bus_Brand" class="text-danger"></span>
+            </div>
+        </div>
+        <div class="col-md-6">
+            <div class="form-group">
+                <label>Modèle</label>
+                <input asp-for="Bus_Model" class="form-control" placeholder="Ex: Tourismo, 9700" />
+                <span asp-validation-for="Bus_Model" class="text-danger"></span>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-md-4">
+            <div class="form-group">
+                <label>Année</label>
+                <input asp-for="Bus_Year" type="number" class="form-control" placeholder="Ex: 2020" />
+                <span asp-validation-for="Bus_Year" class="text-danger"></span>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="form-group">
+                <label>Capacité (places)</label>
+                <input asp-for="Bus_Capacity" type="number" class="form-control" placeholder="Ex: 50" />
+                <span asp-validation-for="Bus_Capacity" class="text-danger"></span>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="form-group">
+                <label>Statut</label>
+                <select asp-for="Bus_Status" class="form-control">
+                    <option value="In Service">En service</option>
+                    <option value="Maintenance">Maintenance</option>
+                    <option value="Out of Service">Hors service</option>
+                </select>
+                <span asp-validation-for="Bus_Status" class="text-danger"></span>
+            </div>
+        </div>
+    </div>
+
+    <div class="form-group mt-3">
+        <input type="submit" value="Créer" class="btn btn-primary" />
+        <a href="https://localhost:7137/Buses/Index" class="btn btn-secondary">Retour</a>
+    </div>
+</form>
