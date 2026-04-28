@@ -2,7 +2,6 @@
 using Microsoft.EntityFrameworkCore;
 using TransportManagementSystem.Data;
 using TransportManagementSystem.Models;
-using TransportManagementSystem.Services;
 
 namespace TransportManagementSystem.Controllers
 {
@@ -25,12 +24,12 @@ namespace TransportManagementSystem.Controllers
             return View();
         }
 
-        // POST: Login
+        // POST: Login with Email + ID (no password)
         [HttpPost]
-        public async Task<IActionResult> Login(string email, string password)
+        public async Task<IActionResult> Login(string email, int id)
         {
-            // Hardcoded Admin
-            if (email == "admin@transport.com" && password == "admin123")
+            // Hardcoded Admin (email + ID=1)
+            if (email == "admin@transport.com" && id == 1)
             {
                 HttpContext.Session.SetString("UserEmail", email);
                 HttpContext.Session.SetString("UserRole", "Admin");
@@ -40,7 +39,7 @@ namespace TransportManagementSystem.Controllers
 
             // Check in Drivers table
             var driver = await _context.Drivers.FirstOrDefaultAsync(d => d.Driver_Email == email);
-            if (driver != null && driver.Driver_PasswordHash != null && PasswordService.VerifyPassword(password, driver.Driver_PasswordHash))
+            if (driver != null && driver.Driver_id == id)
             {
                 HttpContext.Session.SetString("UserEmail", email);
                 HttpContext.Session.SetString("UserRole", "Driver");
@@ -51,7 +50,7 @@ namespace TransportManagementSystem.Controllers
 
             // Check in Personnel table
             var personnel = await _context.Personnel.FirstOrDefaultAsync(p => p.Personnel_Email == email);
-            if (personnel != null && personnel.Personnel_PasswordHash != null && PasswordService.VerifyPassword(password, personnel.Personnel_PasswordHash))
+            if (personnel != null && personnel.Personnel_Id == id)
             {
                 HttpContext.Session.SetString("UserEmail", email);
                 HttpContext.Session.SetString("UserRole", "Personnel");
@@ -60,7 +59,7 @@ namespace TransportManagementSystem.Controllers
                 return RedirectToAction("Index", "Dashboard");
             }
 
-            ViewBag.Error = "Email ou mot de passe incorrect";
+            ViewBag.Error = "Email ou identifiant incorrect";
             return View();
         }
 
@@ -69,78 +68,6 @@ namespace TransportManagementSystem.Controllers
         {
             HttpContext.Session.Clear();
             return RedirectToAction("Login");
-        }
-
-        // GET: Reset Password page
-        public IActionResult ResetPassword(string token, string email, string role)
-        {
-            ViewBag.Token = token;
-            ViewBag.Email = email;
-            ViewBag.Role = role;
-            return View();
-        }
-
-        // POST: Reset Password
-        [HttpPost]
-        public async Task<IActionResult> ResetPassword(string token, string email, string role, string newPassword, string confirmPassword)
-        {
-            if (newPassword != confirmPassword)
-            {
-                ViewBag.Error = "Les mots de passe ne correspondent pas.";
-                ViewBag.Token = token;
-                ViewBag.Email = email;
-                ViewBag.Role = role;
-                return View();
-            }
-
-            if (role == "driver")
-            {
-                var driver = await _context.Drivers.FirstOrDefaultAsync(d => d.Driver_Email == email && d.Driver_ResetToken == token);
-                if (driver == null || driver.Driver_ResetTokenExpiry < DateTime.Now)
-                {
-                    ViewBag.Error = "Lien invalide ou expiré.";
-                    ViewBag.Token = token;
-                    ViewBag.Email = email;
-                    ViewBag.Role = role;
-                    return View();
-                }
-
-                driver.Driver_PasswordHash = PasswordService.HashPassword(newPassword);
-                driver.Driver_ResetToken = null;
-                driver.Driver_ResetTokenExpiry = null;
-                driver.Driver_EmailConfirmed = true;
-                await _context.SaveChangesAsync();
-
-                ViewBag.Success = "Votre mot de passe a été modifié avec succès. Vous pouvez maintenant vous connecter.";
-                return View();
-            }
-            else if (role == "personnel")
-            {
-                var personnel = await _context.Personnel.FirstOrDefaultAsync(p => p.Personnel_Email == email && p.Personnel_ResetToken == token);
-                if (personnel == null || personnel.Personnel_ResetTokenExpiry < DateTime.Now)
-                {
-                    ViewBag.Error = "Lien invalide ou expiré.";
-                    ViewBag.Token = token;
-                    ViewBag.Email = email;
-                    ViewBag.Role = role;
-                    return View();
-                }
-
-                personnel.Personnel_PasswordHash = PasswordService.HashPassword(newPassword);
-                personnel.Personnel_ResetToken = null;
-                personnel.Personnel_ResetTokenExpiry = null;
-                personnel.Personnel_EmailConfirmed = true;
-                await _context.SaveChangesAsync();
-
-                ViewBag.Success = "Votre mot de passe a été modifié avec succès. Vous pouvez maintenant vous connecter.";
-                return View();
-            }
-
-            ViewBag.Error = "Rôle invalide.";
-            ViewBag.Token = token;
-            ViewBag.Email = email;
-            ViewBag.Role = role;
-            return View();
         }
     }
 }
