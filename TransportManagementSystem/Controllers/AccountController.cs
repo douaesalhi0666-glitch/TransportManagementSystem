@@ -2,6 +2,7 @@
 using Microsoft.EntityFrameworkCore;
 using TransportManagementSystem.Data;
 using TransportManagementSystem.Models;
+using TransportManagementSystem.Services;  // Pour PasswordService
 
 namespace TransportManagementSystem.Controllers
 {
@@ -24,20 +25,26 @@ namespace TransportManagementSystem.Controllers
             return View();
         }
 
-        // POST: Login with Email + ID (no password)
+        // POST: Login (avec mot de passe pour l'admin uniquement)
         [HttpPost]
-        public async Task<IActionResult> Login(string email, int id)
+        public async Task<IActionResult> Login(string email, int id, string password)
         {
-            // Hardcoded Admin (email + ID=1)
-            if (email == "admin@transport.com" && id == 1)
+            // ---------- ADMIN (ID = 1) ----------
+            if (id == 1 && email == "admin@transport.com")
             {
-                HttpContext.Session.SetString("UserEmail", email);
-                HttpContext.Session.SetString("UserRole", "Admin");
-                HttpContext.Session.SetString("UserName", "Administrateur");
-                return RedirectToAction("Index", "Dashboard");
+                var admin = await _context.Admins.FirstOrDefaultAsync(a => a.Admin_Id == 1);
+                if (admin != null && !string.IsNullOrEmpty(password) && PasswordService.VerifyPassword(password, admin.Admin_PasswordHash))
+                {
+                    HttpContext.Session.SetString("UserEmail", email);
+                    HttpContext.Session.SetString("UserRole", "Admin");
+                    HttpContext.Session.SetString("UserName", "Administrateur");
+                    return RedirectToAction("Index", "Dashboard");
+                }
+                ViewBag.Error = "Email ou mot de passe administrateur incorrect";
+                return View();
             }
 
-            // Check in Drivers table
+            // ---------- DRIVER (sans mot de passe) ----------
             var driver = await _context.Drivers.FirstOrDefaultAsync(d => d.Driver_Email == email);
             if (driver != null && driver.Driver_id == id)
             {
@@ -48,7 +55,7 @@ namespace TransportManagementSystem.Controllers
                 return RedirectToAction("Index", "Dashboard");
             }
 
-            // Check in Personnel table
+            // ---------- PERSONNEL (sans mot de passe) ----------
             var personnel = await _context.Personnel.FirstOrDefaultAsync(p => p.Personnel_Email == email);
             if (personnel != null && personnel.Personnel_Id == id)
             {
