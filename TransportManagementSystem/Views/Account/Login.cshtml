@@ -37,21 +37,42 @@
         <form method="post">
             <div class="mb-3">
                 <label>Email</label>
-                <input type="email" name="email" class="form-control" required />
+                <input type="email" name="email" id="email" class="form-control" required />
             </div>
             <div class="mb-3">
                 <label>Identifiant (ID)</label>
-                <input type="number" name="id" class="form-control" required />
+                <input type="number" name="id" id="id" class="form-control" required />
             </div>
-            <div class="mb-3">
-                <label>Mot de passe <span class="text-muted">(requis uniquement pour l'admin)</span></label>
-                <input type="password" name="password" class="form-control" />
-                <small class="text-muted">Laissez vide si vous n'êtes pas administrateur.</small>
+            <div class="mb-3" id="passwordGroup" style="display: none;">
+                <label>Mot de passe</label>
+                <input type="password" name="password" id="password" class="form-control" />
+                <small class="text-muted">Requis uniquement pour l'administrateur.</small>
             </div>
             <button type="submit" class="btn btn-primary w-100">Se connecter</button>
         </form>
         <hr />
         <p class="text-center small">admin@transport.com / ID: 1 / mot de passe : admin123</p>
     </div>
+
+    <script>
+            const emailInput = document.getElementById('email');
+            const idInput = document.getElementById('id');
+            const passwordGroup = document.getElementById('passwordGroup');
+            const passwordInput = document.getElementById('password');
+
+            function togglePasswordField() {
+                if (emailInput.value === 'admin@transport.com' && idInput.value === '1') {
+                    passwordGroup.style.display = 'block';
+                    passwordInput.required = true;
+                } else {
+                    passwordGroup.style.display = 'none';
+                    passwordInput.required = false;
+                    passwordInput.value = ''; // Efface le mot de passe si le champ est masqué
+                }
+            }
+
+            emailInput.addEventListener('input', togglePasswordField);
+            idInput.addEventListener('input', togglePasswordField);
+    </script>
 </body>
 </html>
