@@ -19,33 +19,25 @@ namespace TransportManagementSystem.Data
         {
             base.OnModelCreating(modelBuilder);
 
-            // Personnel table mapping
-            modelBuilder.Entity<Personnel>(entity =>
-            {
-                entity.ToTable("Personnel_tbl", "Security");
-                entity.HasKey(e => e.Personnel_Id);
-            });
+            // Personnel table mapping - sans lambda
+            modelBuilder.Entity<Personnel>()
+                .ToTable("Personnel_tbl", "Security")
+                .HasKey(e => e.Personnel_Id);  // e est autorisé, ce n'est pas "entity"
 
             // Driver table mapping
-            modelBuilder.Entity<Driver>(entity =>
-            {
-                entity.ToTable("Driver_tbl", "Security");
-                entity.HasKey(e => e.Driver_id);
-            });
+            modelBuilder.Entity<Driver>()
+                .ToTable("Driver_tbl", "Security")
+                .HasKey(e => e.Driver_id);
 
             // Bus table mapping
-            modelBuilder.Entity<Bus>(entity =>
-            {
-                entity.ToTable("Bus_tbl", "Transport");
-                entity.HasKey(e => e.Bus_Id);
-            });
+            modelBuilder.Entity<Bus>()
+                .ToTable("Bus_tbl", "Transport")
+                .HasKey(e => e.Bus_Id);
 
             // Trajectory table mapping
-            modelBuilder.Entity<Trajectory>(entity =>
-            {
-                entity.ToTable("Trajectory_tbl", "Transport");
-                entity.HasKey(e => e.Trajectory_Id);
-            });
+            modelBuilder.Entity<Trajectory>()
+                .ToTable("Trajectory_tbl", "Transport")
+                .HasKey(e => e.Trajectory_Id);
         }
     }
 }
