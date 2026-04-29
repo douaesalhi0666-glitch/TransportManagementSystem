@@ -130,5 +130,22 @@ namespace TransportManagementSystem.Controllers
         {
             return _context.Buses.Any(e => e.Bus_Id == id);
         }
+        [HttpGet]
+        public async Task<IActionResult> GetBusLocations()
+        {
+            var buses = await _context.Buses
+                .Where(b => b.Bus_CurrentLatitude != null && b.Bus_CurrentLongitude != null)
+                .Select(b => new
+                {
+                    b.Bus_Id,
+                    b.Bus_Code,
+                    b.Bus_PlateNumber,
+                    b.Bus_Status,
+                    lat = b.Bus_CurrentLatitude,
+                    lng = b.Bus_CurrentLongitude,
+                    lastUpdate = b.Bus_LastLocationUpdateTime
+                }).ToListAsync();
+            return Ok(buses);
+        }
     }
 }

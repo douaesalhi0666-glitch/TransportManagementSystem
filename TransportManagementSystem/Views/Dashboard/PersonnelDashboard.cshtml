@@ -1,46 +1,70 @@
 ﻿@{
-    ViewData["Title"] = "Personnel Dashboard";
+    ViewData["Title"] = "Tableau de bord Personnel";
     Layout = "~/Views/Shared/_Layout.cshtml";
 }
 
-<div class="container">
-    <div class="alert alert-success">
-        <h2>👥 Bonjour, @ViewBag.UserName !</h2>
-        <p>Vous êtes connecté en tant que <strong>Personnel</strong></p>
-    </div>
+<h2>Bienvenue, @ViewBag.UserName !</h2>
+<p>Suivez en temps réel la position des bus de la flotte.</p>
 
-    <div class="row mt-4">
-        <div class="col-md-12">
-            <div class="card border-warning">
-                <div class="card-header bg-warning text-white">
-                    <h4>🔔 Alertes de proximité</h4>
-                </div>
-                <div class="card-body">
-                    <div class="alert alert-info">
-                        🟢 En attente de l'approche de votre bus...
-                    </div>
-                    <p class="small">Vous recevrez une alerte lorsque votre bus sera à 500m puis à 200m.</p>
-                </div>
-            </div>
-        </div>
-    </div>
+<div id="map" style="height: 600px; width: 100%; border-radius: 10px; margin-bottom: 20px;"></div>
 
-    <div class="row mt-4">
-        <div class="col-md-12">
-            <div class="card">
-                <div class="card-header bg-info text-white">
-                    <h4>🗺️ Mon Trajet</h4>
-                </div>
-                <div class="card-body">
-                    <p>Les informations de votre trajet apparaîtront ici.</p>
-                </div>
-            </div>
-        </div>
-    </div>
+@section Scripts {
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
-    <div class="row mt-4">
-        <div class="col-12">
-            <a href="/Account/Logout" class="btn btn-danger">🔓 Se déconnecter</a>
-        </div>
-    </div>
-</div>
+    <style>
+        .bus-marker {
+        background-color: #007bff;
+        color: white;
+        border-radius: 50%;
+        text-align: center;
+        font-size: 16px;
+        padding: 6px;
+        width: 30px;
+        height: 30px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border: 2px solid white;
+        box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+        }
+    </style>
+
+    <script>
+        var map = L.map('map').setView([46.603354, 1.888334], 6);
+        L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
+        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a> & CartoDB'
+        }).addTo(map);
+
+        var busIcon = L.divIcon({
+        html: '<div>🚌</div>',
+        iconSize: [30, 30],
+        className: 'bus-marker'
+        });
+
+        async function loadBusLocations() {
+        try {
+        const response = await fetch('/Buses/GetBusLocations');
+        const buses = await response.json();
+        if (window.busLayer) map.removeLayer(window.busLayer);
+        window.busLayer = L.layerGroup().addTo(map);
+        buses.forEach(bus => {
+        if (bus.lat && bus.lng) {
+        const popup = `<strong>${bus.bus_Code}</strong><br/>
+        Plaque: ${bus.bus_PlateNumber}<br/>
+        Statut: ${bus.bus_Status}<br/>
+        Dernière mise à jour: ${bus.lastUpdate ? new Date(bus.lastUpdate).toLocaleString() : 'Inconnue'}`;
+        L.marker([bus.lat, bus.lng], { icon: busIcon })
+        .bindPopup(popup)
+        .addTo(window.busLayer);
+        }
+        });
+        } catch (error) {
+        console.error(error);
+        }
+        }
+
+        loadBusLocations();
+        setInterval(loadBusLocations, 30000);
+    </script>
+}
