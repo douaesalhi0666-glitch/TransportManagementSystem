@@ -17,7 +17,10 @@ namespace TransportManagementSystem.Controllers
         // GET: Personnel
         public async Task<IActionResult> Index()
         {
-            var personnel = await _context.Personnel.ToListAsync();
+            var personnel = await _context.Personnel
+                .Include(p => p.AssignedTrajectory)
+                .Include(p => p.AssignedBus)
+                .ToListAsync();
             return View(personnel);
         }
 
@@ -30,6 +33,8 @@ namespace TransportManagementSystem.Controllers
             }
 
             var personnel = await _context.Personnel
+                .Include(p => p.AssignedTrajectory)
+                .Include(p => p.AssignedBus)
                 .FirstOrDefaultAsync(m => m.Personnel_Id == id);
             if (personnel == null)
             {
@@ -40,8 +45,10 @@ namespace TransportManagementSystem.Controllers
         }
 
         // GET: Personnel/Create
-        public IActionResult Create()
+        public async Task<IActionResult> Create()
         {
+            ViewBag.Trajectories = await _context.Trajectories.ToListAsync();
+            ViewBag.Buses = await _context.Buses.ToListAsync();
             return View();
         }
 
@@ -52,11 +59,10 @@ namespace TransportManagementSystem.Controllers
         {
             if (ModelState.IsValid)
             {
-                // Check if ID already exists
                 var existing = await _context.Personnel.FindAsync(personnel.Personnel_Id);
                 if (existing != null)
                 {
-                    ModelState.AddModelError("Personnel_Id", "Cet ID existe déjà. Veuillez entrer un ID unique.");
+                    ModelState.AddModelError("Personnel_Id", "Cet ID existe déjà.");
                     return View(personnel);
                 }
 
@@ -67,6 +73,9 @@ namespace TransportManagementSystem.Controllers
                 await _context.SaveChangesAsync();
                 return RedirectToAction(nameof(Index));
             }
+
+            ViewBag.Trajectories = await _context.Trajectories.ToListAsync();
+            ViewBag.Buses = await _context.Buses.ToListAsync();
             return View(personnel);
         }
 
@@ -83,6 +92,9 @@ namespace TransportManagementSystem.Controllers
             {
                 return NotFound();
             }
+
+            ViewBag.Trajectories = await _context.Trajectories.ToListAsync();
+            ViewBag.Buses = await _context.Buses.ToListAsync();
             return View(personnel);
         }
 
@@ -122,6 +134,9 @@ namespace TransportManagementSystem.Controllers
                 }
                 return RedirectToAction(nameof(Index));
             }
+
+            ViewBag.Trajectories = await _context.Trajectories.ToListAsync();
+            ViewBag.Buses = await _context.Buses.ToListAsync();
             return View(personnel);
         }
 
@@ -134,6 +149,8 @@ namespace TransportManagementSystem.Controllers
             }
 
             var personnel = await _context.Personnel
+                .Include(p => p.AssignedTrajectory)
+                .Include(p => p.AssignedBus)
                 .FirstOrDefaultAsync(m => m.Personnel_Id == id);
             if (personnel == null)
             {

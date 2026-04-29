@@ -71,5 +71,19 @@ namespace TransportManagementSystem.Models
 
         [Display(Name = "Date de modification")]
         public DateTime? Personnel_UpdatedAt { get; set; }
+        [Display(Name = "Adresse domicile")]
+        public string? HomeAddress { get; set; }
+
+        [Display(Name = "Trajet assigné")]
+        public int? AssignedTrajectoryId { get; set; }
+
+        [Display(Name = "Bus assigné")]
+        public long? AssignedBusId { get; set; }
+
+        [ForeignKey("AssignedTrajectoryId")]
+        public virtual Trajectory? AssignedTrajectory { get; set; }
+
+        [ForeignKey("AssignedBusId")]
+        public virtual Bus? AssignedBus { get; set; }
     }
 }

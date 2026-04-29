@@ -21,6 +21,8 @@
             <th>Modèle</th>
             <th>Année</th>
             <th>Capacité</th>
+            <th>Chauffeur assigné</th>
+            <th>Trajet assigné</th>
             <th>Statut</th>
             <th>Actions</th>
         </tr>
@@ -36,6 +38,26 @@
                 <td>@item.Bus_Model</td>
                 <td>@item.Bus_Year</td>
                 <td>@item.Bus_Capacity</td>
+                <td>
+                    @if (item.CurrentDriver != null)
+                    {
+                        @item.CurrentDriver.Driver_FirstName @item.CurrentDriver.Driver_LastName
+                    }
+                    else
+                    {
+                        <span class="text-muted">Non assigné</span>
+                    }
+                </td>
+                <td>
+                    @if (item.CurrentTrajectory != null)
+                    {
+                        @item.CurrentTrajectory.Trajectory_Name
+                    }
+                    else
+                    {
+                        <span class="text-muted">Non assigné</span>
+                    }
+                </td>
                 <td>
                     @if (item.Bus_Status == "In Service")
                     {

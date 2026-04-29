@@ -8,7 +8,7 @@
 <h1>Gestion du Personnel</h1>
 
 <p>
-    <a href="https://localhost:7137/Personnel/Create" class="btn btn-primary">Ajouter un personnel</a>
+    <a href="/Personnel/Create" class="btn btn-primary">Ajouter un personnel</a>
 </p>
 
 <table class="table table-striped">
@@ -17,9 +17,14 @@
             <th>ID</th>
             <th>Prénom</th>
             <th>Nom</th>
+            <th>Genre</th>
             <th>Email</th>
+            <th>Téléphone</th>
             <th>Code employé</th>
             <th>Département</th>
+            <th>Adresse domicile</th>
+            <th>Trajet assigné</th>
+            <th>Bus assigné</th>
             <th>Statut</th>
             <th>Actions</th>
         </tr>
@@ -31,17 +36,62 @@
                 <td>@item.Personnel_Id</td>
                 <td>@item.Personnel_FirstName</td>
                 <td>@item.Personnel_LastName</td>
+                <td>
+                    @if (item.Personnel_Gender == "Male")
+                    {
+                        <span>Homme</span>
+                    }
+                    else if (item.Personnel_Gender == "Female")
+                    {
+                        <span>Femme</span>
+                    }
+                    else
+                    {
+                        <span>@item.Personnel_Gender</span>
+                    }
+                </td>
                 <td>@item.Personnel_Email</td>
+                <td>@item.Personnel_PhoneNumber</td>
                 <td>@item.Personnel_EmployeeCode</td>
                 <td>@item.Personnel_Department</td>
-                <td>@item.Personnel_Status</td>
+                <td>@item.HomeAddress</td>
                 <td>
-                    <a href="https://localhost:7137/Personnel/Edit/@item.Personnel_Id" class="btn btn-sm btn-warning">Modifier</a>
-                    <a href="https://localhost:7137/Personnel/Delete/@item.Personnel_Id" class="btn btn-sm btn-danger">Supprimer</a>
+                    @if (item.AssignedTrajectory != null)
+                    {
+                        @item.AssignedTrajectory.Trajectory_Name
+                    }
+                    else
+                    {
+                        <span class="text-muted">Non assigné</span>
+                    }
+                </td>
+                <td>
+                    @if (item.AssignedBus != null)
+                    {
+                        @item.AssignedBus.Bus_Code
+                    }
+                    else
+                    {
+                        <span class="text-muted">Non assigné</span>
+                    }
+                </td>
+                <td>
+                    @if (item.Personnel_Status == "Active")
+                    {
+                        <span class="badge bg-success">Actif</span>
+                    }
+                    else
+                    {
+                        <span class="badge bg-danger">Inactif</span>
+                    }
+                </td>
+                <td>
+                    <a href="/Personnel/Edit/@item.Personnel_Id" class="btn btn-sm btn-warning">Modifier</a>
+                    <a href="/Personnel/Delete/@item.Personnel_Id" class="btn btn-sm btn-danger">Supprimer</a>
                 </td>
             </tr>
         }
     </tbody>
 </table>
 
-<a href="https://localhost:7137/Dashboard/AdminDashboard" class="btn btn-secondary">Retour au Dashboard</a>
+<a href="/Dashboard/AdminDashboard" class="btn btn-secondary">Retour au Dashboard</a>
