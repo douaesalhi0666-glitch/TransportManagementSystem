@@ -14,60 +14,63 @@ namespace TransportManagementSystem.Controllers
             _context = context;
         }
 
+        // GET: Login Page
         public IActionResult Login()
         {
             if (HttpContext.Session.GetString("UserRole") != null)
+            {
                 return RedirectToAction("Index", "Dashboard");
+            }
             return View();
         }
 
+        // POST: Login
         [HttpPost]
-        public async Task<IActionResult> Login(string email, int id, string password)
+        public async Task<IActionResult> Login(string email, string password)
         {
-            // ----- Admin (email = admin@transport.com, ID = 1) -----
-            if (email == "admin@transport.com" && id == 1)
+            // Check in Admin table
+            var admin = await _context.Admin_tbl
+                .FirstOrDefaultAsync(a => a.Admin_Email == email);
+
+            if (admin != null && admin.Admin_PasswordHash == password)
             {
-                var admin = await _context.Admin_tbl
-                    .FirstOrDefaultAsync(a => a.Admin_Email == email && a.Admin_Id == 1);
-                if (admin != null && admin.Admin_PasswordHash == password)
-                {
-                    HttpContext.Session.SetString("UserEmail", email);
-                    HttpContext.Session.SetString("UserRole", "Admin");
-                    HttpContext.Session.SetString("UserName", admin.Admin_Name);
-                    return RedirectToAction("Index", "Dashboard");
-                }
-                ViewBag.Error = "Email, ID ou mot de passe administrateur incorrect";
-                return View();
+                HttpContext.Session.SetString("UserEmail", email);
+                HttpContext.Session.SetString("UserRole", "Admin");
+                HttpContext.Session.SetString("UserName", admin.Admin_Name);
+                return RedirectToAction("Index", "Dashboard");
             }
 
-            // ----- Driver (sans mot de passe) -----
+            // Check in Drivers table
             var driver = await _context.Drivers
-                .FirstOrDefaultAsync(d => d.Driver_Email == email && d.Driver_id == id);
+                .FirstOrDefaultAsync(d => d.Driver_Email == email);
+
             if (driver != null)
             {
                 HttpContext.Session.SetString("UserEmail", email);
                 HttpContext.Session.SetString("UserRole", "Driver");
-                HttpContext.Session.SetString("UserName", $"{driver.Driver_FirstName} {driver.Driver_LastName}");
+                HttpContext.Session.SetString("UserName", driver.Driver_FirstName + " " + driver.Driver_LastName);
                 HttpContext.Session.SetString("DriverId", driver.Driver_id.ToString());
                 return RedirectToAction("Index", "Dashboard");
             }
 
-            // ----- Personnel (sans mot de passe) -----
+            // Check in Personnel table
             var personnel = await _context.Personnel
-                .FirstOrDefaultAsync(p => p.Personnel_Email == email && p.Personnel_Id == id);
+                .FirstOrDefaultAsync(p => p.Personnel_Email == email);
+
             if (personnel != null)
             {
                 HttpContext.Session.SetString("UserEmail", email);
                 HttpContext.Session.SetString("UserRole", "Personnel");
-                HttpContext.Session.SetString("UserName", $"{personnel.Personnel_FirstName} {personnel.Personnel_LastName}");
+                HttpContext.Session.SetString("UserName", personnel.Personnel_FirstName + " " + personnel.Personnel_LastName);
                 HttpContext.Session.SetString("PersonnelId", personnel.Personnel_Id.ToString());
                 return RedirectToAction("Index", "Dashboard");
             }
 
-            ViewBag.Error = "Email ou identifiant incorrect";
+            ViewBag.Error = "Email ou mot de passe incorrect";
             return View();
         }
 
+        // Logout
         public IActionResult Logout()
         {
             HttpContext.Session.Clear();

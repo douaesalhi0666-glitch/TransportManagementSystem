@@ -4,66 +4,69 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>@ViewData["Title"] - Système de Gestion de Transport</title>
-    <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css" />
+    <link rel="stylesheet" href="~/lib/bootstrap/css/bootstrap.min.css" />
     <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
 </head>
 <body>
     <header>
         <nav class="navbar navbar-expand-sm navbar-toggleable-sm navbar-light bg-white border-bottom box-shadow mb-3">
             <div class="container-fluid">
-                <!-- Logo click goes to Admin Dashboard (only if admin is logged in) -->
                 @if (Context.Session.GetString("UserRole") == "Admin")
                 {
-                    <a class="navbar-brand" href="https://localhost:7137/Dashboard/AdminDashboard">Système de Gestion de Transport</a>
+                    <a class="navbar-brand" href="/Dashboard/AdminDashboard">Système de Gestion de Transport</a>
                 }
-                else if (Context.Session.GetString("UserRole") == "Driver")
+                else if (Context.Session.GetString("UserRole") != null)
                 {
-                    <a class="navbar-brand" href="https://localhost:7137/Dashboard/DriverDashboard">Système de Gestion de Transport</a>
-                }
-                else if (Context.Session.GetString("UserRole") == "Personnel")
-                {
-                    <a class="navbar-brand" href="https://localhost:7137/Dashboard/PersonnelDashboard">Système de Gestion de Transport</a>
+                    <a class="navbar-brand" href="/Dashboard/Index">Système de Gestion de Transport</a>
                 }
                 else
                 {
-                    <a class="navbar-brand" href="https://localhost:7137/Account/Login">Système de Gestion de Transport</a>
+                    <a class="navbar-brand" href="/Account/Login">Système de Gestion de Transport</a>
                 }
-                
-                <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target=".navbar-collapse" aria-controls="navbarSupportedContent"
-                        aria-expanded="false" aria-label="Toggle navigation">
+
+                <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target=".navbar-collapse">
                     <span class="navbar-toggler-icon"></span>
                 </button>
-                
+
                 <div class="navbar-collapse collapse d-sm-inline-flex justify-content-between">
                     <ul class="navbar-nav flex-grow-1">
                         @if (Context.Session.GetString("UserRole") == "Admin")
                         {
                             <li class="nav-item">
-                                <a class="nav-link text-dark" href="https://localhost:7137/Dashboard/AdminDashboard">Tableau de bord</a>
+                                <a class="nav-link text-dark" href="/Dashboard/AdminDashboard">Tableau de bord</a>
                             </li>
                             <li class="nav-item">
-                                <a class="nav-link text-dark" href="https://localhost:7137/Personnel/Index">Personnel</a>
+                                <a class="nav-link text-dark" href="/Personnel/Index">Personnel</a>
                             </li>
                             <li class="nav-item">
-                                <a class="nav-link text-dark" href="https://localhost:7137/Drivers/Index">Chauffeurs</a>
+                                <a class="nav-link text-dark" href="/Drivers/Index">Chauffeurs</a>
                             </li>
                             <li class="nav-item">
-                                <a class="nav-link text-dark" href="https://localhost:7137/Account/Logout">Déconnexion</a>
+                                <a class="nav-link text-dark" href="/Buses/Index">Bus</a>
+                            </li>
+                            <li class="nav-item">
+                                <a class="nav-link text-dark" href="/Trajectories/Index">Trajets</a>
+                            </li>
+                            <li class="nav-item">
+                                <a class="nav-link text-dark" href="/Assignments">Assignations</a>
+                            </li>
+                            <li class="nav-item">
+                                <a class="nav-link text-dark" href="/Account/Logout">Déconnexion</a>
                             </li>
                         }
                         else if (Context.Session.GetString("UserRole") != null)
                         {
                             <li class="nav-item">
-                                <a class="nav-link text-dark" href="https://localhost:7137/Dashboard/Index">Mon espace</a>
+                                <a class="nav-link text-dark" href="/Dashboard/Index">Mon espace</a>
                             </li>
                             <li class="nav-item">
-                                <a class="nav-link text-dark" href="https://localhost:7137/Account/Logout">Déconnexion</a>
+                                <a class="nav-link text-dark" href="/Account/Logout">Déconnexion</a>
                             </li>
                         }
                         else
                         {
                             <li class="nav-item">
-                                <a class="nav-link text-dark" href="https://localhost:7137/Account/Login">Connexion</a>
+                                <a class="nav-link text-dark" href="/Account/Login">Connexion</a>
                             </li>
                         }
                     </ul>
@@ -71,6 +74,7 @@
             </div>
         </nav>
     </header>
+
     <div class="container">
         <main role="main" class="pb-3">
             @RenderBody()
@@ -82,9 +86,9 @@
             &copy; 2026 - Système de Gestion de Transport
         </div>
     </footer>
-    
-    <script src="~/lib/jquery/dist/jquery.min.js"></script>
-    <script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
+
+    <script src="~/lib/jquery/jquery.min.js"></script>
+    <script src="~/lib/bootstrap/js/bootstrap.bundle.min.js"></script>
     <script src="~/js/site.js" asp-append-version="true"></script>
     @await RenderSectionAsync("Scripts", required: false)
 </body>

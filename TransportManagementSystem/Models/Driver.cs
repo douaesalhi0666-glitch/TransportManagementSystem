@@ -55,5 +55,9 @@ namespace TransportManagementSystem.Models
 
         [Display(Name = "Date de modification")]
         public DateTime? Driver_UpdatedAt { get; set; }
+
+        // Navigation property
+        [ForeignKey("Driver_AssignedBusId")]
+        public virtual Bus? AssignedBus { get; set; }
     }
 }

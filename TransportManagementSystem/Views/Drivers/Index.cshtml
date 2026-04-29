@@ -20,7 +20,7 @@
             <th>Email</th>
             <th>Téléphone</th>
             <th>Permis</th>
-            <th>Expérience</th>
+            <th>Bus assigné</th>
             <th>Statut</th>
             <th>Actions</th>
         </tr>
@@ -35,7 +35,16 @@
                 <td>@item.Driver_Email</td>
                 <td>@item.Driver_PhoneNumber</td>
                 <td>@item.Driver_LicenseNumber</td>
-                <td>@item.Driver_ExperienceYears</td>
+                <td>
+                    @if (item.Driver_AssignedBusId.HasValue)
+                    {
+                        <span class="badge bg-info">Bus @item.Driver_AssignedBusId</span>
+                    }
+                    else
+                    {
+                        <span class="text-muted">Non assigné</span>
+                    }
+                </td>
                 <td>
                     @if (item.Driver_Status == "Available")
                     {
@@ -52,9 +61,7 @@
                 </td>
                 <td>
                     <a href="/Drivers/Edit/@item.Driver_id" class="btn btn-sm btn-warning">Modifier</a>
-                    <form asp-action="Delete" asp-route-id="@item.Driver_id" method="post" style="display:inline;">
-                        <input type="submit" value="Supprimer" class="btn btn-sm btn-danger" onclick="return confirm('Êtes-vous sûr de vouloir supprimer ce chauffeur ?');" />
-                    </form>
+                    <a href="/Drivers/Delete/@item.Driver_id" class="btn btn-sm btn-danger">Supprimer</a>
                 </td>
             </tr>
         }

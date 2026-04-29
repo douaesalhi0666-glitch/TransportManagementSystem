@@ -8,9 +8,7 @@ namespace TransportManagementSystem.Models
     public class Bus
     {
         [Key]
-
-
-        public int Bus_Id { get; set; }
+        public long Bus_Id { get; set; }
 
         [Required]
         [MaxLength(50)]
@@ -33,7 +31,7 @@ namespace TransportManagementSystem.Models
         [MaxLength(50)]
         public string Bus_Status { get; set; } = "In Service";
 
-        public int? Bus_CurrentDriverId { get; set; }
+        public long? Bus_CurrentDriverId { get; set; }
 
         public int? Bus_CurrentTrajectoryId { get; set; }
 
@@ -48,5 +46,12 @@ namespace TransportManagementSystem.Models
         public DateTime? Bus_CreatedAt { get; set; }
 
         public DateTime? Bus_UpdatedAt { get; set; }
+
+        // Navigation properties
+        [ForeignKey("Bus_CurrentDriverId")]
+        public virtual Driver? CurrentDriver { get; set; }
+
+        [ForeignKey("Bus_CurrentTrajectoryId")]
+        public virtual Trajectory? CurrentTrajectory { get; set; }
     }
 }

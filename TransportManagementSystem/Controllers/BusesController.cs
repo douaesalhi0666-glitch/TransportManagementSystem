@@ -44,7 +44,7 @@ namespace TransportManagementSystem.Controllers
         }
 
         // GET: Buses/Edit/5
-        public async Task<IActionResult> Edit(int? id)
+        public async Task<IActionResult> Edit(long? id)
         {
             if (id == null)
             {
@@ -62,7 +62,7 @@ namespace TransportManagementSystem.Controllers
         // POST: Buses/Edit/5
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Edit(int id, Bus bus)
+        public async Task<IActionResult> Edit(long id, Bus bus)
         {
             if (id != bus.Bus_Id)
             {
@@ -94,7 +94,7 @@ namespace TransportManagementSystem.Controllers
         }
 
         // GET: Buses/Delete/5
-        public async Task<IActionResult> Delete(int? id)
+        public async Task<IActionResult> Delete(long? id)
         {
             if (id == null)
             {
@@ -112,10 +112,9 @@ namespace TransportManagementSystem.Controllers
         }
 
         // POST: Buses/Delete/5
-        // POST: Buses/Delete/5
         [HttpPost, ActionName("Delete")]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> DeleteConfirmed(int id)
+        public async Task<IActionResult> DeleteConfirmed(long id)
         {
             var bus = await _context.Buses.FindAsync(id);
             if (bus != null)
@@ -123,29 +122,12 @@ namespace TransportManagementSystem.Controllers
                 _context.Buses.Remove(bus);
                 await _context.SaveChangesAsync();
             }
-            return Redirect("/Buses/Index");
+            return RedirectToAction(nameof(Index));
         }
 
-        private bool BusExists(int id)
+        private bool BusExists(long id)
         {
             return _context.Buses.Any(e => e.Bus_Id == id);
-        }
-        [HttpGet]
-        public async Task<IActionResult> GetBusLocations()
-        {
-            var buses = await _context.Buses
-                .Where(b => b.Bus_CurrentLatitude != null && b.Bus_CurrentLongitude != null)
-                .Select(b => new
-                {
-                    b.Bus_Id,
-                    b.Bus_Code,
-                    b.Bus_PlateNumber,
-                    b.Bus_Status,
-                    lat = b.Bus_CurrentLatitude,
-                    lng = b.Bus_CurrentLongitude,
-                    lastUpdate = b.Bus_LastLocationUpdateTime
-                }).ToListAsync();
-            return Ok(buses);
         }
     }
 }
