@@ -25,8 +25,14 @@ app.UseRouting();
 app.UseSession();
 app.UseAuthorization();
 
+// Add this custom route for Assignments
+app.MapControllerRoute(
+    name: "assignments",
+    pattern: "Assignments",
+    defaults: new { controller = "Assignments", action = "Index" });
+
 app.MapControllerRoute(
     name: "default",
     pattern: "{controller=Account}/{action=Login}/{id?}");
 
-app.Run(); 
+app.Run();
