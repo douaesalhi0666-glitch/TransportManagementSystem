@@ -10,12 +10,12 @@ namespace TransportManagementSystem.Models
         [Key]
         public int Alert_Id { get; set; }
 
-        public int Alert_PersonnelId { get; set; }
-        public int Alert_BusId { get; set; }
+        public long Alert_PersonnelId { get; set; }   // ← long
+        public long Alert_BusId { get; set; }         // ← long
         public int Alert_TrajectoryId { get; set; }
 
         [MaxLength(50)]
-        public string Alert_Type { get; set; } = string.Empty; // "500m" ou "200m"
+        public string Alert_Type { get; set; } = string.Empty;
 
         [MaxLength(500)]
         public string Alert_Message { get; set; } = string.Empty;

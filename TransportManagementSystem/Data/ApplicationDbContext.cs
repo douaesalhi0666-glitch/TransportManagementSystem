@@ -23,6 +23,7 @@ namespace TransportManagementSystem.Data
         {
             base.OnModelCreating(modelBuilder);
 
+            // Tables et clés primaires
             modelBuilder.Entity<Personnel>(entity =>
             {
                 entity.ToTable("Personnel_tbl", "Security");
@@ -70,6 +71,67 @@ namespace TransportManagementSystem.Data
                 entity.ToTable("PersonnelTrajectoryAssignments_tbl", "Assignment");
                 entity.HasKey(e => e.PTA_Id);
             });
+
+            // ========== CONFIGURATION DES RELATIONS ==========
+
+            // Driver → Bus (bus assigné)
+            modelBuilder.Entity<Driver>()
+                .HasOne(d => d.Driver_AssignedBus)
+                .WithMany() // Pas de navigation inverse explicite (un bus peut avoir plusieurs chauffeurs historiquement)
+                .HasForeignKey(d => d.Driver_AssignedBusId)
+                .OnDelete(DeleteBehavior.SetNull);
+
+            // Bus → Driver (chauffeur actuel – optionnel, si la propriété CurrentDriver existe dans Bus)
+            // Décommentez cette section si vous avez ajouté public Driver? CurrentDriver { get; set; } dans Bus.cs
+            /*
+            modelBuilder.Entity<Bus>()
+                .HasOne(b => b.CurrentDriver)
+                .WithMany()
+                .HasForeignKey(b => b.Bus_CurrentDriverId)
+                .OnDelete(DeleteBehavior.SetNull);
+            */
+
+            // PersonnelTrajectoryAssignment → Personnel
+            modelBuilder.Entity<PersonnelTrajectoryAssignment>()
+                .HasOne(pt => pt.Personnel)
+                .WithMany()
+                .HasForeignKey(pt => pt.PTA_PersonnelId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            // PersonnelTrajectoryAssignment → Trajectory
+            modelBuilder.Entity<PersonnelTrajectoryAssignment>()
+                .HasOne(pt => pt.Trajectory)
+                .WithMany()
+                .HasForeignKey(pt => pt.PTA_TrajectoryId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            // PersonnelTrajectoryAssignment → Stop (optionnel)
+            modelBuilder.Entity<PersonnelTrajectoryAssignment>()
+                .HasOne(pt => pt.Stop)
+                .WithMany()
+                .HasForeignKey(pt => pt.PTA_StopId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            // Alert → Bus
+            modelBuilder.Entity<Alert>()
+                .HasOne(a => a.Bus)
+                .WithMany()
+                .HasForeignKey(a => a.Alert_BusId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            // Alert → Personnel
+            modelBuilder.Entity<Alert>()
+                .HasOne(a => a.Personnel)
+                .WithMany()
+                .HasForeignKey(a => a.Alert_PersonnelId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            // Alert → Trajectory
+            modelBuilder.Entity<Alert>()
+                .HasOne(a => a.Trajectory)
+                .WithMany()
+                .HasForeignKey(a => a.Alert_TrajectoryId)
+                .OnDelete(DeleteBehavior.Restrict);
         }
     }
 }

@@ -2,9 +2,6 @@
 using Microsoft.EntityFrameworkCore;
 using TransportManagementSystem.Data;
 using TransportManagementSystem.Models;
-using System;
-using System.Linq;
-using System.Threading.Tasks;
 
 namespace TransportManagementSystem.Controllers
 {
@@ -130,7 +127,7 @@ namespace TransportManagementSystem.Controllers
                 .Include(d => d.Driver_AssignedBus)
                 .FirstOrDefaultAsync(d => d.Driver_id == driverId);
 
-            if (driver == null || driver.Driver_AssignedBus == null)
+            if (driver?.Driver_AssignedBus == null)
                 return NotFound("Aucun bus assigné.");
 
             var bus = driver.Driver_AssignedBus;
@@ -142,21 +139,23 @@ namespace TransportManagementSystem.Controllers
             {
                 trajectory = await _context.Trajectories
                     .FirstOrDefaultAsync(t => t.Trajectory_Id == trajectoryId);
-
-                stops = await _context.TrajectoryStops
-                    .Where(s => s.TS_TrajectoryId == trajectoryId)
-                    .OrderBy(s => s.TS_OrderIndex)
-                    .Select(s => new
-                    {
-                        s.TS_Id,
-                        s.TS_Name,
-                        s.TS_OrderIndex,
-                        s.TS_Latitude,
-                        s.TS_Longitude,
-                        s.TS_PlannedArrivalTime,
-                        s.TS_PlannedDepartureTime
-                    })
-                    .ToListAsync<object>();
+                if (trajectory != null)
+                {
+                    stops = await _context.TrajectoryStops
+                        .Where(s => s.TS_TrajectoryId == trajectoryId)
+                        .OrderBy(s => s.TS_OrderIndex)
+                        .Select(s => new
+                        {
+                            s.TS_Id,
+                            s.TS_Name,
+                            s.TS_OrderIndex,
+                            s.TS_Latitude,
+                            s.TS_Longitude,
+                            s.TS_PlannedArrivalTime,
+                            s.TS_PlannedDepartureTime
+                        })
+                        .ToListAsync<object>();
+                }
             }
 
             return Ok(new
@@ -236,6 +235,9 @@ namespace TransportManagementSystem.Controllers
                 return NotFound("Aucune trajectoire assignée.");
 
             var trajectory = assignment.Trajectory;
+            if (trajectory == null)
+                return NotFound("Trajectoire introuvable.");
+
             var stop = assignment.Stop;
 
             var buses = await _context.Buses
@@ -308,13 +310,13 @@ namespace TransportManagementSystem.Controllers
                 .OrderByDescending(a => a.Alert_SentAt)
                 .FirstOrDefaultAsync();
 
-            string alertType = null;
+            string? alertType = null;
             if (model.Distance <= 200 && (lastAlert?.Alert_Type != "200m"))
                 alertType = "200m";
             else if (model.Distance <= 500 && (lastAlert?.Alert_Type != "200m" && lastAlert?.Alert_Type != "500m"))
                 alertType = "500m";
 
-            if (alertType != null)
+            if (!string.IsNullOrEmpty(alertType))
             {
                 var alert = new Alert
                 {

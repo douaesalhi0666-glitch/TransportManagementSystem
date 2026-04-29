@@ -10,16 +10,16 @@ namespace TransportManagementSystem.Models
         [Key]
         public int PTA_Id { get; set; }
 
-        public int PTA_PersonnelId { get; set; }
+        public long PTA_PersonnelId { get; set; }        // ← long
         public int PTA_TrajectoryId { get; set; }
         public int? PTA_StopId { get; set; }
+
         public DateTime PTA_EffectiveFromDate { get; set; }
         public DateTime? PTA_EffectiveToDate { get; set; }
 
         [MaxLength(20)]
         public string PTA_Status { get; set; } = "Active";
 
-        // Propriétés de navigation (utilisées dans BusesController)
         [ForeignKey("PTA_PersonnelId")]
         public virtual Personnel? Personnel { get; set; }
 
