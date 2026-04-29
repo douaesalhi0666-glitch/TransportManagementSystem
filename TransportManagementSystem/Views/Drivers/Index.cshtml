@@ -20,6 +20,7 @@
             <th>Email</th>
             <th>Téléphone</th>
             <th>Permis</th>
+            <th>Expérience</th>
             <th>Bus assigné</th>
             <th>Statut</th>
             <th>Actions</th>
@@ -35,10 +36,11 @@
                 <td>@item.Driver_Email</td>
                 <td>@item.Driver_PhoneNumber</td>
                 <td>@item.Driver_LicenseNumber</td>
+                <td>@item.Driver_ExperienceYears</td>
                 <td>
-                    @if (item.Driver_AssignedBusId.HasValue)
+                    @if (item.AssignedBus != null)
                     {
-                        <span class="badge bg-info">Bus @item.Driver_AssignedBusId</span>
+                        @item.AssignedBus.Bus_Code
                     }
                     else
                     {
