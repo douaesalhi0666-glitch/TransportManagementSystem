@@ -35,27 +35,25 @@ namespace TransportManagementSystem.Controllers
             if (ModelState.IsValid)
             {
                 // Check if ID already exists
-                var existingDriver = await _context.Drivers.FindAsync(driver.Driver_id);
-                if (existingDriver != null)
+                var existing = await _context.Drivers.FindAsync(driver.Driver_id);
+                if (existing != null)
                 {
                     ModelState.AddModelError("Driver_id", "Cet ID existe déjà. Veuillez entrer un ID unique.");
                     return View(driver);
                 }
 
-                // Plus de hachage de mot de passe, plus de token, plus d'email
                 driver.Driver_CreatedAt = DateTime.Now;
                 driver.Driver_UpdatedAt = DateTime.Now;
 
                 _context.Add(driver);
                 await _context.SaveChangesAsync();
-
                 return RedirectToAction(nameof(Index));
             }
             return View(driver);
         }
 
         // GET: Drivers/Edit/5
-        public async Task<IActionResult> Edit(int? id)
+        public async Task<IActionResult> Edit(long? id)
         {
             if (id == null)
             {
@@ -73,7 +71,7 @@ namespace TransportManagementSystem.Controllers
         // POST: Drivers/Edit/5
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Edit(int id, Driver driver)
+        public async Task<IActionResult> Edit(long id, Driver driver)
         {
             if (id != driver.Driver_id)
             {
@@ -84,13 +82,11 @@ namespace TransportManagementSystem.Controllers
             {
                 try
                 {
-                    var existingDriver = await _context.Drivers.AsNoTracking().FirstOrDefaultAsync(d => d.Driver_id == id);
-                    if (existingDriver != null)
+                    var existing = await _context.Drivers.AsNoTracking().FirstOrDefaultAsync(d => d.Driver_id == id);
+                    if (existing != null)
                     {
-                        // Conserver les anciennes valeurs pour les champs qui ne doivent pas être écrasés
-                        driver.Driver_CreatedAt = existingDriver.Driver_CreatedAt;
+                        driver.Driver_CreatedAt = existing.Driver_CreatedAt;
                         driver.Driver_UpdatedAt = DateTime.Now;
-
                         _context.Update(driver);
                         await _context.SaveChangesAsync();
                     }
@@ -112,7 +108,7 @@ namespace TransportManagementSystem.Controllers
         }
 
         // GET: Drivers/Delete/5
-        public async Task<IActionResult> Delete(int? id)
+        public async Task<IActionResult> Delete(long? id)
         {
             if (id == null)
             {
@@ -132,7 +128,7 @@ namespace TransportManagementSystem.Controllers
         // POST: Drivers/Delete/5
         [HttpPost, ActionName("Delete")]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> DeleteConfirmed(int id)
+        public async Task<IActionResult> DeleteConfirmed(long id)
         {
             var driver = await _context.Drivers.FindAsync(id);
             if (driver != null)
@@ -143,7 +139,7 @@ namespace TransportManagementSystem.Controllers
             return RedirectToAction(nameof(Index));
         }
 
-        private bool DriverExists(int id)
+        private bool DriverExists(long id)
         {
             return _context.Drivers.Any(e => e.Driver_id == id);
         }

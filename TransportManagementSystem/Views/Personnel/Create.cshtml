@@ -10,11 +10,11 @@
 <form asp-action="Create">
     <div asp-validation-summary="ModelOnly" class="text-danger"></div>
 
-    <!-- ID Field - Manual Entry -->
+    <!-- ID Field -->
     <div class="form-group mb-3">
         <label>ID Personnel <span class="text-danger">*</span></label>
-        <input asp-for="Personnel_Id" type="number" class="form-control" placeholder="Ex: 2001" />
-        <small class="text-muted">Entrez un ID unique pour ce personnel</small>
+        <input asp-for="Personnel_Id" type="number" class="form-control" placeholder="Ex: 2001" step="1" />
+        <small class="text-muted">Entrez un ID unique (nombres uniquement)</small>
         <span asp-validation-for="Personnel_Id" class="text-danger"></span>
     </div>
 
@@ -118,6 +118,6 @@
 
     <div class="form-group mt-3">
         <input type="submit" value="Créer" class="btn btn-primary" />
-        <a href="/Personnel/Index" class="btn btn-secondary">Retour</a>
+        <a asp-action="Index" class="btn btn-secondary">Retour</a>
     </div>
 </form>

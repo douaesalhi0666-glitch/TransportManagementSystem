@@ -11,7 +11,7 @@ namespace TransportManagementSystem.Models
         [DatabaseGenerated(DatabaseGeneratedOption.None)]
         [Display(Name = "ID Chauffeur")]
         [Required(ErrorMessage = "L'ID du chauffeur est requis")]
-        public int Driver_id { get; set; }
+        public long Driver_id { get; set; }
 
         [Required]
         [MaxLength(100)]
@@ -48,13 +48,7 @@ namespace TransportManagementSystem.Models
         public string Driver_Status { get; set; } = "Available";
 
         [Display(Name = "ID Bus assigné")]
-        public int? Driver_AssignedBusId { get; set; }
-
-        // Password management fields
-        public string? Driver_PasswordHash { get; set; }
-        public string? Driver_ResetToken { get; set; }
-        public DateTime? Driver_ResetTokenExpiry { get; set; }
-        public bool Driver_EmailConfirmed { get; set; }
+        public long? Driver_AssignedBusId { get; set; }
 
         [Display(Name = "Date de création")]
         public DateTime? Driver_CreatedAt { get; set; }

@@ -10,11 +10,11 @@
 <form asp-action="Create">
     <div asp-validation-summary="ModelOnly" class="text-danger"></div>
 
-    <!-- ID Field - Manual Entry -->
+    <!-- ID Field -->
     <div class="form-group mb-3">
         <label>ID Chauffeur <span class="text-danger">*</span></label>
-        <input asp-for="Driver_id" type="number" class="form-control" placeholder="Ex: 1001" />
-        <small class="text-muted">Entrez un ID unique pour ce chauffeur</small>
+        <input asp-for="Driver_id" type="number" class="form-control" placeholder="Ex: 1001" step="1" />
+        <small class="text-muted">Entrez un ID unique (nombres uniquement)</small>
         <span asp-validation-for="Driver_id" class="text-danger"></span>
     </div>
 
@@ -55,21 +55,11 @@
     <div class="row">
         <div class="col-md-6">
             <div class="form-group">
-                <label>Mot de passe temporaire</label>
-                <input name="tempPassword" type="password" class="form-control" placeholder="Entrez un mot de passe temporaire" />
-                <small class="text-muted">Un email sera envoyé pour créer un nouveau mot de passe</small>
-            </div>
-        </div>
-        <div class="col-md-6">
-            <div class="form-group">
                 <label>Numéro de permis</label>
                 <input asp-for="Driver_LicenseNumber" class="form-control" />
                 <span asp-validation-for="Driver_LicenseNumber" class="text-danger"></span>
             </div>
         </div>
-    </div>
-
-    <div class="row">
         <div class="col-md-6">
             <div class="form-group">
                 <label>Date d'expiration du permis</label>
@@ -77,6 +67,9 @@
                 <span asp-validation-for="Driver_LicenseExpiryDate" class="text-danger"></span>
             </div>
         </div>
+    </div>
+
+    <div class="row">
         <div class="col-md-6">
             <div class="form-group">
                 <label>Années d'expérience</label>
@@ -84,9 +77,6 @@
                 <span asp-validation-for="Driver_ExperienceYears" class="text-danger"></span>
             </div>
         </div>
-    </div>
-
-    <div class="row">
         <div class="col-md-6">
             <div class="form-group">
                 <label>Statut</label>
@@ -102,6 +92,6 @@
 
     <div class="form-group mt-3">
         <input type="submit" value="Créer" class="btn btn-primary" />
-        <a href="/Drivers/Index" class="btn btn-secondary">Retour</a>
+        <a asp-action="Index" class="btn btn-secondary">Retour</a>
     </div>
 </form>

@@ -22,16 +22,28 @@ namespace TransportManagementSystem.Controllers
         }
 
         // GET: Personnel/Details/5
-        public async Task<IActionResult> Details(int? id)
+        public async Task<IActionResult> Details(long? id)
         {
-            if (id == null) return NotFound();
-            var personnel = await _context.Personnel.FirstOrDefaultAsync(m => m.Personnel_Id == id);
-            if (personnel == null) return NotFound();
+            if (id == null)
+            {
+                return NotFound();
+            }
+
+            var personnel = await _context.Personnel
+                .FirstOrDefaultAsync(m => m.Personnel_Id == id);
+            if (personnel == null)
+            {
+                return NotFound();
+            }
+
             return View(personnel);
         }
 
         // GET: Personnel/Create
-        public IActionResult Create() => View();
+        public IActionResult Create()
+        {
+            return View();
+        }
 
         // POST: Personnel/Create
         [HttpPost]
@@ -40,10 +52,11 @@ namespace TransportManagementSystem.Controllers
         {
             if (ModelState.IsValid)
             {
+                // Check if ID already exists
                 var existing = await _context.Personnel.FindAsync(personnel.Personnel_Id);
                 if (existing != null)
                 {
-                    ModelState.AddModelError("Personnel_Id", "Cet ID existe déjà.");
+                    ModelState.AddModelError("Personnel_Id", "Cet ID existe déjà. Veuillez entrer un ID unique.");
                     return View(personnel);
                 }
 
@@ -58,20 +71,30 @@ namespace TransportManagementSystem.Controllers
         }
 
         // GET: Personnel/Edit/5
-        public async Task<IActionResult> Edit(int? id)
+        public async Task<IActionResult> Edit(long? id)
         {
-            if (id == null) return NotFound();
+            if (id == null)
+            {
+                return NotFound();
+            }
+
             var personnel = await _context.Personnel.FindAsync(id);
-            if (personnel == null) return NotFound();
+            if (personnel == null)
+            {
+                return NotFound();
+            }
             return View(personnel);
         }
 
         // POST: Personnel/Edit/5
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Edit(int id, Personnel personnel)
+        public async Task<IActionResult> Edit(long id, Personnel personnel)
         {
-            if (id != personnel.Personnel_Id) return NotFound();
+            if (id != personnel.Personnel_Id)
+            {
+                return NotFound();
+            }
 
             if (ModelState.IsValid)
             {
@@ -88,8 +111,14 @@ namespace TransportManagementSystem.Controllers
                 }
                 catch (DbUpdateConcurrencyException)
                 {
-                    if (!PersonnelExists(personnel.Personnel_Id)) return NotFound();
-                    else throw;
+                    if (!PersonnelExists(personnel.Personnel_Id))
+                    {
+                        return NotFound();
+                    }
+                    else
+                    {
+                        throw;
+                    }
                 }
                 return RedirectToAction(nameof(Index));
             }
@@ -97,25 +126,40 @@ namespace TransportManagementSystem.Controllers
         }
 
         // GET: Personnel/Delete/5
-        public async Task<IActionResult> Delete(int? id)
+        public async Task<IActionResult> Delete(long? id)
         {
-            if (id == null) return NotFound();
-            var personnel = await _context.Personnel.FirstOrDefaultAsync(m => m.Personnel_Id == id);
-            if (personnel == null) return NotFound();
+            if (id == null)
+            {
+                return NotFound();
+            }
+
+            var personnel = await _context.Personnel
+                .FirstOrDefaultAsync(m => m.Personnel_Id == id);
+            if (personnel == null)
+            {
+                return NotFound();
+            }
+
             return View(personnel);
         }
 
         // POST: Personnel/Delete/5
         [HttpPost, ActionName("Delete")]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> DeleteConfirmed(int id)
+        public async Task<IActionResult> DeleteConfirmed(long id)
         {
             var personnel = await _context.Personnel.FindAsync(id);
-            if (personnel != null) _context.Personnel.Remove(personnel);
-            await _context.SaveChangesAsync();
+            if (personnel != null)
+            {
+                _context.Personnel.Remove(personnel);
+                await _context.SaveChangesAsync();
+            }
             return RedirectToAction(nameof(Index));
         }
 
-        private bool PersonnelExists(int id) => _context.Personnel.Any(e => e.Personnel_Id == id);
+        private bool PersonnelExists(long id)
+        {
+            return _context.Personnel.Any(e => e.Personnel_Id == id);
+        }
     }
 }
