@@ -1,70 +1,189 @@
 ﻿@{
-    ViewData["Title"] = "Tableau de bord Personnel";
+    ViewData["Title"] = "Personnel Dashboard";
     Layout = "~/Views/Shared/_Layout.cshtml";
 }
 
-<h2>Bienvenue, @ViewBag.UserName !</h2>
-<p>Suivez en temps réel la position des bus de la flotte.</p>
+<h2>Bienvenue, @ViewBag.UserName</h2>
+<div id="assignmentInfo" class="alert alert-info">
+    Chargement de votre trajet...
+</div>
 
 <div id="map" style="height: 600px; width: 100%; border-radius: 10px; margin-bottom: 20px;"></div>
+
+<div class="card mt-3">
+    <div class="card-header bg-warning">
+        <h5>🚨 Alertes de proximité</h5>
+    </div>
+    <div class="card-body" id="alertPanel">
+        <p>Aucune alerte pour le moment.</p>
+    </div>
+</div>
 
 @section Scripts {
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-
     <style>
-        .bus-marker {
-        background-color: #007bff;
-        color: white;
-        border-radius: 50%;
-        text-align: center;
-        font-size: 16px;
-        padding: 6px;
-        width: 30px;
-        height: 30px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        border: 2px solid white;
-        box-shadow: 0 2px 6px rgba(0,0,0,0.3);
-        }
+        .bus-marker { background-color: #007bff; color: white; border-radius: 50%; text-align: center; font-size: 16px; padding: 6px; width: 30px; height: 30px; display: flex; align-items: center; justify-content: center; border: 2px solid white; box-shadow: 0 2px 6px rgba(0,0,0,0.3); }
+        .stop-marker { background-color: #28a745; color: white; border-radius: 50%; text-align: center; font-size: 12px; padding: 4px; width: 24px; height: 24px; display: flex; align-items: center; justify-content: center; border: 1px solid white; }
+        .person-marker { background-color: #ffc107; color: black; border-radius: 50%; text-align: center; font-size: 14px; padding: 4px; width: 28px; height: 28px; display: flex; align-items: center; justify-content: center; border: 2px solid white; }
     </style>
 
     <script>
-        var map = L.map('map').setView([46.603354, 1.888334], 6);
-        L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
-        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a> & CartoDB'
-        }).addTo(map);
+        let map, busMarkers = {}, trajectoryLine, personStopMarker, personLocationMarker;
+        let lastAlertTypes = {}; // Pour éviter les alertes répétées par bus
+        let currentTrajectoryId = null;
+        let checkInterval;
 
-        var busIcon = L.divIcon({
-        html: '<div>🚌</div>',
-        iconSize: [30, 30],
-        className: 'bus-marker'
-        });
-
-        async function loadBusLocations() {
-        try {
-        const response = await fetch('/Buses/GetBusLocations');
-        const buses = await response.json();
-        if (window.busLayer) map.removeLayer(window.busLayer);
-        window.busLayer = L.layerGroup().addTo(map);
-        buses.forEach(bus => {
-        if (bus.lat && bus.lng) {
-        const popup = `<strong>${bus.bus_Code}</strong><br/>
-        Plaque: ${bus.bus_PlateNumber}<br/>
-        Statut: ${bus.bus_Status}<br/>
-        Dernière mise à jour: ${bus.lastUpdate ? new Date(bus.lastUpdate).toLocaleString() : 'Inconnue'}`;
-        L.marker([bus.lat, bus.lng], { icon: busIcon })
-        .bindPopup(popup)
-        .addTo(window.busLayer);
-        }
-        });
-        } catch (error) {
-        console.error(error);
-        }
+        // Fonction Haversine (distance en mètres)
+        function haversine(lat1, lon1, lat2, lon2) {
+            const R = 6371e3; // mètres
+            const φ1 = lat1 * Math.PI / 180;
+            const φ2 = lat2 * Math.PI / 180;
+            const Δφ = (lat2 - lat1) * Math.PI / 180;
+            const Δλ = (lon2 - lon1) * Math.PI / 180;
+            const a = Math.sin(Δφ / 2) * Math.sin(Δφ / 2) +
+                      Math.cos(φ1) * Math.cos(φ2) *
+                      Math.sin(Δλ / 2) * Math.sin(Δλ / 2);
+            const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+            return R * c;
         }
 
-        loadBusLocations();
-        setInterval(loadBusLocations, 30000);
+        async function loadPersonnelData() {
+            try {
+                const response = await fetch('/Buses/GetPersonnelDashboardData');
+                if (!response.ok) {
+                    document.getElementById('assignmentInfo').innerHTML = '<div class="alert alert-danger">Aucune trajectoire assignée active. Contactez l\'administrateur.</div>';
+                    return;
+                }
+                const data = await response.json();
+
+                document.getElementById('assignmentInfo').innerHTML = `
+                    <strong>Trajectoire :</strong> ${data.trajectory.trajectory_Name} (${data.trajectory.trajectory_Code})<br/>
+                    <strong>Arrêt personnel :</strong> ${data.personnelStop ? data.personnelStop.tS_Name : 'Non défini'}<br/>
+                    <strong>Bus sur cette trajectoire :</strong> ${data.buses.length}
+                `;
+                currentTrajectoryId = data.trajectory.trajectory_Id;
+
+                // Initialisation carte
+                if (!map) {
+                    map = L.map('map').setView([46.603354, 1.888334], 6);
+                    L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
+                        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a> & CartoDB'
+                    }).addTo(map);
+                }
+
+                // Tracer la trajectoire (ligne)
+                if (trajectoryLine) map.removeLayer(trajectoryLine);
+                const points = data.stops.map(s => [s.tS_Latitude, s.tS_Longitude]);
+                if (points.length > 1) {
+                    trajectoryLine = L.polyline(points, { color: 'blue', weight: 4, opacity: 0.6 }).addTo(map);
+                }
+
+                // Ajouter les marqueurs d'arrêts
+                data.stops.forEach(stop => {
+                    const stopIcon = L.divIcon({ html: stop.tS_OrderIndex, iconSize: [24, 24], className: 'stop-marker' });
+                    L.marker([stop.tS_Latitude, stop.tS_Longitude], { icon: stopIcon })
+                        .bindPopup(`<b>${stop.tS_Name}</b><br/>Ordre ${stop.tS_OrderIndex}`)
+                        .addTo(map);
+                });
+
+                // Marqueur de l'arrêt personnel
+                if (data.personnelStop) {
+                    if (personStopMarker) map.removeLayer(personStopMarker);
+                    const stopIcon = L.divIcon({ html: '📍', iconSize: [28, 28], className: 'stop-marker' });
+                    personStopMarker = L.marker([data.personnelStop.tS_Latitude, data.personnelStop.tS_Longitude], { icon: stopIcon })
+                        .bindPopup(`<b>Votre arrêt : ${data.personnelStop.tS_Name}</b>`)
+                        .addTo(map);
+                }
+
+                // Mettre à jour les bus
+                const busLayerGroup = L.layerGroup().addTo(map);
+                data.buses.forEach(bus => {
+                    const busIcon = L.divIcon({ html: '🚌', iconSize: [30, 30], className: 'bus-marker' });
+                    const marker = L.marker([bus.lat, bus.lng], { icon: busIcon })
+                        .bindPopup(`<b>${bus.bus_Code}</b><br/>Plaque: ${bus.bus_PlateNumber}<br/>Statut: ${bus.bus_Status}`)
+                        .addTo(busLayerGroup);
+                    busMarkers[bus.bus_Id] = marker;
+                });
+
+                // Centrer sur l'arrêt personnel ou le premier bus
+                if (data.personnelStop) {
+                    map.setView([data.personnelStop.tS_Latitude, data.personnelStop.tS_Longitude], 13);
+                } else if (data.buses.length > 0) {
+                    map.setView([data.buses[0].lat, data.buses[0].lng], 13);
+                }
+
+                // Lancer la vérification de proximité (toutes les 15 secondes)
+                if (checkInterval) clearInterval(checkInterval);
+                checkInterval = setInterval(() => checkProximity(data), 15000);
+                // Premier appel immédiat
+                await checkProximity(data);
+            } catch (error) {
+                console.error(error);
+                document.getElementById('assignmentInfo').innerHTML = '<div class="alert alert-danger">Erreur de chargement des données.</div>';
+            }
+        }
+
+        async function checkProximity(data) {
+            if (!data.personnelStop || data.buses.length === 0) return;
+            const stopLat = data.personnelStop.tS_Latitude;
+            const stopLng = data.personnelStop.tS_Longitude;
+
+            for (const bus of data.buses) {
+                const distance = haversine(stopLat, stopLng, bus.lat, bus.lng);
+                // Seuil pour déclencher alerte (on stocke le dernier type d'alerte par bus)
+                let triggerType = null;
+                if (distance <= 200 && lastAlertTypes[bus.bus_Id] !== '200m') {
+                    triggerType = '200m';
+                } else if (distance <= 500 && lastAlertTypes[bus.bus_Id] !== '500m' && lastAlertTypes[bus.bus_Id] !== '200m') {
+                    triggerType = '500m';
+                }
+                if (triggerType) {
+                    // Appeler l'API pour enregistrer l'alerte (évite les doublons persistants)
+                    const res = await fetch('/Buses/CheckProximityAlert', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            busId: bus.bus_Id,
+                            busCode: bus.bus_Code,
+                            trajectoryId: currentTrajectoryId,
+                            distance: distance
+                        })
+                    });
+                    const alertRes = await res.json();
+                    if (alertRes.alertType !== 'none') {
+                        // Afficher l'alerte dans le panneau
+                        const alertPanel = document.getElementById('alertPanel');
+                        const newAlert = document.createElement('div');
+                        newAlert.className = `alert alert-${alertRes.alertType === '200m' ? 'danger' : 'warning'} alert-dismissible fade show`;
+                        newAlert.innerHTML = `
+                            🚨 ${alertRes.message}<br/>
+                            <small>${new Date().toLocaleTimeString()}</small>
+                            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                        `;
+                        alertPanel.prepend(newAlert);
+                        // Mettre à jour lastAlertTypes pour ce bus
+                        lastAlertTypes[bus.bus_Id] = alertRes.alertType;
+                    }
+                }
+            }
+        }
+
+        // Récupérer la position du personnel (facultatif)
+        if (navigator.geolocation) {
+            navigator.geolocation.getCurrentPosition(pos => {
+                const userLat = pos.coords.latitude;
+                const userLng = pos.coords.longitude;
+                if (personLocationMarker) map.removeLayer(personLocationMarker);
+                const personIcon = L.divIcon({ html: '👤', iconSize: [28, 28], className: 'person-marker' });
+                personLocationMarker = L.marker([userLat, userLng], { icon: personIcon })
+                    .bindPopup('Votre position actuelle')
+                    .addTo(map);
+            });
+        }
+
+        loadPersonnelData();
+        // Rafraîchir les données (bus) toutes les 30 secondes
+        setInterval(() => loadPersonnelData(), 30000);
     </script>
 }
