@@ -14,7 +14,10 @@ namespace TransportManagementSystem.Data
         public DbSet<Driver> Drivers { get; set; }
         public DbSet<Bus> Buses { get; set; }
         public DbSet<Trajectory> Trajectories { get; set; }
-        public DbSet<Admin> Admin_tbl { get; set; }  // ← ADD THIS LINE
+        public DbSet<Admin> Admin_tbl { get; set; }
+        public DbSet<TrajectoryStop> TrajectoryStops { get; set; }
+        public DbSet<Alert> Alerts { get; set; }
+        public DbSet<PersonnelTrajectoryAssignment> PersonnelTrajectoryAssignments { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -48,6 +51,24 @@ namespace TransportManagementSystem.Data
             {
                 entity.ToTable("Admin_tbl", "Security");
                 entity.HasKey(e => e.Admin_Id);
+            });
+
+            modelBuilder.Entity<TrajectoryStop>(entity =>
+            {
+                entity.ToTable("TrajectoryStop_tbl", "Transport");
+                entity.HasKey(e => e.TS_Id);
+            });
+
+            modelBuilder.Entity<Alert>(entity =>
+            {
+                entity.ToTable("Alert_tbl", "Service");
+                entity.HasKey(e => e.Alert_Id);
+            });
+
+            modelBuilder.Entity<PersonnelTrajectoryAssignment>(entity =>
+            {
+                entity.ToTable("PersonnelTrajectoryAssignments_tbl", "Assignment");
+                entity.HasKey(e => e.PTA_Id);
             });
         }
     }

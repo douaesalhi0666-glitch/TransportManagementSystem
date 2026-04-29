@@ -1,4 +1,5 @@
-﻿using System.ComponentModel.DataAnnotations;
+﻿using System;
+using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 
 namespace TransportManagementSystem.Models
@@ -8,20 +9,32 @@ namespace TransportManagementSystem.Models
     {
         [Key]
         public int Alert_Id { get; set; }
+
         public int Alert_PersonnelId { get; set; }
         public int Alert_BusId { get; set; }
         public int Alert_TrajectoryId { get; set; }
-        public string Alert_Type { get; set; } // "500m" ou "200m"
-        public string Alert_Message { get; set; }
+
+        [MaxLength(50)]
+        public string Alert_Type { get; set; } = string.Empty; // "500m" ou "200m"
+
+        [MaxLength(500)]
+        public string Alert_Message { get; set; } = string.Empty;
+
         public DateTime Alert_SentAt { get; set; }
-        public string Alert_DeliveryChannel { get; set; }
-        public string Alert_Status { get; set; }
-        // Clés étrangères (optionnelles)
+
+        [MaxLength(50)]
+        public string Alert_DeliveryChannel { get; set; } = string.Empty;
+
+        [MaxLength(50)]
+        public string Alert_Status { get; set; } = string.Empty;
+
         [ForeignKey("Alert_PersonnelId")]
-        public Personnel Personnel { get; set; }
+        public virtual Personnel? Personnel { get; set; }
+
         [ForeignKey("Alert_BusId")]
-        public Bus Bus { get; set; }
+        public virtual Bus? Bus { get; set; }
+
         [ForeignKey("Alert_TrajectoryId")]
-        public Trajectory Trajectory { get; set; }
+        public virtual Trajectory? Trajectory { get; set; }
     }
 }

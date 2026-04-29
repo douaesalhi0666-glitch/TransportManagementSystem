@@ -16,13 +16,14 @@ namespace TransportManagementSystem.Controllers
 
         public async Task<IActionResult> Index()
         {
+            // Correction : utiliser Driver_AssignedBus au lieu de AssignedBus
             var drivers = await _context.Drivers
-                .Include(d => d.AssignedBus)
+                .Include(d => d.Driver_AssignedBus)  // ← corrigé
                 .ToListAsync();
 
+            // Pour les bus, on supprime les Include qui n'existent pas
+            // Si vous avez des propriétés de navigation comme Bus_CurrentDriver, Bus_CurrentTrajectory, vous pouvez les ajouter
             var buses = await _context.Buses
-                .Include(b => b.CurrentDriver)
-                .Include(b => b.CurrentTrajectory)
                 .ToListAsync();
 
             var trajectories = await _context.Trajectories.ToListAsync();
@@ -47,7 +48,7 @@ namespace TransportManagementSystem.Controllers
             }
 
             driver.Driver_AssignedBusId = busId;
-            bus.Bus_CurrentDriverId = driverId;
+            bus.Bus_CurrentDriverId = driverId; // Assurez-vous que cette colonne existe
             await _context.SaveChangesAsync();
 
             TempData["Success"] = "Chauffeur assigné au bus avec succès.";
@@ -65,7 +66,7 @@ namespace TransportManagementSystem.Controllers
                 return RedirectToAction("Index");
             }
 
-            bus.Bus_CurrentTrajectoryId = trajectoryId;
+            bus.Bus_CurrentTrajectoryId = trajectoryId; // Assurez-vous que cette colonne existe
             await _context.SaveChangesAsync();
 
             TempData["Success"] = "Bus assigné au trajet avec succès.";

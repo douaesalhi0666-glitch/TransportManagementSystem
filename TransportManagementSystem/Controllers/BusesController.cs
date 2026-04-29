@@ -2,6 +2,9 @@
 using Microsoft.EntityFrameworkCore;
 using TransportManagementSystem.Data;
 using TransportManagementSystem.Models;
+using System;
+using System.Linq;
+using System.Threading.Tasks;
 
 namespace TransportManagementSystem.Controllers
 {
@@ -14,20 +17,17 @@ namespace TransportManagementSystem.Controllers
             _context = context;
         }
 
-        // GET: Buses
+        // ==============================
+        // GESTION CRUD DES BUS
+        // ==============================
         public async Task<IActionResult> Index()
         {
             var buses = await _context.Buses.ToListAsync();
             return View(buses);
         }
 
-        // GET: Buses/Create
-        public IActionResult Create()
-        {
-            return View();
-        }
+        public IActionResult Create() => View();
 
-        // POST: Buses/Create
         [HttpPost]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> Create(Bus bus)
@@ -43,32 +43,19 @@ namespace TransportManagementSystem.Controllers
             return View(bus);
         }
 
-        // GET: Buses/Edit/5
         public async Task<IActionResult> Edit(long? id)
         {
-            if (id == null)
-            {
-                return NotFound();
-            }
-
+            if (id == null) return NotFound();
             var bus = await _context.Buses.FindAsync(id);
-            if (bus == null)
-            {
-                return NotFound();
-            }
+            if (bus == null) return NotFound();
             return View(bus);
         }
 
-        // POST: Buses/Edit/5
         [HttpPost]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> Edit(long id, Bus bus)
         {
-            if (id != bus.Bus_Id)
-            {
-                return NotFound();
-            }
-
+            if (id != bus.Bus_Id) return NotFound();
             if (ModelState.IsValid)
             {
                 try
@@ -79,55 +66,289 @@ namespace TransportManagementSystem.Controllers
                 }
                 catch (DbUpdateConcurrencyException)
                 {
-                    if (!BusExists(bus.Bus_Id))
-                    {
-                        return NotFound();
-                    }
-                    else
-                    {
-                        throw;
-                    }
+                    if (!BusExists(bus.Bus_Id)) return NotFound();
+                    else throw;
                 }
                 return RedirectToAction(nameof(Index));
             }
             return View(bus);
         }
 
-        // GET: Buses/Delete/5
         public async Task<IActionResult> Delete(long? id)
         {
-            if (id == null)
-            {
-                return NotFound();
-            }
-
-            var bus = await _context.Buses
-                .FirstOrDefaultAsync(m => m.Bus_Id == id);
-            if (bus == null)
-            {
-                return NotFound();
-            }
-
+            if (id == null) return NotFound();
+            var bus = await _context.Buses.FirstOrDefaultAsync(m => m.Bus_Id == id);
+            if (bus == null) return NotFound();
             return View(bus);
         }
 
-        // POST: Buses/Delete/5
         [HttpPost, ActionName("Delete")]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> DeleteConfirmed(long id)
         {
             var bus = await _context.Buses.FindAsync(id);
-            if (bus != null)
-            {
-                _context.Buses.Remove(bus);
-                await _context.SaveChangesAsync();
-            }
+            if (bus != null) _context.Buses.Remove(bus);
+            await _context.SaveChangesAsync();
             return RedirectToAction(nameof(Index));
         }
 
-        private bool BusExists(long id)
+        private bool BusExists(long id) => _context.Buses.Any(e => e.Bus_Id == id);
+
+        // ========================================================
+        // API POUR LES CARTES (position des bus)
+        // ========================================================
+        [HttpGet]
+        public async Task<IActionResult> GetBusLocations()
         {
-            return _context.Buses.Any(e => e.Bus_Id == id);
+            var buses = await _context.Buses
+                .Where(b => b.Bus_CurrentLatitude != null && b.Bus_CurrentLongitude != null)
+                .Select(b => new
+                {
+                    b.Bus_Id,
+                    b.Bus_Code,
+                    b.Bus_PlateNumber,
+                    b.Bus_Status,
+                    lat = b.Bus_CurrentLatitude,
+                    lng = b.Bus_CurrentLongitude,
+                    lastUpdate = b.Bus_LastLocationUpdateTime
+                }).ToListAsync();
+            return Ok(buses);
         }
+
+        // ========================================================
+        // API POUR LE TABLEAU DE BORD DU DRIVER
+        // ========================================================
+        [HttpGet]
+        public async Task<IActionResult> GetDriverDashboardData()
+        {
+            var driverIdStr = HttpContext.Session.GetString("DriverId");
+            if (string.IsNullOrEmpty(driverIdStr))
+                return Unauthorized();
+
+            var driverId = int.Parse(driverIdStr);
+            var driver = await _context.Drivers
+                .Include(d => d.Driver_AssignedBus)
+                .FirstOrDefaultAsync(d => d.Driver_id == driverId);
+
+            if (driver == null || driver.Driver_AssignedBus == null)
+                return NotFound("Aucun bus assigné.");
+
+            var bus = driver.Driver_AssignedBus;
+            var trajectoryId = bus.Bus_CurrentTrajectoryId;
+            Trajectory? trajectory = null;
+            var stops = new System.Collections.Generic.List<object>();
+
+            if (trajectoryId.HasValue)
+            {
+                trajectory = await _context.Trajectories
+                    .FirstOrDefaultAsync(t => t.Trajectory_Id == trajectoryId);
+
+                stops = await _context.TrajectoryStops
+                    .Where(s => s.TS_TrajectoryId == trajectoryId)
+                    .OrderBy(s => s.TS_OrderIndex)
+                    .Select(s => new
+                    {
+                        s.TS_Id,
+                        s.TS_Name,
+                        s.TS_OrderIndex,
+                        s.TS_Latitude,
+                        s.TS_Longitude,
+                        s.TS_PlannedArrivalTime,
+                        s.TS_PlannedDepartureTime
+                    })
+                    .ToListAsync<object>();
+            }
+
+            return Ok(new
+            {
+                Driver = new { driver.Driver_id, driver.Driver_FirstName, driver.Driver_LastName },
+                Bus = new
+                {
+                    bus.Bus_Id,
+                    bus.Bus_Code,
+                    bus.Bus_PlateNumber,
+                    bus.Bus_Model,
+                    bus.Bus_Brand,
+                    bus.Bus_Status,
+                    CurrentLatitude = bus.Bus_CurrentLatitude,
+                    CurrentLongitude = bus.Bus_CurrentLongitude,
+                    LastLocationUpdateTime = bus.Bus_LastLocationUpdateTime
+                },
+                Trajectory = trajectory != null ? new
+                {
+                    trajectory.Trajectory_Id,
+                    trajectory.Trajectory_Name,
+                    trajectory.Trajectory_Code,
+                    StartLatitude = trajectory.Trajectory_StartLatitude,
+                    StartLongitude = trajectory.Trajectory_StartLongitude,
+                    EndLatitude = trajectory.Trajectory_EndLatitude,
+                    EndLongitude = trajectory.Trajectory_EndLongitude
+                } : null,
+                Stops = stops
+            });
+        }
+
+        [HttpPost]
+        public async Task<IActionResult> UpdateBusLocation([FromBody] LocationUpdateModel model)
+        {
+            var driverIdStr = HttpContext.Session.GetString("DriverId");
+            if (string.IsNullOrEmpty(driverIdStr))
+                return Unauthorized();
+
+            var driverId = int.Parse(driverIdStr);
+            var driver = await _context.Drivers
+                .Include(d => d.Driver_AssignedBus)
+                .FirstOrDefaultAsync(d => d.Driver_id == driverId);
+
+            if (driver?.Driver_AssignedBus == null)
+                return BadRequest("Aucun bus assigné.");
+
+            var bus = driver.Driver_AssignedBus;
+            bus.Bus_CurrentLatitude = model.Latitude;
+            bus.Bus_CurrentLongitude = model.Longitude;
+            bus.Bus_LastLocationUpdateTime = DateTime.Now;
+            await _context.SaveChangesAsync();
+
+            return Ok();
+        }
+
+        // ========================================================
+        // API POUR LE TABLEAU DE BORD DU PERSONNEL
+        // ========================================================
+        [HttpGet]
+        public async Task<IActionResult> GetPersonnelDashboardData()
+        {
+            var personnelIdStr = HttpContext.Session.GetString("PersonnelId");
+            if (string.IsNullOrEmpty(personnelIdStr))
+                return Unauthorized();
+
+            var personnelId = int.Parse(personnelIdStr);
+
+            var assignment = await _context.PersonnelTrajectoryAssignments
+                .Include(a => a.Trajectory)
+                .Include(a => a.Stop)
+                .FirstOrDefaultAsync(a => a.PTA_PersonnelId == personnelId
+                                          && a.PTA_Status == "Active"
+                                          && a.PTA_EffectiveFromDate <= DateTime.Now
+                                          && (a.PTA_EffectiveToDate == null || a.PTA_EffectiveToDate >= DateTime.Now));
+
+            if (assignment == null)
+                return NotFound("Aucune trajectoire assignée.");
+
+            var trajectory = assignment.Trajectory;
+            var stop = assignment.Stop;
+
+            var buses = await _context.Buses
+                .Where(b => b.Bus_CurrentTrajectoryId == trajectory.Trajectory_Id
+                            && b.Bus_CurrentLatitude != null
+                            && b.Bus_CurrentLongitude != null)
+                .Select(b => new
+                {
+                    b.Bus_Id,
+                    b.Bus_Code,
+                    b.Bus_PlateNumber,
+                    b.Bus_Status,
+                    lat = b.Bus_CurrentLatitude,
+                    lng = b.Bus_CurrentLongitude,
+                    b.Bus_LastLocationUpdateTime
+                }).ToListAsync();
+
+            var stops = await _context.TrajectoryStops
+                .Where(s => s.TS_TrajectoryId == trajectory.Trajectory_Id)
+                .OrderBy(s => s.TS_OrderIndex)
+                .Select(s => new
+                {
+                    s.TS_Id,
+                    s.TS_Name,
+                    s.TS_OrderIndex,
+                    s.TS_Latitude,
+                    s.TS_Longitude,
+                    s.TS_PlannedArrivalTime,
+                    s.TS_PlannedDepartureTime
+                }).ToListAsync();
+
+            var personnelStop = stop != null ? new
+            {
+                stop.TS_Id,
+                stop.TS_Name,
+                stop.TS_Latitude,
+                stop.TS_Longitude
+            } : null;
+
+            return Ok(new
+            {
+                PersonnelId = personnelId,
+                Trajectory = new
+                {
+                    trajectory.Trajectory_Id,
+                    trajectory.Trajectory_Name,
+                    trajectory.Trajectory_Code,
+                    StartLat = trajectory.Trajectory_StartLatitude,
+                    StartLng = trajectory.Trajectory_StartLongitude,
+                    EndLat = trajectory.Trajectory_EndLatitude,
+                    EndLng = trajectory.Trajectory_EndLongitude
+                },
+                PersonnelStop = personnelStop,
+                Stops = stops,
+                Buses = buses
+            });
+        }
+
+        [HttpPost]
+        public async Task<IActionResult> CheckProximityAlert([FromBody] ProximityCheckModel model)
+        {
+            var personnelIdStr = HttpContext.Session.GetString("PersonnelId");
+            if (string.IsNullOrEmpty(personnelIdStr))
+                return Unauthorized();
+
+            var personnelId = int.Parse(personnelIdStr);
+
+            var lastAlert = await _context.Alerts
+                .Where(a => a.Alert_PersonnelId == personnelId && a.Alert_BusId == model.BusId)
+                .OrderByDescending(a => a.Alert_SentAt)
+                .FirstOrDefaultAsync();
+
+            string alertType = null;
+            if (model.Distance <= 200 && (lastAlert?.Alert_Type != "200m"))
+                alertType = "200m";
+            else if (model.Distance <= 500 && (lastAlert?.Alert_Type != "200m" && lastAlert?.Alert_Type != "500m"))
+                alertType = "500m";
+
+            if (alertType != null)
+            {
+                var alert = new Alert
+                {
+                    Alert_PersonnelId = personnelId,
+                    Alert_BusId = model.BusId,
+                    Alert_TrajectoryId = model.TrajectoryId,
+                    Alert_Type = alertType,
+                    Alert_Message = $"Le bus {model.BusCode} est à {model.Distance:F0} mètres de votre arrêt.",
+                    Alert_SentAt = DateTime.Now,
+                    Alert_DeliveryChannel = "Web",
+                    Alert_Status = "sent"
+                };
+                _context.Alerts.Add(alert);
+                await _context.SaveChangesAsync();
+                return Ok(new { alertType, message = alert.Alert_Message });
+            }
+            return Ok(new { alertType = "none" });
+        }
+    }
+
+    // ========================================================
+    // MODÈLES INTERNES (DTO)
+    // ========================================================
+    public class LocationUpdateModel
+    {
+        public decimal Latitude { get; set; }
+        public decimal Longitude { get; set; }
+    }
+
+    public class ProximityCheckModel
+    {
+        public int BusId { get; set; }
+        public string BusCode { get; set; } = string.Empty;
+        public int TrajectoryId { get; set; }
+        public double Distance { get; set; }
     }
 }
