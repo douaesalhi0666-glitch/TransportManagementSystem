@@ -10,6 +10,7 @@ namespace TransportManagementSystem.Data
         {
         }
 
+        // Entités existantes
         public DbSet<Personnel> Personnel { get; set; }
         public DbSet<Driver> Drivers { get; set; }
         public DbSet<Bus> Buses { get; set; }
@@ -19,11 +20,19 @@ namespace TransportManagementSystem.Data
         public DbSet<Alert> Alerts { get; set; }
         public DbSet<PersonnelTrajectoryAssignment> PersonnelTrajectoryAssignments { get; set; }
 
+        // Nouvelle entité pour les arrêts suggérés par clustering
+        public DbSet<SuggestedStop> SuggestedStops { get; set; }
+
+        // DTO pour les procédures stockées (si vous les utilisez)
+        // (commentez ou supprimez selon votre cas)
+        // public DbSet<PersonnelDto> PersonnelDtos { get; set; }
+        // etc.
+
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             base.OnModelCreating(modelBuilder);
 
-            // Tables et clés primaires
+            // Configurations des tables existantes
             modelBuilder.Entity<Personnel>(entity =>
             {
                 entity.ToTable("Personnel_tbl", "Security");
@@ -72,61 +81,53 @@ namespace TransportManagementSystem.Data
                 entity.HasKey(e => e.PTA_Id);
             });
 
-            // ========== CONFIGURATION DES RELATIONS ==========
+            // Configuration de la nouvelle table SuggestedStop
+            modelBuilder.Entity<SuggestedStop>(entity =>
+            {
+                entity.ToTable("SuggestedStops_tbl", "Transport");
+                entity.HasKey(e => e.Id);
+                entity.Property(e => e.Name).HasMaxLength(100).IsRequired();
+                entity.Property(e => e.Latitude).HasColumnType("decimal(10,8)");
+                entity.Property(e => e.Longitude).HasColumnType("decimal(11,8)");
+            });
 
-            // Driver → Bus (bus assigné)
+            // Relations existantes (inchangées)
             modelBuilder.Entity<Driver>()
                 .HasOne(d => d.Driver_AssignedBus)
-                .WithMany() // Pas de navigation inverse explicite (un bus peut avoir plusieurs chauffeurs historiquement)
+                .WithMany()
                 .HasForeignKey(d => d.Driver_AssignedBusId)
                 .OnDelete(DeleteBehavior.SetNull);
 
-            // Bus → Driver (chauffeur actuel – optionnel, si la propriété CurrentDriver existe dans Bus)
-            // Décommentez cette section si vous avez ajouté public Driver? CurrentDriver { get; set; } dans Bus.cs
-            /*
-            modelBuilder.Entity<Bus>()
-                .HasOne(b => b.CurrentDriver)
-                .WithMany()
-                .HasForeignKey(b => b.Bus_CurrentDriverId)
-                .OnDelete(DeleteBehavior.SetNull);
-            */
-
-            // PersonnelTrajectoryAssignment → Personnel
             modelBuilder.Entity<PersonnelTrajectoryAssignment>()
                 .HasOne(pt => pt.Personnel)
                 .WithMany()
                 .HasForeignKey(pt => pt.PTA_PersonnelId)
                 .OnDelete(DeleteBehavior.Restrict);
 
-            // PersonnelTrajectoryAssignment → Trajectory
             modelBuilder.Entity<PersonnelTrajectoryAssignment>()
                 .HasOne(pt => pt.Trajectory)
                 .WithMany()
                 .HasForeignKey(pt => pt.PTA_TrajectoryId)
                 .OnDelete(DeleteBehavior.Restrict);
 
-            // PersonnelTrajectoryAssignment → Stop (optionnel)
             modelBuilder.Entity<PersonnelTrajectoryAssignment>()
                 .HasOne(pt => pt.Stop)
                 .WithMany()
                 .HasForeignKey(pt => pt.PTA_StopId)
                 .OnDelete(DeleteBehavior.Restrict);
 
-            // Alert → Bus
             modelBuilder.Entity<Alert>()
                 .HasOne(a => a.Bus)
                 .WithMany()
                 .HasForeignKey(a => a.Alert_BusId)
                 .OnDelete(DeleteBehavior.Restrict);
 
-            // Alert → Personnel
             modelBuilder.Entity<Alert>()
                 .HasOne(a => a.Personnel)
                 .WithMany()
                 .HasForeignKey(a => a.Alert_PersonnelId)
                 .OnDelete(DeleteBehavior.Restrict);
 
-            // Alert → Trajectory
             modelBuilder.Entity<Alert>()
                 .HasOne(a => a.Trajectory)
                 .WithMany()

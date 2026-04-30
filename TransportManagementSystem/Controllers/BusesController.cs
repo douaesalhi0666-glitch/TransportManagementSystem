@@ -221,7 +221,7 @@ namespace TransportManagementSystem.Controllers
             if (string.IsNullOrEmpty(personnelIdStr))
                 return Unauthorized();
 
-            var personnelId = int.Parse(personnelIdStr);
+            var personnelId = long.Parse(personnelIdStr); // utilisez long pour correspondre au modèle
 
             var assignment = await _context.PersonnelTrajectoryAssignments
                 .Include(a => a.Trajectory)
@@ -303,7 +303,7 @@ namespace TransportManagementSystem.Controllers
             if (string.IsNullOrEmpty(personnelIdStr))
                 return Unauthorized();
 
-            var personnelId = int.Parse(personnelIdStr);
+            var personnelId = long.Parse(personnelIdStr);
 
             var lastAlert = await _context.Alerts
                 .Where(a => a.Alert_PersonnelId == personnelId && a.Alert_BusId == model.BusId)
@@ -348,7 +348,7 @@ namespace TransportManagementSystem.Controllers
 
     public class ProximityCheckModel
     {
-        public int BusId { get; set; }
+        public long BusId { get; set; }  // ← modifié pour correspondre à long
         public string BusCode { get; set; } = string.Empty;
         public int TrajectoryId { get; set; }
         public double Distance { get; set; }

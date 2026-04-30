@@ -3,6 +3,25 @@
     Layout = "~/Views/Shared/_Layout.cshtml";
 }
 
+<style>
+    .toast-container {
+        z-index: 1055;
+    }
+    .toast {
+        min-width: 300px;
+        border-left: 5px solid;
+    }
+    .toast.warning { border-left-color: #ffc107; }
+    .toast.danger { border-left-color: #dc3545; }
+    .toast-header {
+        background-color: #f8f9fa;
+        border-bottom: none;
+    }
+    .bus-marker { background-color: #007bff; color: white; border-radius: 50%; text-align: center; font-size: 16px; padding: 6px; width: 30px; height: 30px; display: flex; align-items: center; justify-content: center; border: 2px solid white; box-shadow: 0 2px 6px rgba(0,0,0,0.3); }
+    .stop-marker { background-color: #28a745; color: white; border-radius: 50%; text-align: center; font-size: 12px; padding: 4px; width: 24px; height: 24px; display: flex; align-items: center; justify-content: center; border: 1px solid white; }
+    .person-marker { background-color: #ffc107; color: black; border-radius: 50%; text-align: center; font-size: 14px; padding: 4px; width: 28px; height: 28px; display: flex; align-items: center; justify-content: center; border: 2px solid white; }
+</style>
+
 <h2>Bienvenue, @ViewBag.UserName</h2>
 <div id="assignmentInfo" class="alert alert-info">
     Chargement de votre trajet...
@@ -10,49 +29,78 @@
 
 <div id="map" style="height: 600px; width: 100%; border-radius: 10px; margin-bottom: 20px;"></div>
 
-<div class="card mt-3">
-    <div class="card-header bg-warning">
-        <h5>🚨 Alertes de proximité</h5>
-    </div>
-    <div class="card-body" id="alertPanel">
-        <p>Aucune alerte pour le moment.</p>
-    </div>
-</div>
+<!-- Conteneur pour les toasts (notifications contextuelles) -->
+<div class="toast-container position-fixed top-0 end-0 p-3" id="toastContainer"></div>
 
 @section Scripts {
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-    <style>
-        .bus-marker { background-color: #007bff; color: white; border-radius: 50%; text-align: center; font-size: 16px; padding: 6px; width: 30px; height: 30px; display: flex; align-items: center; justify-content: center; border: 2px solid white; box-shadow: 0 2px 6px rgba(0,0,0,0.3); }
-        .stop-marker { background-color: #28a745; color: white; border-radius: 50%; text-align: center; font-size: 12px; padding: 4px; width: 24px; height: 24px; display: flex; align-items: center; justify-content: center; border: 1px solid white; }
-        .person-marker { background-color: #ffc107; color: black; border-radius: 50%; text-align: center; font-size: 14px; padding: 4px; width: 28px; height: 28px; display: flex; align-items: center; justify-content: center; border: 2px solid white; }
-    </style>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 
     <script>
         let map, busMarkers = {}, trajectoryLine, personStopMarker, personLocationMarker;
-        let lastAlertTypes = {}; // Pour éviter les alertes répétées par bus
+        let lastAlertTypes = {};
         let currentTrajectoryId = null;
         let checkInterval;
 
         // Fonction Haversine (distance en mètres)
         function haversine(lat1, lon1, lat2, lon2) {
-            const R = 6371e3; // mètres
+            const R = 6371e3;
             const φ1 = lat1 * Math.PI / 180;
             const φ2 = lat2 * Math.PI / 180;
             const Δφ = (lat2 - lat1) * Math.PI / 180;
             const Δλ = (lon2 - lon1) * Math.PI / 180;
-            const a = Math.sin(Δφ / 2) * Math.sin(Δφ / 2) +
+            const a = Math.sin(Δφ/2) * Math.sin(Δφ/2) +
                       Math.cos(φ1) * Math.cos(φ2) *
-                      Math.sin(Δλ / 2) * Math.sin(Δλ / 2);
+                      Math.sin(Δλ/2) * Math.sin(Δλ/2);
             const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
             return R * c;
+        }
+
+        // Afficher un toast
+        function showToast(title, message, type = 'warning') {
+            const container = document.getElementById('toastContainer');
+            const id = 'toast-' + Date.now();
+            const html = `
+                <div id="${id}" class="toast ${type}" role="alert" data-bs-autohide="true" data-bs-delay="8000">
+                    <div class="toast-header">
+                        <strong class="me-auto">🚨 ${title}</strong>
+                        <button type="button" class="btn-close" data-bs-dismiss="toast"></button>
+                    </div>
+                    <div class="toast-body">${message}</div>
+                </div>
+            `;
+            container.insertAdjacentHTML('beforeend', html);
+            const el = document.getElementById(id);
+            const toast = new bootstrap.Toast(el, { autohide: true, delay: 8000 });
+            toast.show();
+            el.addEventListener('hidden.bs.toast', () => el.remove());
+        }
+
+        // Notification navigateur
+        function showBrowserNotification(title, body) {
+            if (!("Notification" in window)) return;
+            if (Notification.permission === "granted") {
+                new Notification(title, { body: body, icon: "/favicon.ico" });
+            } else if (Notification.permission !== "denied") {
+                Notification.requestPermission();
+            }
+        }
+
+        // Déclencher les deux formes d'alerte
+        function triggerAlert(busCode, distance, alertType) {
+            const title = alertType === '200m' ? '⚠️ URGENT : Bus très proche !' : '🔔 Alerte : Bus en approche';
+            const message = `Le bus ${busCode} est à ${Math.round(distance)} mètres de votre arrêt.`;
+            showToast(title, message, alertType === '200m' ? 'danger' : 'warning');
+            showBrowserNotification(title, message);
         }
 
         async function loadPersonnelData() {
             try {
                 const response = await fetch('/Buses/GetPersonnelDashboardData');
                 if (!response.ok) {
-                    document.getElementById('assignmentInfo').innerHTML = '<div class="alert alert-danger">Aucune trajectoire assignée active. Contactez l\'administrateur.</div>';
+                    document.getElementById('assignmentInfo').innerHTML = '<div class="alert alert-danger">Aucune trajectoire assignée active.</div>';
                     return;
                 }
                 const data = await response.json();
@@ -64,7 +112,6 @@
                 `;
                 currentTrajectoryId = data.trajectory.trajectory_Id;
 
-                // Initialisation carte
                 if (!map) {
                     map = L.map('map').setView([46.603354, 1.888334], 6);
                     L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
@@ -72,55 +119,54 @@
                     }).addTo(map);
                 }
 
-                // Tracer la trajectoire (ligne)
+                // Trajectoire
                 if (trajectoryLine) map.removeLayer(trajectoryLine);
                 const points = data.stops.map(s => [s.tS_Latitude, s.tS_Longitude]);
                 if (points.length > 1) {
                     trajectoryLine = L.polyline(points, { color: 'blue', weight: 4, opacity: 0.6 }).addTo(map);
                 }
 
-                // Ajouter les marqueurs d'arrêts
+                // Arrêts
                 data.stops.forEach(stop => {
-                    const stopIcon = L.divIcon({ html: stop.tS_OrderIndex, iconSize: [24, 24], className: 'stop-marker' });
-                    L.marker([stop.tS_Latitude, stop.tS_Longitude], { icon: stopIcon })
+                    const icon = L.divIcon({ html: stop.tS_OrderIndex, iconSize: [24, 24], className: 'stop-marker' });
+                    L.marker([stop.tS_Latitude, stop.tS_Longitude], { icon })
                         .bindPopup(`<b>${stop.tS_Name}</b><br/>Ordre ${stop.tS_OrderIndex}`)
                         .addTo(map);
                 });
 
-                // Marqueur de l'arrêt personnel
+                // Arrêt personnel
                 if (data.personnelStop) {
                     if (personStopMarker) map.removeLayer(personStopMarker);
-                    const stopIcon = L.divIcon({ html: '📍', iconSize: [28, 28], className: 'stop-marker' });
-                    personStopMarker = L.marker([data.personnelStop.tS_Latitude, data.personnelStop.tS_Longitude], { icon: stopIcon })
+                    const icon = L.divIcon({ html: '📍', iconSize: [28, 28], className: 'stop-marker' });
+                    personStopMarker = L.marker([data.personnelStop.tS_Latitude, data.personnelStop.tS_Longitude], { icon })
                         .bindPopup(`<b>Votre arrêt : ${data.personnelStop.tS_Name}</b>`)
                         .addTo(map);
                 }
 
-                // Mettre à jour les bus
-                const busLayerGroup = L.layerGroup().addTo(map);
+                // Bus
+                if (window.busLayer) map.removeLayer(window.busLayer);
+                window.busLayer = L.layerGroup().addTo(map);
                 data.buses.forEach(bus => {
                     const busIcon = L.divIcon({ html: '🚌', iconSize: [30, 30], className: 'bus-marker' });
                     const marker = L.marker([bus.lat, bus.lng], { icon: busIcon })
                         .bindPopup(`<b>${bus.bus_Code}</b><br/>Plaque: ${bus.bus_PlateNumber}<br/>Statut: ${bus.bus_Status}`)
-                        .addTo(busLayerGroup);
+                        .addTo(window.busLayer);
                     busMarkers[bus.bus_Id] = marker;
                 });
 
-                // Centrer sur l'arrêt personnel ou le premier bus
+                // Centrage
                 if (data.personnelStop) {
                     map.setView([data.personnelStop.tS_Latitude, data.personnelStop.tS_Longitude], 13);
                 } else if (data.buses.length > 0) {
                     map.setView([data.buses[0].lat, data.buses[0].lng], 13);
                 }
 
-                // Lancer la vérification de proximité (toutes les 15 secondes)
                 if (checkInterval) clearInterval(checkInterval);
                 checkInterval = setInterval(() => checkProximity(data), 15000);
-                // Premier appel immédiat
                 await checkProximity(data);
             } catch (error) {
                 console.error(error);
-                document.getElementById('assignmentInfo').innerHTML = '<div class="alert alert-danger">Erreur de chargement des données.</div>';
+                document.getElementById('assignmentInfo').innerHTML = '<div class="alert alert-danger">Erreur de chargement.</div>';
             }
         }
 
@@ -128,18 +174,15 @@
             if (!data.personnelStop || data.buses.length === 0) return;
             const stopLat = data.personnelStop.tS_Latitude;
             const stopLng = data.personnelStop.tS_Longitude;
-
             for (const bus of data.buses) {
                 const distance = haversine(stopLat, stopLng, bus.lat, bus.lng);
-                // Seuil pour déclencher alerte (on stocke le dernier type d'alerte par bus)
                 let triggerType = null;
                 if (distance <= 200 && lastAlertTypes[bus.bus_Id] !== '200m') {
                     triggerType = '200m';
-                } else if (distance <= 500 && lastAlertTypes[bus.bus_Id] !== '500m' && lastAlertTypes[bus.bus_Id] !== '200m') {
+                } else if (distance <= 500 && lastAlertTypes[bus.bus_Id] !== '200m' && lastAlertTypes[bus.bus_Id] !== '500m') {
                     triggerType = '500m';
                 }
                 if (triggerType) {
-                    // Appeler l'API pour enregistrer l'alerte (évite les doublons persistants)
                     const res = await fetch('/Buses/CheckProximityAlert', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
@@ -152,38 +195,31 @@
                     });
                     const alertRes = await res.json();
                     if (alertRes.alertType !== 'none') {
-                        // Afficher l'alerte dans le panneau
-                        const alertPanel = document.getElementById('alertPanel');
-                        const newAlert = document.createElement('div');
-                        newAlert.className = `alert alert-${alertRes.alertType === '200m' ? 'danger' : 'warning'} alert-dismissible fade show`;
-                        newAlert.innerHTML = `
-                            🚨 ${alertRes.message}<br/>
-                            <small>${new Date().toLocaleTimeString()}</small>
-                            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-                        `;
-                        alertPanel.prepend(newAlert);
-                        // Mettre à jour lastAlertTypes pour ce bus
+                        triggerAlert(bus.bus_Code, distance, alertRes.alertType);
                         lastAlertTypes[bus.bus_Id] = alertRes.alertType;
                     }
                 }
             }
         }
 
-        // Récupérer la position du personnel (facultatif)
+        // Géolocalisation du personnel
         if (navigator.geolocation) {
             navigator.geolocation.getCurrentPosition(pos => {
-                const userLat = pos.coords.latitude;
-                const userLng = pos.coords.longitude;
+                if (!map) return;
                 if (personLocationMarker) map.removeLayer(personLocationMarker);
-                const personIcon = L.divIcon({ html: '👤', iconSize: [28, 28], className: 'person-marker' });
-                personLocationMarker = L.marker([userLat, userLng], { icon: personIcon })
+                const icon = L.divIcon({ html: '👤', iconSize: [28, 28], className: 'person-marker' });
+                personLocationMarker = L.marker([pos.coords.latitude, pos.coords.longitude], { icon })
                     .bindPopup('Votre position actuelle')
                     .addTo(map);
             });
         }
 
+        // Demander la permission pour les notifications navigateur
+        if ("Notification" in window && Notification.permission !== "denied") {
+            Notification.requestPermission();
+        }
+
         loadPersonnelData();
-        // Rafraîchir les données (bus) toutes les 30 secondes
         setInterval(() => loadPersonnelData(), 30000);
     </script>
 }
