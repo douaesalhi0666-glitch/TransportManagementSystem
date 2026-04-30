@@ -44,7 +44,6 @@ namespace TransportManagementSystem.Controllers
         public async Task<IActionResult> AssignPersonnelAI(long personnelId)
         {
             var personnel = await _context.Personnel.FindAsync(personnelId);
-
             if (personnel == null)
             {
                 TempData["Error"] = "Personnel non trouvé.";
@@ -75,7 +74,6 @@ namespace TransportManagementSystem.Controllers
                         (double)traj.Trajectory_StartLatitude,
                         (double)traj.Trajectory_StartLongitude
                     );
-
                     if (distance < bestDistance)
                     {
                         bestDistance = distance;
@@ -106,9 +104,7 @@ namespace TransportManagementSystem.Controllers
             {
                 int currentOccupancy = await _context.Personnel
                     .CountAsync(p => p.AssignedBusId == bus.Bus_Id);
-
                 int capacity = bus.Bus_Capacity ?? 50;
-
                 if (currentOccupancy < capacity)
                 {
                     selectedBus = bus;
@@ -121,6 +117,17 @@ namespace TransportManagementSystem.Controllers
                 TempData["Error"] = $"Tous les bus du trajet {bestTrajectory.Trajectory_Name} sont pleins.";
                 return RedirectToAction("AssignPersonnel");
             }
+
+            // ===== MISE À JOUR DU BUS =====
+            selectedBus.Bus_CurrentTrajectoryId = bestTrajectory.Trajectory_Id;
+            selectedBus.Bus_UpdatedAt = DateTime.Now;
+            if (selectedBus.Bus_CurrentLatitude == null && bestTrajectory.Trajectory_StartLatitude != null)
+            {
+                selectedBus.Bus_CurrentLatitude = bestTrajectory.Trajectory_StartLatitude;
+                selectedBus.Bus_CurrentLongitude = bestTrajectory.Trajectory_StartLongitude;
+                selectedBus.Bus_LastLocationUpdateTime = DateTime.Now;
+            }
+            // =============================
 
             personnel.AssignedTrajectoryId = bestTrajectory.Trajectory_Id;
             personnel.AssignedBusId = selectedBus.Bus_Id;
@@ -139,7 +146,6 @@ namespace TransportManagementSystem.Controllers
         {
             var personnel = await _context.Personnel.FindAsync(personnelId);
             var trajectory = await _context.Trajectories.FindAsync(trajectoryId);
-
             if (personnel == null || trajectory == null)
             {
                 TempData["Error"] = "Personnel ou trajet non trouvé.";
@@ -162,9 +168,7 @@ namespace TransportManagementSystem.Controllers
             {
                 int currentOccupancy = await _context.Personnel
                     .CountAsync(p => p.AssignedBusId == bus.Bus_Id);
-
                 int capacity = bus.Bus_Capacity ?? 50;
-
                 if (currentOccupancy < capacity)
                 {
                     selectedBus = bus;
@@ -177,6 +181,17 @@ namespace TransportManagementSystem.Controllers
                 TempData["Error"] = "Tous les bus de ce trajet sont pleins.";
                 return RedirectToAction("AssignPersonnel");
             }
+
+            // ===== MISE À JOUR DU BUS =====
+            selectedBus.Bus_CurrentTrajectoryId = trajectoryId;
+            selectedBus.Bus_UpdatedAt = DateTime.Now;
+            if (selectedBus.Bus_CurrentLatitude == null && trajectory.Trajectory_StartLatitude != null)
+            {
+                selectedBus.Bus_CurrentLatitude = trajectory.Trajectory_StartLatitude;
+                selectedBus.Bus_CurrentLongitude = trajectory.Trajectory_StartLongitude;
+                selectedBus.Bus_LastLocationUpdateTime = DateTime.Now;
+            }
+            // =============================
 
             personnel.AssignedTrajectoryId = trajectoryId;
             personnel.AssignedBusId = selectedBus.Bus_Id;
@@ -194,20 +209,19 @@ namespace TransportManagementSystem.Controllers
         public async Task<IActionResult> UnassignPersonnel(long personnelId)
         {
             var personnel = await _context.Personnel.FindAsync(personnelId);
-
             if (personnel != null)
             {
+                // On ne supprime pas le lien bus ↔ trajectoire, on le garde (le bus reste sur le trajet).
                 personnel.AssignedTrajectoryId = null;
                 personnel.AssignedBusId = null;
                 personnel.IsAssigned = false;
                 await _context.SaveChangesAsync();
                 TempData["Success"] = "Personnel désassigné avec succès.";
             }
-
             return RedirectToAction("AssignPersonnel");
         }
 
-        // Garde l'action ViewAssignments si vous voulez une page séparée (optionnelle)
+        // Garde l'action ViewAssignments (optionnelle)
         public async Task<IActionResult> ViewAssignments()
         {
             var assignments = await _context.Personnel
@@ -215,11 +229,10 @@ namespace TransportManagementSystem.Controllers
                 .Include(p => p.AssignedBus)
                 .Where(p => p.IsAssigned == true)
                 .ToListAsync();
-
             return View(assignments);
         }
 
-        // Occupation des bus (inchangé)
+        // Occupation des bus
         public async Task<IActionResult> BusOccupancy()
         {
             var buses = await _context.Buses
@@ -253,7 +266,6 @@ namespace TransportManagementSystem.Controllers
         public async Task<IActionResult> RemovePersonnelFromBus(long personnelId, long busId)
         {
             var personnel = await _context.Personnel.FindAsync(personnelId);
-
             if (personnel != null && personnel.AssignedBusId == busId)
             {
                 personnel.AssignedTrajectoryId = null;
@@ -262,7 +274,6 @@ namespace TransportManagementSystem.Controllers
                 await _context.SaveChangesAsync();
                 TempData["Success"] = "Personnel retiré du bus avec succès.";
             }
-
             return RedirectToAction("BusOccupancy");
         }
 
@@ -279,10 +290,7 @@ namespace TransportManagementSystem.Controllers
             return R * c;
         }
 
-        private double ToRadians(double degrees)
-        {
-            return degrees * Math.PI / 180;
-        }
+        private double ToRadians(double degrees) => degrees * Math.PI / 180;
     }
 
     public class BusOccupancyViewModel

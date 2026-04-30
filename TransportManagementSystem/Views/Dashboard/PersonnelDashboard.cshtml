@@ -4,19 +4,11 @@
 }
 
 <style>
-    .toast-container {
-        z-index: 1055;
-    }
-    .toast {
-        min-width: 300px;
-        border-left: 5px solid;
-    }
+    .toast-container { z-index: 1055; }
+    .toast { min-width: 300px; border-left: 5px solid; }
     .toast.warning { border-left-color: #ffc107; }
     .toast.danger { border-left-color: #dc3545; }
-    .toast-header {
-        background-color: #f8f9fa;
-        border-bottom: none;
-    }
+    .toast-header { background-color: #f8f9fa; border-bottom: none; }
     .bus-marker { background-color: #007bff; color: white; border-radius: 50%; text-align: center; font-size: 16px; padding: 6px; width: 30px; height: 30px; display: flex; align-items: center; justify-content: center; border: 2px solid white; box-shadow: 0 2px 6px rgba(0,0,0,0.3); }
     .stop-marker { background-color: #28a745; color: white; border-radius: 50%; text-align: center; font-size: 12px; padding: 4px; width: 24px; height: 24px; display: flex; align-items: center; justify-content: center; border: 1px solid white; }
     .person-marker { background-color: #ffc107; color: black; border-radius: 50%; text-align: center; font-size: 14px; padding: 4px; width: 28px; height: 28px; display: flex; align-items: center; justify-content: center; border: 2px solid white; }
@@ -29,7 +21,6 @@
 
 <div id="map" style="height: 600px; width: 100%; border-radius: 10px; margin-bottom: 20px;"></div>
 
-<!-- Conteneur pour les toasts (notifications contextuelles) -->
 <div class="toast-container position-fixed top-0 end-0 p-3" id="toastContainer"></div>
 
 @section Scripts {
@@ -43,8 +34,9 @@
         let lastAlertTypes = {};
         let currentTrajectoryId = null;
         let checkInterval;
+        const SPEED_KMH = 30; // km/h
 
-        // Fonction Haversine (distance en mètres)
+        // ----- Utilitaires -----
         function haversine(lat1, lon1, lat2, lon2) {
             const R = 6371e3;
             const φ1 = lat1 * Math.PI / 180;
@@ -58,7 +50,17 @@
             return R * c;
         }
 
-        // Afficher un toast
+        function formatTravelTime(distanceMeters) {
+            let hours = distanceMeters / 1000 / SPEED_KMH;
+            let minutes = hours * 60;
+            if (minutes < 1) return "< 1 min";
+            if (minutes < 60) return Math.round(minutes) + " min";
+            let hrs = Math.floor(minutes / 60);
+            let mins = Math.round(minutes % 60);
+            return hrs + " h " + mins + " min";
+        }
+
+        // ----- Alertes -----
         function showToast(title, message, type = 'warning') {
             const container = document.getElementById('toastContainer');
             const id = 'toast-' + Date.now();
@@ -78,7 +80,6 @@
             el.addEventListener('hidden.bs.toast', () => el.remove());
         }
 
-        // Notification navigateur
         function showBrowserNotification(title, body) {
             if (!("Notification" in window)) return;
             if (Notification.permission === "granted") {
@@ -88,7 +89,6 @@
             }
         }
 
-        // Déclencher les deux formes d'alerte
         function triggerAlert(busCode, distance, alertType) {
             const title = alertType === '200m' ? '⚠️ URGENT : Bus très proche !' : '🔔 Alerte : Bus en approche';
             const message = `Le bus ${busCode} est à ${Math.round(distance)} mètres de votre arrêt.`;
@@ -96,6 +96,7 @@
             showBrowserNotification(title, message);
         }
 
+        // ----- Chargement des données et mise à jour carte -----
         async function loadPersonnelData() {
             try {
                 const response = await fetch('/Buses/GetPersonnelDashboardData');
@@ -105,28 +106,38 @@
                 }
                 const data = await response.json();
 
+                // Point de référence pour l'ETA : arrêt personnel s'il existe, sinon point de départ de la trajectoire
+                let refLat = null, refLng = null;
+                if (data.personnelStop) {
+                    refLat = data.personnelStop.tS_Latitude;
+                    refLng = data.personnelStop.tS_Longitude;
+                } else if (data.trajectory && data.trajectory.StartLat && data.trajectory.StartLng) {
+                    refLat = data.trajectory.StartLat;
+                    refLng = data.trajectory.StartLng;
+                }
+
                 document.getElementById('assignmentInfo').innerHTML = `
                     <strong>Trajectoire :</strong> ${data.trajectory.trajectory_Name} (${data.trajectory.trajectory_Code})<br/>
-                    <strong>Arrêt personnel :</strong> ${data.personnelStop ? data.personnelStop.tS_Name : 'Non défini'}<br/>
+                    <strong>Arrêt personnel :</strong> ${data.personnelStop ? data.personnelStop.tS_Name : 'Non défini (ETA calculé depuis le départ)'}<br/>
                     <strong>Bus sur cette trajectoire :</strong> ${data.buses.length}
                 `;
                 currentTrajectoryId = data.trajectory.trajectory_Id;
 
                 if (!map) {
-                    map = L.map('map').setView([46.603354, 1.888334], 6);
+                    map = L.map('map').setView([46.603354, 1.888334], 15);
                     L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
                         attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a> & CartoDB'
                     }).addTo(map);
                 }
 
-                // Trajectoire
+                // Tracer la trajectoire (polyline)
                 if (trajectoryLine) map.removeLayer(trajectoryLine);
                 const points = data.stops.map(s => [s.tS_Latitude, s.tS_Longitude]);
                 if (points.length > 1) {
                     trajectoryLine = L.polyline(points, { color: 'blue', weight: 4, opacity: 0.6 }).addTo(map);
                 }
 
-                // Arrêts
+                // Ajouter les arrêts
                 data.stops.forEach(stop => {
                     const icon = L.divIcon({ html: stop.tS_OrderIndex, iconSize: [24, 24], className: 'stop-marker' });
                     L.marker([stop.tS_Latitude, stop.tS_Longitude], { icon })
@@ -134,7 +145,7 @@
                         .addTo(map);
                 });
 
-                // Arrêt personnel
+                // Arrêt personnel s'il existe
                 if (data.personnelStop) {
                     if (personStopMarker) map.removeLayer(personStopMarker);
                     const icon = L.divIcon({ html: '📍', iconSize: [28, 28], className: 'stop-marker' });
@@ -143,39 +154,64 @@
                         .addTo(map);
                 }
 
-                // Bus
+                // Bus avec popup (incluant l'ETA)
                 if (window.busLayer) map.removeLayer(window.busLayer);
                 window.busLayer = L.layerGroup().addTo(map);
+                busMarkers = {};
                 data.buses.forEach(bus => {
                     const busIcon = L.divIcon({ html: '🚌', iconSize: [30, 30], className: 'bus-marker' });
+                    let etaText = "";
+                    if (refLat && refLng) {
+                        const distToRef = haversine(refLat, refLng, bus.lat, bus.lng);
+                        const eta = formatTravelTime(distToRef);
+                        etaText = `<br/>🚏 Arrive dans : ${eta}`;
+                    }
+                    const popupContent = `<b>${bus.bus_Code}</b><br/>Plaque: ${bus.bus_PlateNumber}<br/>Statut: ${bus.bus_Status}${etaText}`;
                     const marker = L.marker([bus.lat, bus.lng], { icon: busIcon })
-                        .bindPopup(`<b>${bus.bus_Code}</b><br/>Plaque: ${bus.bus_PlateNumber}<br/>Statut: ${bus.bus_Status}`)
+                        .bindPopup(popupContent)
                         .addTo(window.busLayer);
                     busMarkers[bus.bus_Id] = marker;
                 });
 
-                // Centrage
+                // Centrage : sur l'arrêt personnel, sinon sur le premier bus, avec zoom 15
                 if (data.personnelStop) {
-                    map.setView([data.personnelStop.tS_Latitude, data.personnelStop.tS_Longitude], 13);
+                    map.setView([data.personnelStop.tS_Latitude, data.personnelStop.tS_Longitude], 15);
                 } else if (data.buses.length > 0) {
-                    map.setView([data.buses[0].lat, data.buses[0].lng], 13);
+                    map.setView([data.buses[0].lat, data.buses[0].lng], 15);
+                } else if (data.trajectory.StartLat && data.trajectory.StartLng) {
+                    map.setView([data.trajectory.StartLat, data.trajectory.StartLng], 15);
                 }
 
+                // Vérification périodique
                 if (checkInterval) clearInterval(checkInterval);
-                checkInterval = setInterval(() => checkProximity(data), 15000);
-                await checkProximity(data);
+                checkInterval = setInterval(() => checkProximity(data, refLat, refLng), 15000);
+                await checkProximity(data, refLat, refLng);
             } catch (error) {
                 console.error(error);
                 document.getElementById('assignmentInfo').innerHTML = '<div class="alert alert-danger">Erreur de chargement.</div>';
             }
         }
 
-        async function checkProximity(data) {
-            if (!data.personnelStop || data.buses.length === 0) return;
-            const stopLat = data.personnelStop.tS_Latitude;
-            const stopLng = data.personnelStop.tS_Longitude;
+        // Vérification de proximité et mise à jour des popups
+        async function checkProximity(data, refLat, refLng) {
+            if (!data.personnelStop && !(refLat && refLng)) return;
+            // Si pas de point de référence, on reste sur arrêt personnel s'il existe, sinon on sort
+            if (!data.personnelStop && (!refLat || !refLng)) return;
+            const stopLat = data.personnelStop ? data.personnelStop.tS_Latitude : refLat;
+            const stopLng = data.personnelStop ? data.personnelStop.tS_Longitude : refLng;
+
             for (const bus of data.buses) {
                 const distance = haversine(stopLat, stopLng, bus.lat, bus.lng);
+
+                // Mettre à jour le popup du bus avec ETA frais
+                const marker = busMarkers[bus.bus_Id];
+                if (marker) {
+                    const eta = formatTravelTime(distance);
+                    const newPopup = `<b>${bus.bus_Code}</b><br/>Plaque: ${bus.bus_PlateNumber}<br/>Statut: ${bus.bus_Status}<br/>🚏 Arrive dans : ${eta}`;
+                    marker.bindPopup(newPopup);
+                }
+
+                // Déclencher alerte si seuil atteint
                 let triggerType = null;
                 if (distance <= 200 && lastAlertTypes[bus.bus_Id] !== '200m') {
                     triggerType = '200m';
@@ -214,7 +250,7 @@
             });
         }
 
-        // Demander la permission pour les notifications navigateur
+        // Permission notifications
         if ("Notification" in window && Notification.permission !== "denied") {
             Notification.requestPermission();
         }

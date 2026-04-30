@@ -20,8 +20,8 @@ namespace TransportManagementSystem.Controllers
         public async Task<IActionResult> Index()
         {
             var buses = await _context.Buses
-                .Include(b => b.CurrentDriver)      // charge le chauffeur assigné
-                .Include(b => b.CurrentTrajectory)  // charge le trajet assigné
+                .Include(b => b.CurrentDriver)
+                .Include(b => b.CurrentTrajectory)
                 .ToListAsync();
             return View(buses);
         }
@@ -215,7 +215,7 @@ namespace TransportManagementSystem.Controllers
         }
 
         // ========================================================
-        // API POUR LE TABLEAU DE BORD DU PERSONNEL
+        // API POUR LE TABLEAU DE BORD DU PERSONNEL (CORRIGÉE)
         // ========================================================
         [HttpGet]
         public async Task<IActionResult> GetPersonnelDashboardData()
@@ -226,23 +226,43 @@ namespace TransportManagementSystem.Controllers
 
             var personnelId = long.Parse(personnelIdStr);
 
-            var assignment = await _context.PersonnelTrajectoryAssignments
-                .Include(a => a.Trajectory)
-                .Include(a => a.Stop)
-                .FirstOrDefaultAsync(a => a.PTA_PersonnelId == personnelId
-                                          && a.PTA_Status == "Active"
-                                          && a.PTA_EffectiveFromDate <= DateTime.Now
-                                          && (a.PTA_EffectiveToDate == null || a.PTA_EffectiveToDate >= DateTime.Now));
+            // Récupérer le personnel avec ses assignations directes (AssignedTrajectory, AssignedBus)
+            var personnel = await _context.Personnel
+                .Include(p => p.AssignedTrajectory)
+                .Include(p => p.AssignedBus)
+                .FirstOrDefaultAsync(p => p.Personnel_Id == personnelId);
 
-            if (assignment == null)
-                return NotFound("Aucune trajectoire assignée.");
+            Trajectory? trajectory = null;
+            TrajectoryStop? stop = null;
 
-            var trajectory = assignment.Trajectory;
+            // 1. Vérifier s'il y a une assignation directe (via AssignedTrajectoryId)
+            if (personnel?.AssignedTrajectory != null && personnel.AssignedBus != null)
+            {
+                trajectory = personnel.AssignedTrajectory;
+                // Optionnel : récupérer un arrêt spécifique si vous avez un champ PersonnelStopId
+                // stop = await _context.TrajectoryStops.FirstOrDefaultAsync(s => s.TS_Id == personnel.PersonnelStopId);
+            }
+            else
+            {
+                // 2. Sinon, chercher dans la table PersonnelTrajectoryAssignments (ancienne méthode)
+                var assignment = await _context.PersonnelTrajectoryAssignments
+                    .Include(a => a.Trajectory)
+                    .Include(a => a.Stop)
+                    .FirstOrDefaultAsync(a => a.PTA_PersonnelId == personnelId
+                                              && a.PTA_Status == "Active"
+                                              && a.PTA_EffectiveFromDate <= DateTime.Now
+                                              && (a.PTA_EffectiveToDate == null || a.PTA_EffectiveToDate >= DateTime.Now));
+                if (assignment == null)
+                    return NotFound("Aucune trajectoire assignée.");
+
+                trajectory = assignment.Trajectory;
+                stop = assignment.Stop;
+            }
+
             if (trajectory == null)
                 return NotFound("Trajectoire introuvable.");
 
-            var stop = assignment.Stop;
-
+            // Bus actifs sur cette trajectoire
             var buses = await _context.Buses
                 .Where(b => b.Bus_CurrentTrajectoryId == trajectory.Trajectory_Id
                             && b.Bus_CurrentLatitude != null
@@ -258,6 +278,7 @@ namespace TransportManagementSystem.Controllers
                     b.Bus_LastLocationUpdateTime
                 }).ToListAsync();
 
+            // Tous les arrêts de la trajectoire
             var stops = await _context.TrajectoryStops
                 .Where(s => s.TS_TrajectoryId == trajectory.Trajectory_Id)
                 .OrderBy(s => s.TS_OrderIndex)
