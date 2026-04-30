@@ -61,10 +61,10 @@
                                     @foreach (var p in item.Personnel)
                                     {
                                         <tr>
-                                            <td>@p.Personnel_Id</td
-                                            <td>@p.Personnel_LastName</td
-                                            <td>@p.Personnel_FirstName</td
-                                            <td>@p.AssignedTrajectory?.Trajectory_Name</td
+                                            <td>@p.Personnel_Id</td>
+                                            <td>@p.Personnel_LastName</td>
+                                            <td>@p.Personnel_FirstName</td>
+                                            <td>@p.AssignedTrajectory?.Trajectory_Name</td>
                                             <td>
                                                 <form method="post" asp-action="RemovePersonnelFromBus" style="display:inline;">
                                                     <input type="hidden" name="personnelId" value="@p.Personnel_Id" />
@@ -73,8 +73,8 @@
                                                         ❌ Désassigner
                                                     </button>
                                                 </form>
-                                             </td
-                                         </tr>
+                                            </td>
+                                        </tr>
                                     }
                                 </tbody>
                             </table>

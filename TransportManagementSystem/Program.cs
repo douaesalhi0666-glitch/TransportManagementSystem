@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using TransportManagementSystem.Data;
+using TransportManagementSystem.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -16,6 +17,9 @@ builder.Services.AddSession(options =>
     options.Cookie.IsEssential = true;
 });
 
+// Service de prédiction IA
+builder.Services.AddSingleton<ETAPredictionService>();
+
 var app = builder.Build();
 
 if (!app.Environment.IsDevelopment())
@@ -30,7 +34,6 @@ app.UseRouting();
 app.UseSession();
 app.UseAuthorization();
 
-// Add this custom route for Assignments
 app.MapControllerRoute(
     name: "assignments",
     pattern: "Assignments",
