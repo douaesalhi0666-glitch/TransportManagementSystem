@@ -1,104 +1,145 @@
-﻿@{
-    ViewData["Title"] = "Assigner un personnel";
+﻿@model List<TransportManagementSystem.Models.Personnel>
+
+@{
+    ViewData["Title"] = "Assigner le personnel";
     Layout = "~/Views/Shared/_Layout.cshtml";
 }
 
-<h1>🎫 Assigner un personnel à un trajet</h1>
+<h1>🎫 Assigner le personnel à un trajet / bus</h1>
 <hr />
 
 @if (TempData["Success"] != null)
 {
-    <div class="alert alert-success">
-        ✅ @TempData["Success"]
-    </div>
+    <div class="alert alert-success">✅ @TempData["Success"]</div>
 }
-
 @if (TempData["Error"] != null)
 {
-    <div class="alert alert-danger">
-        ❌ @TempData["Error"]
-    </div>
+    <div class="alert alert-danger">❌ @TempData["Error"]</div>
 }
 
 <div class="row">
-    <div class="col-md-6">
-        <div class="card">
+    <!-- Colonne gauche : Formulaire d'assignation -->
+    <div class="col-md-5">
+        <div class="card mb-4">
             <div class="card-header bg-primary text-white">
-                <h4>🤖 Assignation IA (basée sur la localisation)</h4>
+                <h5>Assigner un personnel</h5>
             </div>
             <div class="card-body">
-                <form method="post" asp-action="AssignPersonnelAI">
-                    <div class="mb-3">
-                        <label>Personnel (sans assignation)</label>
-                        <select name="personnelId" class="form-control" required>
-                            <option value="">-- Sélectionner un personnel --</option>
-                            @foreach (var p in ViewBag.Personnel)
-                            {
-                                <option value="@p.Personnel_Id">@p.Personnel_FirstName @p.Personnel_LastName</option>
-                            }
-                        </select>
-                    </div>
-                    <button type="submit" class="btn btn-primary w-100">
-                        🤖 Assignation automatique (IA)
-                    </button>
-                </form>
+                <!-- Sélection du personnel -->
+                <div class="mb-3">
+                    <label for="personnelSelect" class="form-label">Personnel non assigné</label>
+                    <select id="personnelSelect" class="form-select">
+                        <option value="">-- Sélectionner --</option>
+                        @foreach (var p in ViewBag.Personnel)
+                        {
+                            <option value="@p.Personnel_Id" data-lat="@p.Personnel_Latitude" data-lng="@p.Personnel_Longitude">
+                                @p.Personnel_FirstName @p.Personnel_LastName (ID: @p.Personnel_Id)
+                            </option>
+                        }
+                    </select>
+                </div>
+
+                <!-- Sélection du trajet -->
+                <div class="mb-3">
+                    <label for="trajectorySelect" class="form-label">Trajet (manuel)</label>
+                    <select id="trajectorySelect" class="form-select">
+                        <option value="">-- Choisir un trajet --</option>
+                        @foreach (var t in ViewBag.Trajectories)
+                        {
+                            <option value="@t.Trajectory_Id">@t.Trajectory_Name (@t.Trajectory_Code)</option>
+                        }
+                    </select>
+                </div>
+
+                <div class="d-grid gap-2">
+                    <button id="btnAssignManual" class="btn btn-primary">📌 Assigner manuellement</button>
+                    <button id="btnAssignAI" class="btn btn-success">🤖 Assigner par IA (plus proche trajet)</button>
+                </div>
             </div>
         </div>
     </div>
 
-    <div class="col-md-6">
+    <!-- Colonne droite : Listes des assignations actuelles -->
+    <div class="col-md-7">
         <div class="card">
-            <div class="card-header bg-success text-white">
-                <h4>👤 Assignation manuelle</h4>
+            <div class="card-header bg-secondary text-white">
+                <h5>📋 Assignations actuelles (personnel → trajet / bus)</h5>
             </div>
             <div class="card-body">
-                <form method="post" asp-action="AssignPersonnelManual">
-                    <div class="mb-3">
-                        <label>Personnel (sans assignation)</label>
-                        <select name="personnelId" class="form-control" required>
-                            <option value="">-- Sélectionner un personnel --</option>
-                            @foreach (var p in ViewBag.Personnel)
+                @if (Model.Any())
+                {
+                    <table class="table table-striped">
+                        <thead>
+                            <tr>
+                                <th>ID Personnel</th>
+                                <th>Nom</th>
+                                <th>Trajet assigné</th>
+                                <th>Bus assigné</th>
+                                <th>Action</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var p in Model)
                             {
-                                <option value="@p.Personnel_Id">@p.Personnel_FirstName @p.Personnel_LastName</option>
+                                <tr>
+                                    <td>@p.Personnel_Id</td>
+                                    <td>@p.Personnel_FirstName @p.Personnel_LastName</td>
+                                    <td>@p.AssignedTrajectory?.Trajectory_Name ?? "Non défini"</td>
+                                    <td>@p.AssignedBus?.Bus_Code ?? "Non défini"</td>
+                                    <td>
+                                        <form method="post" asp-action="UnassignPersonnel" style="display:inline;">
+                                            <input type="hidden" name="personnelId" value="@p.Personnel_Id" />
+                                            <button type="submit" class="btn btn-sm btn-danger" onclick="return confirm('Désassigner ce personnel ?')">
+                                                ❌ Désassigner
+                                            </button>
+                                        </form>
+                                    </td>
+                                </tr>
                             }
-                        </select>
-                    </div>
-                    <div class="mb-3">
-                        <label>Trajet</label>
-                        <select name="trajectoryId" class="form-control" required>
-                            <option value="">-- Sélectionner un trajet --</option>
-                            @foreach (var t in ViewBag.Trajectories)
-                            {
-                                <option value="@t.Trajectory_Id">@t.Trajectory_Name</option>
-                            }
-                        </select>
-                    </div>
-                    <button type="submit" class="btn btn-success w-100">Assigner manuellement</button>
-                </form>
+                        </tbody>
+                    </table>
+                }
+                else
+                {
+                    <p class="text-muted">Aucun personnel assigné pour le moment.</p>
+                }
             </div>
         </div>
     </div>
 </div>
 
-<div class="row mt-4">
-    <div class="col-md-12">
-        <div class="card">
-            <div class="card-header bg-info text-white">
-                <h4>ℹ️ Comment fonctionne l'assignation IA ?</h4>
-            </div>
-            <div class="card-body">
-                <ul>
-                    <li>Le système analyse la <strong>localisation du personnel</strong> (latitude/longitude)</li>
-                    <li>Il trouve le <strong>trajet le plus proche</strong> du domicile du personnel</li>
-                    <li>Il assigne automatiquement un <strong>bus disponible</strong> sur ce trajet</li>
-                    <li>Les bus sont remplis <strong>progressivement</strong> (capacité optimisée)</li>
-                </ul>
-                <p class="mb-0 text-muted">
-                    <strong>Note:</strong> Assurez-vous que les coordonnées (latitude/longitude) du personnel sont renseignées.
-                </p>
-            </div>
-        </div>
-    </div>
-</div>
+@section Scripts {
+    <script>
+        document.getElementById('btnAssignManual').addEventListener('click', function() {
+            var personnelId = document.getElementById('personnelSelect').value;
+            var trajectoryId = document.getElementById('trajectorySelect').value;
+            if (!personnelId || !trajectoryId) {
+                alert("Veuillez sélectionner un personnel et un trajet.");
+                return;
+            }
+            var form = document.createElement('form');
+            form.method = 'post';
+            form.action = '@Url.Action("AssignPersonnelManual")';
+            form.style.display = 'none';
+            form.innerHTML = '<input type="hidden" name="personnelId" value="' + personnelId + '">' +
+                             '<input type="hidden" name="trajectoryId" value="' + trajectoryId + '">';
+            document.body.appendChild(form);
+            form.submit();
+        });
 
-<a href="/Dashboard/AdminDashboard" class="btn btn-secondary mt-3">Retour au Dashboard</a>
+        document.getElementById('btnAssignAI').addEventListener('click', function() {
+            var personnelId = document.getElementById('personnelSelect').value;
+            if (!personnelId) {
+                alert("Veuillez sélectionner un personnel.");
+                return;
+            }
+            var form = document.createElement('form');
+            form.method = 'post';
+            form.action = '@Url.Action("AssignPersonnelAI")';
+            form.style.display = 'none';
+            form.innerHTML = '<input type="hidden" name="personnelId" value="' + personnelId + '">';
+            document.body.appendChild(form);
+            form.submit();
+        });
+    </script>
+}

@@ -4,115 +4,107 @@
 }
 
 <div class="container">
-    <div class="alert alert-success">
+    <div class="alert alert-success shadow-sm">
         <h2>👑 Bonjour, @ViewBag.UserName !</h2>
-        <p>Vous êtes connecté en tant qu'<strong>Administrateur</strong></p>
+        <p>Vous êtes connecté en tant qu'<strong>Administrateur</strong> – Tableau de bord central</p>
     </div>
 
-    <div class="row mt-4">
+    <div class="row">
+        <!-- Gestion des ressources -->
         <div class="col-md-3 mb-3">
-            <div class="card text-white bg-primary">
+            <div class="card text-white bg-primary h-100">
                 <div class="card-body">
-                    <h5>👥 Personnel</h5>
+                    <i class="fas fa-users fa-2x mb-2"></i>
+                    <h5>Personnel</h5>
                     <p>Gérer les employés</p>
-                    <a href="/Personnel/Index" class="btn btn-light btn-sm">Accéder</a>
+                    <a href="/Personnel/Index" class="btn btn-light btn-sm">Gérer →</a>
                 </div>
             </div>
         </div>
 
         <div class="col-md-3 mb-3">
-            <div class="card text-white bg-success">
+            <div class="card text-white bg-success h-100">
                 <div class="card-body">
-                    <h5>🚛 Chauffeurs</h5>
-                    <p>Gérer les chauffeurs</p>
-                    <a href="/Drivers/Index" class="btn btn-light btn-sm">Accéder</a>
+                    <i class="fas fa-truck fa-2x mb-2"></i>
+                    <h5>Chauffeurs</h5>
+                    <p>Gérer les conducteurs</p>
+                    <a href="/Drivers/Index" class="btn btn-light btn-sm">Gérer →</a>
                 </div>
             </div>
         </div>
 
         <div class="col-md-3 mb-3">
-            <div class="card text-white bg-warning">
+            <div class="card text-white bg-warning h-100">
                 <div class="card-body">
-                    <h5>🚌 Bus</h5>
-                    <p>Gérer les bus</p>
-                    <a href="/Buses/Index" class="btn btn-light btn-sm">Accéder</a>
+                    <i class="fas fa-bus fa-2x mb-2"></i>
+                    <h5>Bus</h5>
+                    <p>Gérer le parc automobile</p>
+                    <a href="/Buses/Index" class="btn btn-light btn-sm">Gérer →</a>
+                    <hr class="bg-light">
+                    <a href="/TrajectoryAssignment/BusOccupancy" class="btn btn-outline-light btn-sm w-100 mt-1">
+                        📊 Occupation des bus
+                    </a>
                 </div>
             </div>
         </div>
 
         <div class="col-md-3 mb-3">
-            <div class="card text-white bg-info">
+            <div class="card text-white bg-info h-100">
                 <div class="card-body">
-                    <h5>🗺️ Trajets</h5>
+                    <i class="fas fa-map-marked-alt fa-2x mb-2"></i>
+                    <h5>Trajets</h5>
                     <p>Gérer les itinéraires</p>
-                    <a href="/Trajectories/Index" class="btn btn-light btn-sm">Accéder</a>
+                    <a href="/Trajectories/Index" class="btn btn-light btn-sm">Gérer →</a>
                 </div>
             </div>
         </div>
     </div>
 
-    <div class="row mt-2">
-        <div class="col-md-3 mb-3">
-            <div class="card text-white bg-dark">
+    <!-- Assignations (sans les liens "voir toutes" redondants) -->
+    <div class="row">
+        <div class="col-md-6 mb-3">
+            <div class="card border-secondary h-100">
+                <div class="card-header bg-secondary text-white">
+                    <i class="fas fa-user-cog"></i> Assigner chauffeurs ↔ bus
+                </div>
                 <div class="card-body">
-                    <h5>🔗 Assignations</h5>
-                    <p>Assigner chauffeurs aux bus</p>
-                    <a href="/Assignments" class="btn btn-light btn-sm">Accéder</a>
+                    <p>Affecter un conducteur à un bus</p>
+                    <a href="/Assignments" class="btn btn-primary btn-sm">Accéder →</a>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-6 mb-3">
+            <div class="card border-secondary h-100">
+                <div class="card-header bg-secondary text-white">
+                    <i class="fas fa-user-plus"></i> Assigner personnel (auto)
+                </div>
+                <div class="card-body">
+                    <p>
+                        Assignation automatique ou manuelle du personnel à un trajet/bus.<br>
+                    </p>
+                    <a href="/TrajectoryAssignment/AssignPersonnel" class="btn btn-primary btn-sm">Accéder →</a>
                 </div>
             </div>
         </div>
     </div>
 
-    <div class="row mt-4">
-        <div class="col-12">
+    <!-- IA Recommandations – discrète -->
+    <div class="row mt-2">
+        <div class="col-md-8 offset-md-2">
+            <div class="card text-center border-0 shadow-sm" style="background: #f8f9fa;">
+                <div class="card-body">
+                    <span class="badge bg-primary px-3 py-2">🤖 IA Recommandations</span>
+                    <h6 class="mt-2">Optimisation intelligente des tournées et affectations</h6>
+                    <a href="/AIRecommendation/Index" class="btn btn-outline-primary btn-sm">Accéder aux recommandations →</a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row mt-4 mb-5">
+        <div class="col-12 text-center">
             <a href="/Account/Logout" class="btn btn-danger">🔓 Se déconnecter</a>
-        </div>
-    </div>
-    <div class="col-md-3 mb-3">
-        <div class="card text-white bg-gradient" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
-            <div class="card-body">
-                <h5>🤖 IA Recommandations</h5>
-                <p>Optimisation intelligente des tournées</p>
-                <a href="/AIRecommendation/Index" class="btn btn-light btn-sm">Accéder</a>
-            </div>
-        </div>
-    </div>
-    <div class="col-md-3 mb-3">
-        <div class="card text-white bg-dark">
-            <div class="card-body">
-                <h5>🔗 Assignations</h5>
-                <p>Assigner chauffeurs et trajets</p>
-                <a href="/Assignments" class="btn btn-light btn-sm">Accéder</a>
-            </div>
-        </div>
-    </div>
-    <div class="col-md-3 mb-3">
-        <div class="card text-white bg-success">
-            <div class="card-body">
-                <h5>🎫 Assigner personnel</h5>
-                <p>Assigner personnel → trajet (auto)</p>
-                <a href="/TrajectoryAssignment/AssignPersonnel" class="btn btn-light btn-sm">Accéder</a>
-            </div>
-        </div>
-    </div>
-
-    <div class="col-md-3 mb-3">
-        <div class="card text-white bg-info">
-            <div class="card-body">
-                <h5>📋 Voir assignations</h5>
-                <p>Consulter toutes les assignations</p>
-                <a href="/TrajectoryAssignment/ViewAssignments" class="btn btn-light btn-sm">Accéder</a>
-            </div>
-        </div>
-    </div>
-
-    <div class="col-md-3 mb-3">
-        <div class="card text-white bg-dark">
-            <div class="card-body">
-                <h5>📊 Occupation bus</h5>
-                <p>Voir le remplissage des bus</p>
-                <a href="/TrajectoryAssignment/BusOccupancy" class="btn btn-light btn-sm">Accéder</a>
-            </div>
         </div>
     </div>
 </div>

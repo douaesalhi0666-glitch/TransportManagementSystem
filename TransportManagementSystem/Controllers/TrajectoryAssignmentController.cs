@@ -18,16 +18,25 @@ namespace TransportManagementSystem.Controllers
             _context = context;
         }
 
-        // GET: Assign Personnel page
+        // GET: Assign Personnel page (avec liste des assignations actuelles)
         public async Task<IActionResult> AssignPersonnel()
         {
+            // Personnel non assigné (pour le formulaire)
             ViewBag.Personnel = await _context.Personnel
                 .Where(p => p.IsAssigned != true)
                 .ToListAsync();
 
+            // Tous les trajets (pour la sélection manuelle)
             ViewBag.Trajectories = await _context.Trajectories.ToListAsync();
 
-            return View();
+            // Liste des assignations actuelles (personnel déjà assignés)
+            var assignments = await _context.Personnel
+                .Include(p => p.AssignedTrajectory)
+                .Include(p => p.AssignedBus)
+                .Where(p => p.IsAssigned == true)
+                .ToListAsync();
+
+            return View(assignments);
         }
 
         // POST: AI-based assignment
@@ -124,6 +133,7 @@ namespace TransportManagementSystem.Controllers
             return RedirectToAction("AssignPersonnel");
         }
 
+        // POST: Manual assignment
         [HttpPost]
         public async Task<IActionResult> AssignPersonnelManual(long personnelId, int trajectoryId)
         {
@@ -179,34 +189,7 @@ namespace TransportManagementSystem.Controllers
             return RedirectToAction("AssignPersonnel");
         }
 
-        private double CalculateDistance(double lat1, double lon1, double lat2, double lon2)
-        {
-            const double R = 6371;
-            var dLat = ToRadians(lat2 - lat1);
-            var dLon = ToRadians(lon2 - lon1);
-            var a = Math.Sin(dLat / 2) * Math.Sin(dLat / 2) +
-                    Math.Cos(ToRadians(lat1)) * Math.Cos(ToRadians(lat2)) *
-                    Math.Sin(dLon / 2) * Math.Sin(dLon / 2);
-            var c = 2 * Math.Atan2(Math.Sqrt(a), Math.Sqrt(1 - a));
-            return R * c;
-        }
-
-        private double ToRadians(double degrees)
-        {
-            return degrees * Math.PI / 180;
-        }
-
-        public async Task<IActionResult> ViewAssignments()
-        {
-            var assignments = await _context.Personnel
-                .Include(p => p.AssignedTrajectory)
-                .Include(p => p.AssignedBus)
-                .Where(p => p.IsAssigned == true)
-                .ToListAsync();
-
-            return View(assignments);
-        }
-
+        // Désassignation (redirige vers AssignPersonnel)
         [HttpPost]
         public async Task<IActionResult> UnassignPersonnel(long personnelId)
         {
@@ -221,9 +204,22 @@ namespace TransportManagementSystem.Controllers
                 TempData["Success"] = "Personnel désassigné avec succès.";
             }
 
-            return RedirectToAction("ViewAssignments");
+            return RedirectToAction("AssignPersonnel");
         }
 
+        // Garde l'action ViewAssignments si vous voulez une page séparée (optionnelle)
+        public async Task<IActionResult> ViewAssignments()
+        {
+            var assignments = await _context.Personnel
+                .Include(p => p.AssignedTrajectory)
+                .Include(p => p.AssignedBus)
+                .Where(p => p.IsAssigned == true)
+                .ToListAsync();
+
+            return View(assignments);
+        }
+
+        // Occupation des bus (inchangé)
         public async Task<IActionResult> BusOccupancy()
         {
             var buses = await _context.Buses
@@ -268,6 +264,24 @@ namespace TransportManagementSystem.Controllers
             }
 
             return RedirectToAction("BusOccupancy");
+        }
+
+        // Utilitaires
+        private double CalculateDistance(double lat1, double lon1, double lat2, double lon2)
+        {
+            const double R = 6371;
+            var dLat = ToRadians(lat2 - lat1);
+            var dLon = ToRadians(lon2 - lon1);
+            var a = Math.Sin(dLat / 2) * Math.Sin(dLat / 2) +
+                    Math.Cos(ToRadians(lat1)) * Math.Cos(ToRadians(lat2)) *
+                    Math.Sin(dLon / 2) * Math.Sin(dLon / 2);
+            var c = 2 * Math.Atan2(Math.Sqrt(a), Math.Sqrt(1 - a));
+            return R * c;
+        }
+
+        private double ToRadians(double degrees)
+        {
+            return degrees * Math.PI / 180;
         }
     }
 
