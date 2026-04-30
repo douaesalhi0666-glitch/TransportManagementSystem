@@ -14,6 +14,8 @@ namespace TransportManagementSystem.Data
         public DbSet<Personnel> Personnel { get; set; }
         public DbSet<Driver> Drivers { get; set; }
         public DbSet<Bus> Buses { get; set; }
+        public DbSet<DriverPerformance> DriverPerformance_tbl { get; set; }
+        public DbSet<RecommendationLog> RecommendationLogs { get; set; }
         public DbSet<Trajectory> Trajectories { get; set; }
         public DbSet<Admin> Admin_tbl { get; set; }
         public DbSet<TrajectoryStop> TrajectoryStops { get; set; }
@@ -22,11 +24,6 @@ namespace TransportManagementSystem.Data
 
         // Nouvelle entité pour les arrêts suggérés par clustering
         public DbSet<SuggestedStop> SuggestedStops { get; set; }
-
-        // DTO pour les procédures stockées (si vous les utilisez)
-        // (commentez ou supprimez selon votre cas)
-        // public DbSet<PersonnelDto> PersonnelDtos { get; set; }
-        // etc.
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -91,43 +88,51 @@ namespace TransportManagementSystem.Data
                 entity.Property(e => e.Longitude).HasColumnType("decimal(11,8)");
             });
 
-            // Relations existantes (inchangées)
+            // ========== RELATIONS ==========
+
+            // Driver → Bus (FIXED: Changed D.Driver_AssignedBus to D.AssignedBus)
             modelBuilder.Entity<Driver>()
-                .HasOne(d => d.Driver_AssignedBus)
+                .HasOne(d => d.AssignedBus)
                 .WithMany()
                 .HasForeignKey(d => d.Driver_AssignedBusId)
                 .OnDelete(DeleteBehavior.SetNull);
 
+            // PersonnelTrajectoryAssignment → Personnel
             modelBuilder.Entity<PersonnelTrajectoryAssignment>()
                 .HasOne(pt => pt.Personnel)
                 .WithMany()
                 .HasForeignKey(pt => pt.PTA_PersonnelId)
                 .OnDelete(DeleteBehavior.Restrict);
 
+            // PersonnelTrajectoryAssignment → Trajectory
             modelBuilder.Entity<PersonnelTrajectoryAssignment>()
                 .HasOne(pt => pt.Trajectory)
                 .WithMany()
                 .HasForeignKey(pt => pt.PTA_TrajectoryId)
                 .OnDelete(DeleteBehavior.Restrict);
 
+            // PersonnelTrajectoryAssignment → Stop
             modelBuilder.Entity<PersonnelTrajectoryAssignment>()
                 .HasOne(pt => pt.Stop)
                 .WithMany()
                 .HasForeignKey(pt => pt.PTA_StopId)
                 .OnDelete(DeleteBehavior.Restrict);
 
+            // Alert → Bus
             modelBuilder.Entity<Alert>()
                 .HasOne(a => a.Bus)
                 .WithMany()
                 .HasForeignKey(a => a.Alert_BusId)
                 .OnDelete(DeleteBehavior.Restrict);
 
+            // Alert → Personnel
             modelBuilder.Entity<Alert>()
                 .HasOne(a => a.Personnel)
                 .WithMany()
                 .HasForeignKey(a => a.Alert_PersonnelId)
                 .OnDelete(DeleteBehavior.Restrict);
 
+            // Alert → Trajectory
             modelBuilder.Entity<Alert>()
                 .HasOne(a => a.Trajectory)
                 .WithMany()

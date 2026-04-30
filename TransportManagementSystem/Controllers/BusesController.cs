@@ -122,15 +122,15 @@ namespace TransportManagementSystem.Controllers
             if (string.IsNullOrEmpty(driverIdStr))
                 return Unauthorized();
 
-            var driverId = int.Parse(driverIdStr);
+            var driverId = long.Parse(driverIdStr); // FIXED: changed from int to long
             var driver = await _context.Drivers
-                .Include(d => d.Driver_AssignedBus)
+                .Include(d => d.AssignedBus) // FIXED: was Driver_AssignedBus
                 .FirstOrDefaultAsync(d => d.Driver_id == driverId);
 
-            if (driver?.Driver_AssignedBus == null)
+            if (driver?.AssignedBus == null) // FIXED: was Driver_AssignedBus
                 return NotFound("Aucun bus assigné.");
 
-            var bus = driver.Driver_AssignedBus;
+            var bus = driver.AssignedBus; // FIXED: was Driver_AssignedBus
             var trajectoryId = bus.Bus_CurrentTrajectoryId;
             Trajectory? trajectory = null;
             var stops = new System.Collections.Generic.List<object>();
@@ -194,15 +194,15 @@ namespace TransportManagementSystem.Controllers
             if (string.IsNullOrEmpty(driverIdStr))
                 return Unauthorized();
 
-            var driverId = int.Parse(driverIdStr);
+            var driverId = long.Parse(driverIdStr); // FIXED: changed from int to long
             var driver = await _context.Drivers
-                .Include(d => d.Driver_AssignedBus)
+                .Include(d => d.AssignedBus) // FIXED: was Driver_AssignedBus
                 .FirstOrDefaultAsync(d => d.Driver_id == driverId);
 
-            if (driver?.Driver_AssignedBus == null)
+            if (driver?.AssignedBus == null) // FIXED: was Driver_AssignedBus
                 return BadRequest("Aucun bus assigné.");
 
-            var bus = driver.Driver_AssignedBus;
+            var bus = driver.AssignedBus; // FIXED: was Driver_AssignedBus
             bus.Bus_CurrentLatitude = model.Latitude;
             bus.Bus_CurrentLongitude = model.Longitude;
             bus.Bus_LastLocationUpdateTime = DateTime.Now;
@@ -221,7 +221,7 @@ namespace TransportManagementSystem.Controllers
             if (string.IsNullOrEmpty(personnelIdStr))
                 return Unauthorized();
 
-            var personnelId = long.Parse(personnelIdStr); // utilisez long pour correspondre au modèle
+            var personnelId = long.Parse(personnelIdStr);
 
             var assignment = await _context.PersonnelTrajectoryAssignments
                 .Include(a => a.Trajectory)
@@ -348,7 +348,7 @@ namespace TransportManagementSystem.Controllers
 
     public class ProximityCheckModel
     {
-        public long BusId { get; set; }  // ← modifié pour correspondre à long
+        public long BusId { get; set; }
         public string BusCode { get; set; } = string.Empty;
         public int TrajectoryId { get; set; }
         public double Distance { get; set; }

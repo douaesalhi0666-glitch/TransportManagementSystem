@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 
@@ -53,5 +54,8 @@ namespace TransportManagementSystem.Models
 
         [ForeignKey("Bus_CurrentTrajectoryId")]
         public virtual Trajectory? CurrentTrajectory { get; set; }
+
+        // Collection navigation - personnel assigned to this bus
+        public virtual ICollection<Personnel>? AssignedPersonnel { get; set; }
     }
 }

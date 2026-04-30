@@ -1,0 +1,104 @@
+﻿@{
+    ViewData["Title"] = "Assigner un personnel";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+<h1>🎫 Assigner un personnel à un trajet</h1>
+<hr />
+
+@if (TempData["Success"] != null)
+{
+    <div class="alert alert-success">
+        ✅ @TempData["Success"]
+    </div>
+}
+
+@if (TempData["Error"] != null)
+{
+    <div class="alert alert-danger">
+        ❌ @TempData["Error"]
+    </div>
+}
+
+<div class="row">
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header bg-primary text-white">
+                <h4>🤖 Assignation IA (basée sur la localisation)</h4>
+            </div>
+            <div class="card-body">
+                <form method="post" asp-action="AssignPersonnelAI">
+                    <div class="mb-3">
+                        <label>Personnel (sans assignation)</label>
+                        <select name="personnelId" class="form-control" required>
+                            <option value="">-- Sélectionner un personnel --</option>
+                            @foreach (var p in ViewBag.Personnel)
+                            {
+                                <option value="@p.Personnel_Id">@p.Personnel_FirstName @p.Personnel_LastName</option>
+                            }
+                        </select>
+                    </div>
+                    <button type="submit" class="btn btn-primary w-100">
+                        🤖 Assignation automatique (IA)
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header bg-success text-white">
+                <h4>👤 Assignation manuelle</h4>
+            </div>
+            <div class="card-body">
+                <form method="post" asp-action="AssignPersonnelManual">
+                    <div class="mb-3">
+                        <label>Personnel (sans assignation)</label>
+                        <select name="personnelId" class="form-control" required>
+                            <option value="">-- Sélectionner un personnel --</option>
+                            @foreach (var p in ViewBag.Personnel)
+                            {
+                                <option value="@p.Personnel_Id">@p.Personnel_FirstName @p.Personnel_LastName</option>
+                            }
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label>Trajet</label>
+                        <select name="trajectoryId" class="form-control" required>
+                            <option value="">-- Sélectionner un trajet --</option>
+                            @foreach (var t in ViewBag.Trajectories)
+                            {
+                                <option value="@t.Trajectory_Id">@t.Trajectory_Name</option>
+                            }
+                        </select>
+                    </div>
+                    <button type="submit" class="btn btn-success w-100">Assigner manuellement</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row mt-4">
+    <div class="col-md-12">
+        <div class="card">
+            <div class="card-header bg-info text-white">
+                <h4>ℹ️ Comment fonctionne l'assignation IA ?</h4>
+            </div>
+            <div class="card-body">
+                <ul>
+                    <li>Le système analyse la <strong>localisation du personnel</strong> (latitude/longitude)</li>
+                    <li>Il trouve le <strong>trajet le plus proche</strong> du domicile du personnel</li>
+                    <li>Il assigne automatiquement un <strong>bus disponible</strong> sur ce trajet</li>
+                    <li>Les bus sont remplis <strong>progressivement</strong> (capacité optimisée)</li>
+                </ul>
+                <p class="mb-0 text-muted">
+                    <strong>Note:</strong> Assurez-vous que les coordonnées (latitude/longitude) du personnel sont renseignées.
+                </p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<a href="/Dashboard/AdminDashboard" class="btn btn-secondary mt-3">Retour au Dashboard</a>

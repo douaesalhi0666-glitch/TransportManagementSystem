@@ -17,7 +17,9 @@ namespace TransportManagementSystem.Controllers
         // GET: Drivers
         public async Task<IActionResult> Index()
         {
-            var drivers = await _context.Drivers.ToListAsync();
+            var drivers = await _context.Drivers
+                .Include(d => d.AssignedBus)
+                .ToListAsync();
             return View(drivers);
         }
 
@@ -34,16 +36,16 @@ namespace TransportManagementSystem.Controllers
         {
             if (ModelState.IsValid)
             {
-                // Check if ID already exists
                 var existing = await _context.Drivers.FindAsync(driver.Driver_id);
                 if (existing != null)
                 {
-                    ModelState.AddModelError("Driver_id", "Cet ID existe déjà. Veuillez entrer un ID unique.");
+                    ModelState.AddModelError("Driver_id", "Cet ID existe déjà.");
                     return View(driver);
                 }
 
                 driver.Driver_CreatedAt = DateTime.Now;
                 driver.Driver_UpdatedAt = DateTime.Now;
+                driver.Driver_Status = "Available";
 
                 _context.Add(driver);
                 await _context.SaveChangesAsync();
@@ -60,11 +62,21 @@ namespace TransportManagementSystem.Controllers
                 return NotFound();
             }
 
-            var driver = await _context.Drivers.FindAsync(id);
+            var driver = await _context.Drivers
+                .Include(d => d.AssignedBus)
+                .FirstOrDefaultAsync(d => d.Driver_id == id);
+
             if (driver == null)
             {
                 return NotFound();
             }
+
+            if (driver.Driver_AssignedBusId != null)
+            {
+                ViewBag.Warning = $"⚠️ Ce chauffeur est actuellement assigné au bus {driver.AssignedBus?.Bus_Code}. " +
+                                  "Si vous le mettez hors service, ce bus n'aura plus de chauffeur.";
+            }
+
             return View(driver);
         }
 
@@ -82,11 +94,29 @@ namespace TransportManagementSystem.Controllers
             {
                 try
                 {
-                    var existing = await _context.Drivers.AsNoTracking().FirstOrDefaultAsync(d => d.Driver_id == id);
-                    if (existing != null)
+                    var existingDriver = await _context.Drivers
+                        .AsNoTracking()
+                        .Include(d => d.AssignedBus)
+                        .FirstOrDefaultAsync(d => d.Driver_id == id);
+
+                    if (existingDriver != null)
                     {
-                        driver.Driver_CreatedAt = existing.Driver_CreatedAt;
+                        if (existingDriver.Driver_AssignedBusId != null &&
+                            driver.Driver_Status == "Off Duty" &&
+                            existingDriver.Driver_Status != "Off Duty")
+                        {
+                            var bus = await _context.Buses.FindAsync(existingDriver.Driver_AssignedBusId);
+                            if (bus != null)
+                            {
+                                bus.Bus_CurrentDriverId = null;
+                                TempData["Warning"] = $"⚠️ Attention: Le chauffeur a été retiré du bus {bus.Bus_Code}. Ce bus n'a plus de chauffeur.";
+                            }
+                            driver.Driver_AssignedBusId = null;
+                        }
+
+                        driver.Driver_CreatedAt = existingDriver.Driver_CreatedAt;
                         driver.Driver_UpdatedAt = DateTime.Now;
+
                         _context.Update(driver);
                         await _context.SaveChangesAsync();
                     }
@@ -116,6 +146,7 @@ namespace TransportManagementSystem.Controllers
             }
 
             var driver = await _context.Drivers
+                .Include(d => d.AssignedBus)
                 .FirstOrDefaultAsync(m => m.Driver_id == id);
             if (driver == null)
             {
@@ -133,6 +164,14 @@ namespace TransportManagementSystem.Controllers
             var driver = await _context.Drivers.FindAsync(id);
             if (driver != null)
             {
+                if (driver.Driver_AssignedBusId != null)
+                {
+                    var bus = await _context.Buses.FindAsync(driver.Driver_AssignedBusId);
+                    if (bus != null)
+                    {
+                        bus.Bus_CurrentDriverId = null;
+                    }
+                }
                 _context.Drivers.Remove(driver);
                 await _context.SaveChangesAsync();
             }

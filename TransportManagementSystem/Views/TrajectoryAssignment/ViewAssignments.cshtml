@@ -1,0 +1,63 @@
+﻿@model IEnumerable<TransportManagementSystem.Models.Personnel>
+
+@{
+    ViewData["Title"] = "Assignations existantes";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+<h1>📋 Assignations existantes</h1>
+<hr />
+
+@if (TempData["Success"] != null)
+{
+    <div class="alert alert-success">
+        ✅ @TempData["Success"]
+    </div>
+}
+
+<table class="table table-striped">
+    <thead>
+        <tr>
+            <th>Personnel</th>
+            <th>Trajet assigné</th>
+            <th>Bus assigné</th>
+            <th>Actions</th>
+        </tr>
+    </thead>
+    <tbody>
+        @foreach (var item in Model)
+        {
+            <tr>
+                <td>@item.Personnel_FirstName @item.Personnel_LastName</td>
+                <td>
+                    @if (item.AssignedTrajectory != null)
+                    {
+                        @item.AssignedTrajectory.Trajectory_Name
+                    }
+                    else
+                    {
+                        <span class="text-muted">Non assigné</span>
+                    }
+                </td>
+                <td>
+                    @if (item.AssignedBus != null)
+                    {
+                        @item.AssignedBus.Bus_Code
+                    }
+                    else
+                    {
+                        <span class="text-muted">Non assigné</span>
+                    }
+                </td>
+                <td>
+                    <form method="post" asp-action="UnassignPersonnel" style="display:inline;">
+                        <input type="hidden" name="personnelId" value="@item.Personnel_Id" />
+                        <button type="submit" class="btn btn-sm btn-danger">Désassigner</button>
+                    </form>
+                </td>
+            </tr>
+        }
+    </tbody>
+</table>
+
+<a href="/Dashboard/AdminDashboard" class="btn btn-secondary">Retour au Dashboard</a>

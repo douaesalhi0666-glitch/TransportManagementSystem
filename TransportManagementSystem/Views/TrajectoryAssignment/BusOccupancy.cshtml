@@ -1,0 +1,99 @@
+﻿@{
+    ViewData["Title"] = "Occupation des bus";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+<h1>🚌 Occupation des bus</h1>
+<hr />
+
+@if (TempData["Success"] != null)
+{
+    <div class="alert alert-success">
+        ✅ @TempData["Success"]
+    </div>
+}
+
+@if (ViewBag.BusOccupancy != null)
+{
+    @foreach (var item in ViewBag.BusOccupancy)
+    {
+        var percentage = item.Occupancy * 100 / item.Capacity;
+        <div class="card mb-4">
+            <div class="card-header bg-primary text-white">
+                <h4>🚌 Bus @item.Bus.Bus_Code - @item.Bus.Bus_PlateNumber</h4>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <p><strong>Chauffeur:</strong> @(item.Bus.CurrentDriver?.Driver_FirstName ?? "Non assigné") @(item.Bus.CurrentDriver?.Driver_LastName ?? "")</p>
+                        <p><strong>Trajet:</strong> @(item.Bus.CurrentTrajectory?.Trajectory_Name ?? "Non assigné")</p>
+                        <p><strong>Capacité:</strong> @item.Capacity places</p>
+                        <p><strong>Occupation actuelle:</strong> @item.Occupancy / @item.Capacity</p>
+                        <div class="progress mb-3">
+                            <div class="progress-bar @(percentage > 90 ? "bg-danger" : percentage > 70 ? "bg-warning" : "bg-success")" role="progressbar" style="width: @percentage%">
+                                @percentage%
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <button class="btn btn-info" type="button" data-bs-toggle="collapse" data-bs-target="#collapse-@item.Bus.Bus_Id">
+                            📋 Voir les personnels assignés
+                        </button>
+                    </div>
+                </div>
+
+                <div class="collapse mt-3" id="collapse-@item.Bus.Bus_Id">
+                    <div class="card card-body">
+                        <h5>👥 Personnels assignés à ce bus</h5>
+                        @if (item.Personnel.Count > 0)
+                        {
+                            <table class="table table-striped">
+                                <thead>
+                                    <tr>
+                                        <th>ID</th>
+                                        <th>Nom</th>
+                                        <th>Prénom</th>
+                                        <th>Trajet</th>
+                                        <th>Action</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach (var p in item.Personnel)
+                                    {
+                                        <tr>
+                                            <td>@p.Personnel_Id</td
+                                            <td>@p.Personnel_LastName</td
+                                            <td>@p.Personnel_FirstName</td
+                                            <td>@p.AssignedTrajectory?.Trajectory_Name</td
+                                            <td>
+                                                <form method="post" asp-action="RemovePersonnelFromBus" style="display:inline;">
+                                                    <input type="hidden" name="personnelId" value="@p.Personnel_Id" />
+                                                    <input type="hidden" name="busId" value="@item.Bus.Bus_Id" />
+                                                    <button type="submit" class="btn btn-sm btn-danger" onclick="return confirm('Retirer ce personnel du bus ?')">
+                                                        ❌ Désassigner
+                                                    </button>
+                                                </form>
+                                             </td
+                                         </tr>
+                                    }
+                                </tbody>
+                            </table>
+                        }
+                        else
+                        {
+                            <p class="text-muted">Aucun personnel assigné à ce bus.</p>
+                        }
+                    </div>
+                </div>
+            </div>
+        </div>
+    }
+}
+else
+{
+    <div class="alert alert-info">
+        ℹ️ Aucun bus disponible.
+    </div>
+}
+
+<a href="/Dashboard/AdminDashboard" class="btn btn-secondary">Retour au Dashboard</a>

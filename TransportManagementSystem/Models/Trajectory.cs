@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 
@@ -35,7 +36,6 @@ namespace TransportManagementSystem.Models
 
         [Column(TypeName = "decimal(10,2)")]
         public decimal? Trajectory_DistanceKm { get; set; }
-       
 
         public int? Trajectory_EstimatedDurationMinutes { get; set; }
 
@@ -45,5 +45,8 @@ namespace TransportManagementSystem.Models
         public DateTime? Trajectory_CreatedAt { get; set; }
 
         public DateTime? Trajectory_UpdatedAt { get; set; }
+
+        // Collection navigation - buses assigned to this trajectory
+        public virtual ICollection<Bus>? AssignedBuses { get; set; }
     }
 }

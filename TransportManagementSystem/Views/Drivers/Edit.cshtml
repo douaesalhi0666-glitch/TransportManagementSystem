@@ -7,6 +7,21 @@
 
 <h1>Modifier un chauffeur</h1>
 
+@if (ViewBag.Warning != null)
+{
+    <div class="alert alert-warning alert-dismissible fade show" role="alert">
+        ⚠️ @ViewBag.Warning
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+}
+
+@if (TempData["Warning"] != null)
+{
+    <div class="alert alert-warning">
+        ⚠️ @TempData["Warning"]
+    </div>
+}
+
 <form asp-action="Edit">
     <div asp-validation-summary="ModelOnly" class="text-danger"></div>
 
@@ -79,14 +94,23 @@
         <div class="col-md-6">
             <div class="form-group">
                 <label>Statut</label>
-                <select asp-for="Driver_Status" class="form-control">
+                <select asp-for="Driver_Status" id="DriverStatus" class="form-control" onchange="checkStatusChange()">
                     <option value="Available">Disponible</option>
                     <option value="On Route">En route</option>
                     <option value="Off Duty">Hors service</option>
                 </select>
+                <span id="statusWarning" class="text-warning" style="display:none;">
+                    ⚠️ Attention: Ce chauffeur est actuellement assigné à un bus.
+                    Changer le statut rendra le bus sans chauffeur.
+                </span>
                 <span asp-validation-for="Driver_Status" class="text-danger"></span>
             </div>
         </div>
+    </div>
+
+    <div class="form-group">
+        <label>Bus actuellement assigné</label>
+        <input class="form-control" value="@(Model.AssignedBus?.Bus_Code ?? "Aucun bus assigné")" readonly disabled />
     </div>
 
     <div class="form-group mt-3">
@@ -94,3 +118,19 @@
         <a href="/Drivers/Index" class="btn btn-secondary">Retour</a>
     </div>
 </form>
+
+@section Scripts {
+    <script>
+        function checkStatusChange() {
+            var status = document.getElementById("DriverStatus").value;
+            var hasBus = @((Model.Driver_AssignedBusId != null).ToString().ToLower());
+            var warningSpan = document.getElementById("statusWarning");
+            
+            if (hasBus && status !== "On Route" && status !== "Available") {
+                warningSpan.style.display = "inline";
+            } else {
+                warningSpan.style.display = "none";
+            }
+        }
+    </script>
+}
