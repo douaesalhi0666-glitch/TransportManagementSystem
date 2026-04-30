@@ -103,7 +103,6 @@ namespace TransportManagementSystem.Controllers
             }
 
             var trajectory = await _context.Trajectories
-                .Include(t => t.AssignedBuses)
                 .FirstOrDefaultAsync(m => m.Trajectory_Id == id);
             if (trajectory == null)
             {
@@ -113,41 +112,111 @@ namespace TransportManagementSystem.Controllers
             return View(trajectory);
         }
 
-        // POST: Trajectories/Delete/5 - FIXED to handle foreign keys
+        // POST: Trajectories/Delete/5
         [HttpPost, ActionName("Delete")]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> DeleteConfirmed(int id)
         {
-            var trajectory = await _context.Trajectories
-                .FirstOrDefaultAsync(t => t.Trajectory_Id == id);
+            // 1. Remove trajectory reference from all buses
+            var busesWithThisTrajectory = await _context.Buses
+                .Where(b => b.Bus_CurrentTrajectoryId == id)
+                .ToListAsync();
 
+            foreach (var bus in busesWithThisTrajectory)
+            {
+                bus.Bus_CurrentTrajectoryId = null;
+            }
+
+            // 2. Delete BusTrajectoryAssignment records
+            var busAssignments = await _context.BusTrajectoryAssignments
+                .Where(a => a.BTA_TrajectoryId == id)
+                .ToListAsync();
+
+            if (busAssignments.Any())
+            {
+                _context.BusTrajectoryAssignments.RemoveRange(busAssignments);
+            }
+
+            // 3. Delete PersonnelTrajectoryAssignment records
+            var personnelAssignments = await _context.PersonnelTrajectoryAssignments
+                .Where(a => a.PTA_TrajectoryId == id)
+                .ToListAsync();
+
+            if (personnelAssignments.Any())
+            {
+                _context.PersonnelTrajectoryAssignments.RemoveRange(personnelAssignments);
+            }
+
+            // 4. Delete Alert records
+            var alerts = await _context.Alerts
+                .Where(a => a.Alert_TrajectoryId == id)
+                .ToListAsync();
+
+            if (alerts.Any())
+            {
+                _context.Alerts.RemoveRange(alerts);
+            }
+
+            // 5. Delete TrajectorySchedule records
+            var schedules = await _context.TrajectorySchedules
+                .Where(s => s.TSched_TrajectoryId == id)
+                .ToListAsync();
+
+            if (schedules.Any())
+            {
+                _context.TrajectorySchedules.RemoveRange(schedules);
+            }
+
+            // 6. Unassign all personnel
+            var personnelWithThisTrajectory = await _context.Personnel
+                .Where(p => p.AssignedTrajectoryId == id)
+                .ToListAsync();
+
+            foreach (var person in personnelWithThisTrajectory)
+            {
+                person.AssignedTrajectoryId = null;
+                person.AssignedBusId = null;
+                person.IsAssigned = false;
+            }
+
+            // 7. Delete DriverPerformance records
+            var driverPerformances = await _context.DriverPerformance_tbl
+                .Where(p => p.Trajectory_Id == id)
+                .ToListAsync();
+
+            if (driverPerformances.Any())
+            {
+                _context.DriverPerformance_tbl.RemoveRange(driverPerformances);
+            }
+
+            // 8. Delete RecommendationLog records
+            var recommendationLogs = await _context.RecommendationLogs
+                .Where(r => r.Recommended_TrajectoryId == id)
+                .ToListAsync();
+
+            if (recommendationLogs.Any())
+            {
+                _context.RecommendationLogs.RemoveRange(recommendationLogs);
+            }
+
+            // 9. Delete all stops
+            var stops = await _context.TrajectoryStops
+                .Where(s => s.TS_TrajectoryId == id)
+                .ToListAsync();
+
+            if (stops.Any())
+            {
+                _context.TrajectoryStops.RemoveRange(stops);
+            }
+
+            // 10. Finally delete the trajectory
+            var trajectory = await _context.Trajectories.FindAsync(id);
             if (trajectory != null)
             {
-                // First, remove the trajectory from any buses that reference it
-                var busesWithThisTrajectory = await _context.Buses
-                    .Where(b => b.Bus_CurrentTrajectoryId == id)
-                    .ToListAsync();
-
-                foreach (var bus in busesWithThisTrajectory)
-                {
-                    bus.Bus_CurrentTrajectoryId = null;
-                }
-
-                // Then remove all stops associated with this trajectory
-                var stops = await _context.TrajectoryStops
-                    .Where(s => s.TS_TrajectoryId == id)
-                    .ToListAsync();
-
-                if (stops.Any())
-                {
-                    _context.TrajectoryStops.RemoveRange(stops);
-                }
-
-                // Finally remove the trajectory
                 _context.Trajectories.Remove(trajectory);
-
-                await _context.SaveChangesAsync();
             }
+
+            await _context.SaveChangesAsync();
 
             return RedirectToAction(nameof(Index));
         }
