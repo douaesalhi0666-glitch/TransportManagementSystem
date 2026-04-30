@@ -19,7 +19,10 @@ namespace TransportManagementSystem.Controllers
         // ==============================
         public async Task<IActionResult> Index()
         {
-            var buses = await _context.Buses.ToListAsync();
+            var buses = await _context.Buses
+                .Include(b => b.CurrentDriver)      // charge le chauffeur assigné
+                .Include(b => b.CurrentTrajectory)  // charge le trajet assigné
+                .ToListAsync();
             return View(buses);
         }
 
@@ -122,15 +125,15 @@ namespace TransportManagementSystem.Controllers
             if (string.IsNullOrEmpty(driverIdStr))
                 return Unauthorized();
 
-            var driverId = long.Parse(driverIdStr); // FIXED: changed from int to long
+            var driverId = long.Parse(driverIdStr);
             var driver = await _context.Drivers
-                .Include(d => d.AssignedBus) // FIXED: was Driver_AssignedBus
+                .Include(d => d.AssignedBus)
                 .FirstOrDefaultAsync(d => d.Driver_id == driverId);
 
-            if (driver?.AssignedBus == null) // FIXED: was Driver_AssignedBus
+            if (driver?.AssignedBus == null)
                 return NotFound("Aucun bus assigné.");
 
-            var bus = driver.AssignedBus; // FIXED: was Driver_AssignedBus
+            var bus = driver.AssignedBus;
             var trajectoryId = bus.Bus_CurrentTrajectoryId;
             Trajectory? trajectory = null;
             var stops = new System.Collections.Generic.List<object>();
@@ -194,15 +197,15 @@ namespace TransportManagementSystem.Controllers
             if (string.IsNullOrEmpty(driverIdStr))
                 return Unauthorized();
 
-            var driverId = long.Parse(driverIdStr); // FIXED: changed from int to long
+            var driverId = long.Parse(driverIdStr);
             var driver = await _context.Drivers
-                .Include(d => d.AssignedBus) // FIXED: was Driver_AssignedBus
+                .Include(d => d.AssignedBus)
                 .FirstOrDefaultAsync(d => d.Driver_id == driverId);
 
-            if (driver?.AssignedBus == null) // FIXED: was Driver_AssignedBus
+            if (driver?.AssignedBus == null)
                 return BadRequest("Aucun bus assigné.");
 
-            var bus = driver.AssignedBus; // FIXED: was Driver_AssignedBus
+            var bus = driver.AssignedBus;
             bus.Bus_CurrentLatitude = model.Latitude;
             bus.Bus_CurrentLongitude = model.Longitude;
             bus.Bus_LastLocationUpdateTime = DateTime.Now;
