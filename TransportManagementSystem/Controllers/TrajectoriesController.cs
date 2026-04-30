@@ -28,7 +28,6 @@ namespace TransportManagementSystem.Controllers
         }
 
         // POST: Trajectories/Create
-        // POST: Trajectories/Create
         [HttpPost]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> Create(Trajectory trajectory)
@@ -104,6 +103,7 @@ namespace TransportManagementSystem.Controllers
             }
 
             var trajectory = await _context.Trajectories
+                .Include(t => t.AssignedBuses)
                 .FirstOrDefaultAsync(m => m.Trajectory_Id == id);
             if (trajectory == null)
             {
@@ -113,17 +113,42 @@ namespace TransportManagementSystem.Controllers
             return View(trajectory);
         }
 
-        // POST: Trajectories/Delete/5
+        // POST: Trajectories/Delete/5 - FIXED to handle foreign keys
         [HttpPost, ActionName("Delete")]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> DeleteConfirmed(int id)
         {
-            var trajectory = await _context.Trajectories.FindAsync(id);
+            var trajectory = await _context.Trajectories
+                .FirstOrDefaultAsync(t => t.Trajectory_Id == id);
+
             if (trajectory != null)
             {
+                // First, remove the trajectory from any buses that reference it
+                var busesWithThisTrajectory = await _context.Buses
+                    .Where(b => b.Bus_CurrentTrajectoryId == id)
+                    .ToListAsync();
+
+                foreach (var bus in busesWithThisTrajectory)
+                {
+                    bus.Bus_CurrentTrajectoryId = null;
+                }
+
+                // Then remove all stops associated with this trajectory
+                var stops = await _context.TrajectoryStops
+                    .Where(s => s.TS_TrajectoryId == id)
+                    .ToListAsync();
+
+                if (stops.Any())
+                {
+                    _context.TrajectoryStops.RemoveRange(stops);
+                }
+
+                // Finally remove the trajectory
                 _context.Trajectories.Remove(trajectory);
+
                 await _context.SaveChangesAsync();
             }
+
             return RedirectToAction(nameof(Index));
         }
 
@@ -131,6 +156,5 @@ namespace TransportManagementSystem.Controllers
         {
             return _context.Trajectories.Any(e => e.Trajectory_Id == id);
         }
-
     }
 }
