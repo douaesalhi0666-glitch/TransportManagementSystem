@@ -8,7 +8,7 @@
 <h1>Gestion des Chauffeurs</h1>
 
 <p>
-    <a href="/Drivers/Create" class="btn btn-primary">Ajouter un chauffeur</a>
+    <a asp-action="Create" class="btn btn-primary">Ajouter un chauffeur</a>
 </p>
 
 <table class="table table-striped">
@@ -20,7 +20,7 @@
             <th>Email</th>
             <th>Téléphone</th>
             <th>Permis</th>
-            <th>Expérience</th>
+            <th>Expérience (années)</th>
             <th>Bus assigné</th>
             <th>Statut</th>
             <th>Actions</th>
@@ -36,7 +36,7 @@
                 <td>@item.Driver_Email</td>
                 <td>@item.Driver_PhoneNumber</td>
                 <td>@item.Driver_LicenseNumber</td>
-                <td>@item.Driver_ExperienceYears</td>
+                <td>@(item.Driver_ExperienceYears?.ToString() ?? "—")</td>
                 <td>
                     @if (item.AssignedBus != null)
                     {
@@ -48,26 +48,26 @@
                     }
                 </td>
                 <td>
-                    @if (item.Driver_Status == "Available")
+                    @switch (item.Driver_Status)
                     {
-                        <span class="badge bg-success">Disponible</span>
-                    }
-                    else if (item.Driver_Status == "On Route")
-                    {
-                        <span class="badge bg-warning">En route</span>
-                    }
-                    else
-                    {
-                        <span class="badge bg-danger">Hors service</span>
+                        case "Available":
+                            <span class="badge bg-success">Disponible</span>
+                            break;
+                        case "On Route":
+                            <span class="badge bg-warning">En route</span>
+                            break;
+                        default:
+                            <span class="badge bg-danger">Hors service</span>
+                            break;
                     }
                 </td>
                 <td>
-                    <a href="/Drivers/Edit/@item.Driver_id" class="btn btn-sm btn-warning">Modifier</a>
-                    <a href="/Drivers/Delete/@item.Driver_id" class="btn btn-sm btn-danger">Supprimer</a>
+                    <a asp-action="Edit" asp-route-id="@item.Driver_id" class="btn btn-sm btn-warning">Modifier</a>
+                    <a asp-action="Delete" asp-route-id="@item.Driver_id" class="btn btn-sm btn-danger">Supprimer</a>
                 </td>
             </tr>
         }
     </tbody>
 </table>
 
-<a href="/Dashboard/AdminDashboard" class="btn btn-secondary">Retour au Dashboard</a>
+<a asp-controller="Dashboard" asp-action="AdminDashboard" class="btn btn-secondary">Retour au Dashboard</a>

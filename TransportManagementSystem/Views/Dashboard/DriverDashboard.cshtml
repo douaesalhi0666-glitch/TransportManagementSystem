@@ -6,7 +6,39 @@
 <h2>Bonjour, @ViewBag.UserName</h2>
 <p>Bienvenue sur votre tableau de bord chauffeur.</p>
 
-<div class="row mb-4" id="busInfo">
+<div class="row mb-4">
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header bg-primary text-white">
+                <h5>🚍 Mon statut</h5>
+            </div>
+            <div class="card-body text-center">
+                <h3><span id="driverStatus" class="badge bg-secondary">Chargement...</span></h3>
+                <p class="mt-2 text-muted">
+                    <small>7h-8h: En route | 8h-17h: Disponible | 17h+: En route</small>
+                </p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6">
+        <div class="card border-success">
+            <div class="card-header bg-success text-white">
+                <h5>🏁 Terminer ma journée</h5>
+            </div>
+            <div class="card-body text-center">
+                <button id="completeMissionBtn" class="btn btn-success btn-lg">
+                    ✅ Terminer ma mission
+                </button>
+                <div id="missionStatus" class="mt-3"></div>
+                <small class="text-muted d-block mt-2">
+                    À cliquer APRÈS avoir déposé le dernier personnel.
+                </small>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row mb-4">
     <div class="col-md-6">
         <div class="card">
             <div class="card-header bg-primary text-white">
@@ -16,8 +48,7 @@
                 <p><strong>Code :</strong> <span id="busCode">-</span></p>
                 <p><strong>Plaque :</strong> <span id="busPlate">-</span></p>
                 <p><strong>Modèle :</strong> <span id="busModel">-</span></p>
-                <p><strong>Statut :</strong> <span id="busStatus">-</span></p>
-                <p><strong>Dernière position connue :</strong> <span id="lastUpdate">-</span></p>
+                <p><strong>Statut bus :</strong> <span id="busStatus">-</span></p>
             </div>
         </div>
     </div>
@@ -41,17 +72,20 @@
                 <h5>🗺️ Carte de navigation</h5>
             </div>
             <div class="card-body">
-                <div id="map" style="height: 500px; width: 100%; border-radius: 10px;"></div>
+                <div id="map" style="height: 400px; width: 100%; border-radius: 10px;"></div>
                 <div class="mt-3 text-center">
                     <button id="updateLocationBtn" class="btn btn-primary btn-lg">
-                        📍 Mettre à jour ma position actuelle
+                        📍 Mettre à jour ma position
                     </button>
-                    <small class="d-block text-muted mt-2">
-                        Cliquez pour envoyer votre position GPS au serveur et mettre à jour la carte.
-                    </small>
                 </div>
             </div>
         </div>
+    </div>
+</div>
+
+<div class="row mt-4">
+    <div class="col-12">
+        <a href="/Account/Logout" class="btn btn-danger">🔓 Se déconnecter</a>
     </div>
 </div>
 
@@ -59,132 +93,118 @@
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <style>
-        .bus-marker {
-        background-color: #dc3545;
-        color: white;
-        border-radius: 50%;
-        text-align: center;
-        font-size: 20px;
-        padding: 6px;
-        width: 40px;
-        height: 40px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        border: 2px solid white;
-        box-shadow: 0 2px 6px rgba(0,0,0,0.3);
-        }
-
-        .stop-marker {
-        background-color: #28a745;
-        color: white;
-        border-radius: 50%;
-        text-align: center;
-        font-size: 12px;
-        padding: 4px;
-        width: 24px;
-        height: 24px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        border: 1px solid white;
-        }
+        .bus-marker { background-color: #dc3545; color: white; border-radius: 50%; text-align: center; font-size: 20px; padding: 6px; width: 40px; height: 40px; display: flex; align-items: center; justify-content: center; border: 2px solid white; }
+        .stop-marker { background-color: #28a745; color: white; border-radius: 50%; text-align: center; font-size: 12px; padding: 4px; width: 24px; height: 24px; border: 1px solid white; }
     </style>
 
     <script>
         let map, busMarker, trajectoryLine;
-        let currentBusId = null;
+
+        async function updateDriverStatus() {
+            try {
+                const response = await fetch('/Drivers/GetCurrentStatus');
+                const data = await response.json();
+                const statusSpan = document.getElementById('driverStatus');
+                statusSpan.innerHTML = data.statusText;
+                statusSpan.className = 'badge ' + data.statusClass;
+            } catch (error) {
+                console.error('Erreur statut:', error);
+            }
+        }
 
         async function loadDriverData() {
-        try {
-        const response = await fetch('/Buses/GetDriverDashboardData');
-        if (!response.ok) throw new Error('Erreur chargement données');
-        const data = await response.json();
-
-        // Mise à jour des infos
-        document.getElementById('busCode').innerText = data.bus.bus_Code || '-';
-        document.getElementById('busPlate').innerText = data.bus.bus_PlateNumber || '-';
-        document.getElementById('busModel').innerText = `${data.bus.bus_Brand || ''} ${data.bus.bus_Model || ''}`.trim() || '-';
-        document.getElementById('busStatus').innerText = data.bus.bus_Status || '-';
-        document.getElementById('lastUpdate').innerText = data.bus.lastLocationUpdateTime ? new Date(data.bus.lastLocationUpdateTime).toLocaleString() : 'jamais';
-        if (data.trajectory) {
-        document.getElementById('trajName').innerText = data.trajectory.trajectory_Name;
-        document.getElementById('trajCode').innerText = data.trajectory.trajectory_Code;
-        } else {
-        document.getElementById('trajName').innerText = "Aucune trajectoire assignée";
+            try {
+                const response = await fetch('/Drivers/GetDashboardData');
+                const data = await response.json();
+                
+                if (data.hasBus) {
+                    document.getElementById('busCode').innerText = data.bus.bus_Code || '-';
+                    document.getElementById('busPlate').innerText = data.bus.bus_PlateNumber || '-';
+                    document.getElementById('busModel').innerText = `${data.bus.bus_Brand || ''} ${data.bus.bus_Model || ''}`.trim() || '-';
+                    document.getElementById('busStatus').innerText = data.bus.bus_Status || '-';
+                    
+                    if (data.trajectory) {
+                        document.getElementById('trajName').innerText = data.trajectory.trajectory_Name;
+                        document.getElementById('trajCode').innerText = data.trajectory.trajectory_Code;
+                    }
+                    
+                    const busLat = parseFloat(data.bus.currentLatitude);
+                    const busLng = parseFloat(data.bus.currentLongitude);
+                    
+                    if (!map) {
+                        map = L.map('map').setView([busLat || 46.603354, busLng || 1.888334], 13);
+                        L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
+                            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a> & CartoDB'
+                        }).addTo(map);
+                    }
+                    
+                    if (busMarker) map.removeLayer(busMarker);
+                    const busIcon = L.divIcon({ html: '<div>🚌</div>', iconSize: [40, 40], className: 'bus-marker' });
+                    if (busLat && busLng) {
+                        busMarker = L.marker([busLat, busLng], { icon: busIcon }).bindPopup('Ma position').addTo(map);
+                        map.setView([busLat, busLng], 13);
+                    }
+                    
+                    if (trajectoryLine) map.removeLayer(trajectoryLine);
+                    if (data.stops && data.stops.length > 0) {
+                        const points = data.stops.map(s => [parseFloat(s.Latitude), parseFloat(s.Longitude)]);
+                        trajectoryLine = L.polyline(points, { color: 'blue', weight: 4, opacity: 0.7 }).addTo(map);
+                        data.stops.forEach(stop => {
+                            const stopIcon = L.divIcon({ html: stop.TS_OrderIndex.toString(), iconSize: [24, 24], className: 'stop-marker' });
+                            L.marker([parseFloat(stop.Latitude), parseFloat(stop.Longitude)], { icon: stopIcon })
+                                .bindPopup(`<strong>${stop.TS_Name}</strong>`).addTo(map);
+                        });
+                    }
+                }
+            } catch (error) {
+                console.error('Erreur chargement:', error);
+            }
         }
 
-        currentBusId = data.bus.bus_Id;
-        const busLat = parseFloat(data.bus.currentLatitude);
-        const busLng = parseFloat(data.bus.currentLongitude);
-
-        // Initialisation de la carte
-        if (!map) {
-        map = L.map('map').setView([busLat || 46.603354, busLng || 1.888334], 13);
-        L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
-        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a> & CartoDB'
-        }).addTo(map);
-        }
-
-        // Marqueur du bus
-        if (busMarker) map.removeLayer(busMarker);
-        const busIcon = L.divIcon({ html: '<div>🚌</div>', iconSize: [40, 40], className: 'bus-marker' });
-        if (busLat && busLng) {
-        busMarker = L.marker([busLat, busLng], { icon: busIcon }).bindPopup('Ma position actuelle').addTo(map);
-        map.setView([busLat, busLng], 13);
-        }
-
-        // Tracé de la trajectoire (ligne)
-        if (trajectoryLine) map.removeLayer(trajectoryLine);
-        if (data.trajectory && data.stops && data.stops.length > 0) {
-        const points = data.stops.map(s => [parseFloat(s.tS_Latitude), parseFloat(s.tS_Longitude)]);
-        trajectoryLine = L.polyline(points, { color: 'blue', weight: 4, opacity: 0.7 }).addTo(map);
-        // Ajout des marqueurs d'arrêts
-        data.stops.forEach(stop => {
-        const stopIcon = L.divIcon({ html: stop.tS_OrderIndex, iconSize: [24, 24], className: 'stop-marker' });
-        L.marker([parseFloat(stop.tS_Latitude), parseFloat(stop.tS_Longitude)], { icon: stopIcon })
-        .bindPopup(`<strong>${stop.tS_Name}</strong><br/>Ordre: ${stop.tS_OrderIndex}`)
-        .addTo(map);
+        document.getElementById('completeMissionBtn').addEventListener('click', async () => {
+            if (confirm('Avez-vous déposé TOUS les personnels ?')) {
+                try {
+                    const response = await fetch('/Drivers/CompleteMission', { method: 'POST' });
+                    const result = await response.json();
+                    const missionDiv = document.getElementById('missionStatus');
+                    if (result.success) {
+                        missionDiv.innerHTML = '<div class="alert alert-success">✅ ' + result.message + '</div>';
+                        updateDriverStatus();
+                        setTimeout(() => missionDiv.innerHTML = '', 5000);
+                    } else {
+                        missionDiv.innerHTML = '<div class="alert alert-danger">❌ ' + result.message + '</div>';
+                    }
+                } catch (err) {
+                    document.getElementById('missionStatus').innerHTML = '<div class="alert alert-danger">❌ Erreur réseau</div>';
+                }
+            }
         });
-        }
-        } catch (error) {
-        console.error(error);
-        alert("Impossible de charger les données du chauffeur. Vérifiez que vous êtes bien connecté et qu'un bus vous est assigné.");
-        }
-        }
 
-        // Mise à jour de la position réelle du bus (géolocalisation)
         document.getElementById('updateLocationBtn').addEventListener('click', () => {
-        if (!navigator.geolocation) {
-        alert("Votre navigateur ne supporte pas la géolocalisation.");
-        return;
-        }
-        navigator.geolocation.getCurrentPosition(async (position) => {
-        const lat = position.coords.latitude;
-        const lng = position.coords.longitude;
-        try {
-        const response = await fetch('/Buses/UpdateBusLocation', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ latitude: lat, longitude: lng })
-        });
-        if (response.ok) {
-        alert("Position mise à jour avec succès !");
-        loadDriverData(); // Recharge les données et recentre la carte
-        } else {
-        alert("Erreur lors de la mise à jour.");
-        }
-        } catch (err) {
-        console.error(err);
-        alert("Erreur réseau.");
-        }
-        }, () => {
-        alert("Impossible d'obtenir votre position.");
-        });
+            if (!navigator.geolocation) {
+                alert("Géolocalisation non supportée.");
+                return;
+            }
+            navigator.geolocation.getCurrentPosition(async (position) => {
+                try {
+                    const response = await fetch('/Buses/UpdateBusLocation', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ latitude: position.coords.latitude, longitude: position.coords.longitude })
+                    });
+                    if (response.ok) {
+                        alert("Position mise à jour !");
+                        loadDriverData();
+                    }
+                } catch (err) {
+                    alert("Erreur réseau.");
+                }
+            }, () => alert("Impossible d'obtenir la position."));
         });
 
+        updateDriverStatus();
         loadDriverData();
-        // Rafraîchir les données toutes les 30 secondes (position du bus vue par les autres)
+        setInterval(updateDriverStatus, 60000);
         setInterval(loadDriverData, 30000);
     </script>
 }

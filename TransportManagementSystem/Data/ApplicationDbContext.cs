@@ -18,6 +18,7 @@ namespace TransportManagementSystem.Data
         public DbSet<RecommendationLog> RecommendationLogs { get; set; }
         public DbSet<Trajectory> Trajectories { get; set; }
         public DbSet<Admin> Admin_tbl { get; set; }
+        public DbSet<DriverMission> DriverMissions_tbl { get; set; }
         public DbSet<BusTrajectoryAssignment> BusTrajectoryAssignments { get; set; }
         public DbSet<TrajectorySchedule> TrajectorySchedules { get; set; }
         public DbSet<TrajectoryStop> TrajectoryStops { get; set; }
