@@ -25,19 +25,15 @@ namespace TransportManagementSystem.Controllers
         public async Task<IActionResult> Login(string email, int id, string password)
         {
             // ---------- ADMIN (ID = 1) ----------
-            if (email == "admin@transport.com" && id == 1)
+            // On ne vérifie plus l'email en dur ; on va directement chercher l'admin dans la base
+            var admin = await _context.Admin_tbl
+                .FirstOrDefaultAsync(a => a.Admin_Id == 1 && a.Admin_Email == email);
+            if (admin != null && admin.Admin_PasswordHash == password)
             {
-                var admin = await _context.Admin_tbl
-                    .FirstOrDefaultAsync(a => a.Admin_Email == email && a.Admin_Id == 1);
-                if (admin != null && admin.Admin_PasswordHash == password)
-                {
-                    HttpContext.Session.SetString("UserEmail", email);
-                    HttpContext.Session.SetString("UserRole", "Admin");
-                    HttpContext.Session.SetString("UserName", admin.Admin_Name);
-                    return RedirectToAction("Index", "Dashboard");
-                }
-                ViewBag.Error = "Email, ID ou mot de passe administrateur incorrect";
-                return View();
+                HttpContext.Session.SetString("UserEmail", email);
+                HttpContext.Session.SetString("UserRole", "Admin");
+                HttpContext.Session.SetString("UserName", admin.Admin_Name);
+                return RedirectToAction("Index", "Dashboard");
             }
 
             // ---------- DRIVER (vérification ID + email) ----------

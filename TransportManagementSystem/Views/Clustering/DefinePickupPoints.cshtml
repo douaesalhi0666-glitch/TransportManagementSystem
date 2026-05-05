@@ -1,0 +1,198 @@
+﻿@{
+    ViewData["Title"] = "Points de ramassage par IA";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+<h2>Definition automatique des points de ramassage</h2>
+<p>Selectionnez une trajectoire, l'IA regroupe les positions du personnel en points d'arret optimises.</p>
+
+<div class="row mb-3">
+    <div class="col-md-4">
+        <div class="card">
+            <div class="card-header bg-primary text-white">
+                <h5>Parametres</h5>
+            </div>
+            <div class="card-body">
+                <div class="mb-3">
+                    <label>Trajectoire</label>
+                    <select id="trajectorySelect" class="form-select">
+                        <option value="">-- Chargement...</option>
+                    </select>
+                </div>
+                <div class="mb-3">
+                    <label>Nombre de points de ramassage suggeres</label>
+                    <input type="number" id="kValue" class="form-control" value="4" min="1" max="10" />
+                </div>
+                <button id="btnCompute" class="btn btn-success w-100">Calculer les points IA</button>
+                <div id="infoPanel" class="mt-3"></div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-header bg-info text-white">
+                <h5>Carte - Personnels (bleus) et Clusters suggeres (orange)</h5>
+            </div>
+            <div class="card-body">
+                <div id="map" style="height: 550px; border-radius: 10px;"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+
+    <style>
+        .cluster-marker {
+        background-color: #ff5722;
+        color: white;
+        border-radius: 50%;
+        text-align: center;
+        font-size: 14px;
+        font-weight: bold;
+        width: 30px;
+        height: 30px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border: 2px solid white;
+        box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+        cursor: pointer;
+        }
+
+        .person-marker {
+        background-color: #1976d2;
+        color: white;
+        border-radius: 50%;
+        text-align: center;
+        font-size: 10px;
+        width: 20px;
+        height: 20px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border: 1px solid white;
+        }
+    </style>
+
+    <script>
+        let map;
+        let currentMarkers = { persons: [], clusters: [] };
+        let currentTrajectoryId = 0;
+
+        async function loadTrajectories() {
+        const select = document.getElementById('trajectorySelect');
+        select.innerHTML = '<option value="">-- Selectionner --</option>';
+        try {
+        const response = await fetch('/Clustering/GetTrajectoriesForPickup');
+        const trajectories = await response.json();
+        trajectories.forEach(t => {
+        const option = document.createElement('option');
+        option.value = t.trajectory_Id;
+        option.textContent = t.trajectory_Name + ' (' + t.trajectory_Code + ')';
+        select.appendChild(option);
+        });
+        } catch (err) {
+        console.error(err);
+        select.innerHTML = '<option value="">Erreur de chargement</option>';
+        }
+        }
+
+        function clearMap() {
+        if (currentMarkers.persons) currentMarkers.persons.forEach(m => map.removeLayer(m));
+        if (currentMarkers.clusters) currentMarkers.clusters.forEach(m => map.removeLayer(m));
+        currentMarkers = { persons: [], clusters: [] };
+        }
+
+        async function loadPickupPoints() {
+        const trajectoryId = document.getElementById('trajectorySelect').value;
+        if (!trajectoryId) {
+        alert("Veuillez selectionner une trajectoire.");
+        return;
+        }
+        const k = document.getElementById('kValue').value;
+        currentTrajectoryId = parseInt(trajectoryId);
+
+        const response = await fetch('/Clustering/SuggestPickupPoints', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ trajectoryId: currentTrajectoryId, numberOfClusters: parseInt(k) })
+        });
+        const data = await response.json();
+
+        if (!map) {
+        map = L.map('map').setView([46.603354, 1.888334], 8);
+        L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
+        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a> & CartoDB'
+        }).addTo(map);
+        }
+
+        clearMap();
+
+        if (data.points && data.points.length > 0) {
+        data.points.forEach(p => {
+        const icon = L.divIcon({ html: '👤', iconSize: [20, 20], className: 'person-marker' });
+        const marker = L.marker([p.lat, p.lng], { icon }).bindPopup('Personnel');
+        marker.addTo(map);
+        currentMarkers.persons.push(marker);
+        });
+        } else {
+        document.getElementById('infoPanel').innerHTML = '<div class="alert alert-warning">Aucun personnel avec coordonnees sur cette trajectoire.</div>';
+        return;
+        }
+
+        if (data.clusters && data.clusters.length > 0) {
+        data.clusters.forEach((c, idx) => {
+        const icon = L.divIcon({ html: (idx+1).toString(), iconSize: [30, 30], className: 'cluster-marker' });
+        const marker = L.marker([c.lat, c.lng], { icon })
+        .bindPopup('<strong>Point ' + (idx+1) + '</strong><br/>' + c.count + ' personnes<br/><button onclick="createStopForTrajectory(' + c.lat + ', ' + c.lng + ', \'Point ' + (idx+1) + '\')">Creer un arret</button>');
+        marker.addTo(map);
+        currentMarkers.clusters.push(marker);
+        });
+        if (currentMarkers.clusters.length > 0) {
+        const group = L.featureGroup(currentMarkers.clusters);
+        map.fitBounds(group.getBounds());
+        }
+        document.getElementById('infoPanel').innerHTML = '<div class="alert alert-success">' + data.clusters.length + ' points suggeres. Cliquez sur un marqueur orange pour creer l\'arret.</div>';
+        } else {
+        document.getElementById('infoPanel').innerHTML = '<div class="alert alert-info">Aucun cluster genere (peu de points).</div>';
+        }
+        }
+
+        window.createStopForTrajectory = async (lat, lng, defaultName) => {
+        if (!currentTrajectoryId) {
+        alert("Aucune trajectoire selectionnee.");
+        return;
+        }
+        const name = prompt("Nom de l'arret :", defaultName);
+        if (!name) return;
+        try {
+        const response = await fetch('/Clustering/CreateStopForTrajectory', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+        trajectoryId: currentTrajectoryId,
+        name: name,
+        latitude: lat,
+        longitude: lng
+        })
+        });
+        if (response.ok) {
+        alert("Arret cree avec succes !");
+        loadPickupPoints();
+        } else {
+        alert("Erreur lors de la creation.");
+        }
+        } catch (err) {
+        console.error(err);
+        alert("Erreur reseau.");
+        }
+        };
+
+        document.getElementById('btnCompute').addEventListener('click', loadPickupPoints);
+        loadTrajectories();
+    </script>
+}

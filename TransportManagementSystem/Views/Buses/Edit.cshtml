@@ -10,12 +10,19 @@
 <form asp-action="Edit">
     <div asp-validation-summary="ModelOnly" class="text-danger"></div>
 
-    <!-- Display ID (Read-only) -->
     <div class="form-group mb-3">
         <label>ID Bus</label>
         <input class="form-control" value="@Model.Bus_Id" disabled />
         <input type="hidden" asp-for="Bus_Id" />
     </div>
+
+    <!-- Champs cachés pour préserver les assignations -->
+    <input type="hidden" asp-for="Bus_CurrentDriverId" />
+    <input type="hidden" asp-for="Bus_CurrentTrajectoryId" />
+    <input type="hidden" asp-for="Bus_CurrentLatitude" />
+    <input type="hidden" asp-for="Bus_CurrentLongitude" />
+    <input type="hidden" asp-for="Bus_LastLocationUpdateTime" />
+    <input type="hidden" asp-for="Bus_CreatedAt" />
 
     <div class="row">
         <div class="col-md-6">
@@ -81,6 +88,6 @@
 
     <div class="form-group mt-3">
         <input type="submit" value="Enregistrer" class="btn btn-primary" />
-        <a href="https://localhost:7137/Buses/Index" class="btn btn-secondary">Retour</a>
+        <a href="/Buses/Index" class="btn btn-secondary">Retour</a>
     </div>
 </form>

@@ -73,7 +73,10 @@
                             <option value="">-- Sélectionner un bus --</option>
                             @foreach (var bus in ViewBag.Buses)
                             {
-                                <option value="@bus.Bus_Id">@bus.Bus_Code - @bus.Bus_PlateNumber</option>
+                                if (bus.CurrentTrajectory == null)
+                                {
+                                    <option value="@bus.Bus_Id">@bus.Bus_Code - @bus.Bus_PlateNumber</option>
+                                }
                             }
                         </select>
                     </div>
@@ -138,14 +141,14 @@
                     {
                         <form method="post" action="/Assignments/UnassignDriver" style="display:inline;">
                             <input type="hidden" name="driverId" value="@bus.CurrentDriver.Driver_id" />
-                            <button type="submit" class="btn btn-sm btn-danger">Liberer chauffeur</button>
+                            <button type="submit" class="btn btn-sm btn-danger">Libérer chauffeur</button>
                         </form>
                     }
                     @if (bus.CurrentTrajectory != null)
                     {
                         <form method="post" action="/Assignments/UnassignBus" style="display:inline;">
                             <input type="hidden" name="busId" value="@bus.Bus_Id" />
-                            <button type="submit" class="btn btn-sm btn-warning">Liberer trajet</button>
+                            <button type="submit" class="btn btn-sm btn-warning">Libérer trajet</button>
                         </form>
                     }
                 </td>

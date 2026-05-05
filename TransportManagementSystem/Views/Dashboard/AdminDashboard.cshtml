@@ -9,8 +9,8 @@
         <p>Vous êtes connecté en tant qu'<strong>Administrateur</strong> – Tableau de bord central</p>
     </div>
 
+    <!-- Gestion des ressources -->
     <div class="row">
-        <!-- Gestion des ressources -->
         <div class="col-md-3 mb-3">
             <div class="card text-white bg-primary h-100">
                 <div class="card-body">
@@ -60,7 +60,7 @@
         </div>
     </div>
 
-    <!-- Assignations (sans les liens "voir toutes" redondants) -->
+    <!-- Assignations -->
     <div class="row">
         <div class="col-md-6 mb-3">
             <div class="card border-secondary h-100">
@@ -80,23 +80,30 @@
                     <i class="fas fa-user-plus"></i> Assigner personnel (auto)
                 </div>
                 <div class="card-body">
-                    <p>
-                        Assignation automatique ou manuelle du personnel à un trajet/bus.<br>
-                    </p>
+                    <p>Assignation automatique ou manuelle du personnel à un trajet/bus.</p>
                     <a href="/TrajectoryAssignment/AssignPersonnel" class="btn btn-primary btn-sm">Accéder →</a>
                 </div>
             </div>
         </div>
     </div>
 
-    <!-- IA Recommandations – discrète -->
-    <div class="row mt-2">
-        <div class="col-md-8 offset-md-2">
+    <!-- IA Recommandations et Points de ramassage -->
+    <div class="row">
+        <div class="col-md-6 mb-3">
             <div class="card text-center border-0 shadow-sm" style="background: #f8f9fa;">
                 <div class="card-body">
                     <span class="badge bg-primary px-3 py-2">🤖 IA Recommandations</span>
                     <h6 class="mt-2">Optimisation intelligente des tournées et affectations</h6>
                     <a href="/AIRecommendation/Index" class="btn btn-outline-primary btn-sm">Accéder aux recommandations →</a>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-6 mb-3">
+            <div class="card text-center border-0 shadow-sm" style="background: #f8f9fa;">
+                <div class="card-body">
+                    <span class="badge bg-dark px-3 py-2">🧠 Points de ramassage (IA)</span>
+                    <h6 class="mt-2">Générer automatiquement des arrêts par trajectoire</h6>
+                    <a href="/Clustering/DefinePickupPoints" class="btn btn-outline-dark btn-sm">Accéder →</a>
                 </div>
             </div>
         </div>

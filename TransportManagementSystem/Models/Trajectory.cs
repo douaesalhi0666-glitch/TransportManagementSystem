@@ -48,5 +48,8 @@ namespace TransportManagementSystem.Models
 
         // Collection navigation - buses assigned to this trajectory
         public virtual ICollection<Bus>? AssignedBuses { get; set; }
+
+        // Collection navigation - stops of this trajectory
+        public virtual ICollection<TrajectoryStop> Stops { get; set; } = new List<TrajectoryStop>();
     }
 }

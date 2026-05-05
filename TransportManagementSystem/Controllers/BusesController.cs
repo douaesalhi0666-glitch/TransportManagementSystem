@@ -64,7 +64,18 @@ namespace TransportManagementSystem.Controllers
             {
                 try
                 {
+                    var existingBus = await _context.Buses.AsNoTracking().FirstOrDefaultAsync(b => b.Bus_Id == id);
+                    if (existingBus == null) return NotFound();
+
+                    // Conserver les valeurs des champs non modifiés par le formulaire
+                    bus.Bus_CurrentDriverId = existingBus.Bus_CurrentDriverId;
+                    bus.Bus_CurrentTrajectoryId = existingBus.Bus_CurrentTrajectoryId;
+                    bus.Bus_CurrentLatitude = existingBus.Bus_CurrentLatitude;
+                    bus.Bus_CurrentLongitude = existingBus.Bus_CurrentLongitude;
+                    bus.Bus_LastLocationUpdateTime = existingBus.Bus_LastLocationUpdateTime;
+                    bus.Bus_CreatedAt = existingBus.Bus_CreatedAt;
                     bus.Bus_UpdatedAt = DateTime.Now;
+
                     _context.Update(bus);
                     await _context.SaveChangesAsync();
                 }
@@ -291,7 +302,6 @@ namespace TransportManagementSystem.Controllers
             {
                 foreach (var bus in buses)
                 {
-                    // Conversion sécurisée : on sait que lat/lng ne sont pas null grâce au Where
                     double busLat = bus.lat.HasValue ? (double)bus.lat.Value : 0;
                     double busLng = bus.lng.HasValue ? (double)bus.lng.Value : 0;
                     double distance = CalculateDistance(refLat.Value, refLng.Value, busLat, busLng);

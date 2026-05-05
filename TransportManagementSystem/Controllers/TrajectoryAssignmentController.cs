@@ -21,15 +21,12 @@ namespace TransportManagementSystem.Controllers
         // GET: Assign Personnel page (avec liste des assignations actuelles)
         public async Task<IActionResult> AssignPersonnel()
         {
-            // Personnel non assigné (pour le formulaire)
             ViewBag.Personnel = await _context.Personnel
                 .Where(p => p.IsAssigned != true)
                 .ToListAsync();
 
-            // Tous les trajets (pour la sélection manuelle)
             ViewBag.Trajectories = await _context.Trajectories.ToListAsync();
 
-            // Liste des assignations actuelles (personnel déjà assignés)
             var assignments = await _context.Personnel
                 .Include(p => p.AssignedTrajectory)
                 .Include(p => p.AssignedBus)
@@ -39,7 +36,7 @@ namespace TransportManagementSystem.Controllers
             return View(assignments);
         }
 
-        // POST: AI-based assignment
+        // POST: AI-based assignment (corrigée)
         [HttpPost]
         public async Task<IActionResult> AssignPersonnelAI(long personnelId)
         {
@@ -60,20 +57,27 @@ namespace TransportManagementSystem.Controllers
                 return RedirectToAction("AssignPersonnel");
             }
 
+            if (personnel.Personnel_Latitude == null || personnel.Personnel_Longitude == null)
+            {
+                TempData["Error"] = "Les coordonnées GPS de ce personnel ne sont pas définies. Veuillez les renseigner avant d'utiliser l'IA.";
+                return RedirectToAction("AssignPersonnel");
+            }
+
             Trajectory? bestTrajectory = null;
             double bestDistance = double.MaxValue;
 
+            // Calcul de la distance entre le personnel et le POINT D'ARRIVÉE de chaque trajectoire
             foreach (var traj in trajectories)
             {
-                if (personnel.Personnel_Latitude != null && personnel.Personnel_Longitude != null &&
-                    traj.Trajectory_StartLatitude != null && traj.Trajectory_StartLongitude != null)
+                if (traj.Trajectory_EndLatitude != null && traj.Trajectory_EndLongitude != null)
                 {
                     double distance = CalculateDistance(
                         (double)personnel.Personnel_Latitude,
                         (double)personnel.Personnel_Longitude,
-                        (double)traj.Trajectory_StartLatitude,
-                        (double)traj.Trajectory_StartLongitude
+                        (double)traj.Trajectory_EndLatitude,
+                        (double)traj.Trajectory_EndLongitude
                     );
+
                     if (distance < bestDistance)
                     {
                         bestDistance = distance;
@@ -88,6 +92,7 @@ namespace TransportManagementSystem.Controllers
                 return RedirectToAction("AssignPersonnel");
             }
 
+            // Recherche d'un bus disponible sur ce trajet
             var availableBuses = await _context.Buses
                 .Where(b => b.Bus_Status == "In Service" && b.Bus_CurrentTrajectoryId == bestTrajectory.Trajectory_Id)
                 .OrderBy(b => b.Bus_Id)
@@ -118,17 +123,7 @@ namespace TransportManagementSystem.Controllers
                 return RedirectToAction("AssignPersonnel");
             }
 
-            // ===== MISE À JOUR DU BUS =====
-            selectedBus.Bus_CurrentTrajectoryId = bestTrajectory.Trajectory_Id;
-            selectedBus.Bus_UpdatedAt = DateTime.Now;
-            if (selectedBus.Bus_CurrentLatitude == null && bestTrajectory.Trajectory_StartLatitude != null)
-            {
-                selectedBus.Bus_CurrentLatitude = bestTrajectory.Trajectory_StartLatitude;
-                selectedBus.Bus_CurrentLongitude = bestTrajectory.Trajectory_StartLongitude;
-                selectedBus.Bus_LastLocationUpdateTime = DateTime.Now;
-            }
-            // =============================
-
+            // Assignation
             personnel.AssignedTrajectoryId = bestTrajectory.Trajectory_Id;
             personnel.AssignedBusId = selectedBus.Bus_Id;
             personnel.IsAssigned = true;
@@ -136,7 +131,6 @@ namespace TransportManagementSystem.Controllers
             await _context.SaveChangesAsync();
 
             TempData["Success"] = $"🤖 {personnel.Personnel_FirstName} {personnel.Personnel_LastName} assigné au trajet {bestTrajectory.Trajectory_Name} (distance: {bestDistance:F1} km) et au bus {selectedBus.Bus_Code}.";
-
             return RedirectToAction("AssignPersonnel");
         }
 
@@ -182,17 +176,6 @@ namespace TransportManagementSystem.Controllers
                 return RedirectToAction("AssignPersonnel");
             }
 
-            // ===== MISE À JOUR DU BUS =====
-            selectedBus.Bus_CurrentTrajectoryId = trajectoryId;
-            selectedBus.Bus_UpdatedAt = DateTime.Now;
-            if (selectedBus.Bus_CurrentLatitude == null && trajectory.Trajectory_StartLatitude != null)
-            {
-                selectedBus.Bus_CurrentLatitude = trajectory.Trajectory_StartLatitude;
-                selectedBus.Bus_CurrentLongitude = trajectory.Trajectory_StartLongitude;
-                selectedBus.Bus_LastLocationUpdateTime = DateTime.Now;
-            }
-            // =============================
-
             personnel.AssignedTrajectoryId = trajectoryId;
             personnel.AssignedBusId = selectedBus.Bus_Id;
             personnel.IsAssigned = true;
@@ -200,18 +183,16 @@ namespace TransportManagementSystem.Controllers
             await _context.SaveChangesAsync();
 
             TempData["Success"] = $"{personnel.Personnel_FirstName} {personnel.Personnel_LastName} assigné au trajet {trajectory.Trajectory_Name} et au bus {selectedBus.Bus_Code}.";
-
             return RedirectToAction("AssignPersonnel");
         }
 
-        // Désassignation (redirige vers AssignPersonnel)
+        // Désassignation
         [HttpPost]
         public async Task<IActionResult> UnassignPersonnel(long personnelId)
         {
             var personnel = await _context.Personnel.FindAsync(personnelId);
             if (personnel != null)
             {
-                // On ne supprime pas le lien bus ↔ trajectoire, on le garde (le bus reste sur le trajet).
                 personnel.AssignedTrajectoryId = null;
                 personnel.AssignedBusId = null;
                 personnel.IsAssigned = false;
@@ -221,7 +202,7 @@ namespace TransportManagementSystem.Controllers
             return RedirectToAction("AssignPersonnel");
         }
 
-        // Garde l'action ViewAssignments (optionnelle)
+        // Autres actions (ViewAssignments, BusOccupancy, RemovePersonnelFromBus) inchangées
         public async Task<IActionResult> ViewAssignments()
         {
             var assignments = await _context.Personnel
@@ -232,7 +213,6 @@ namespace TransportManagementSystem.Controllers
             return View(assignments);
         }
 
-        // Occupation des bus
         public async Task<IActionResult> BusOccupancy()
         {
             var buses = await _context.Buses
@@ -241,7 +221,6 @@ namespace TransportManagementSystem.Controllers
                 .ToListAsync();
 
             var busOccupancy = new List<BusOccupancyViewModel>();
-
             foreach (var bus in buses)
             {
                 var personnel = await _context.Personnel
@@ -257,7 +236,6 @@ namespace TransportManagementSystem.Controllers
                     Personnel = personnel
                 });
             }
-
             ViewBag.BusOccupancy = busOccupancy;
             return View();
         }
@@ -277,7 +255,6 @@ namespace TransportManagementSystem.Controllers
             return RedirectToAction("BusOccupancy");
         }
 
-        // Utilitaires
         private double CalculateDistance(double lat1, double lon1, double lat2, double lon2)
         {
             const double R = 6371;

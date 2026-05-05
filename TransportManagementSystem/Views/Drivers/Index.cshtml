@@ -63,7 +63,10 @@
                 </td>
                 <td>
                     <a asp-action="Edit" asp-route-id="@item.Driver_id" class="btn btn-sm btn-warning">Modifier</a>
-                    <a asp-action="Delete" asp-route-id="@item.Driver_id" class="btn btn-sm btn-danger">Supprimer</a>
+                    <form asp-action="Delete" asp-route-id="@item.Driver_id" method="post" style="display:inline;" onsubmit="return confirm('Supprimer définitivement ce chauffeur ?');">
+                        @Html.AntiForgeryToken()
+                        <button type="submit" class="btn btn-sm btn-danger">Supprimer</button>
+                    </form>
                 </td>
             </tr>
         }

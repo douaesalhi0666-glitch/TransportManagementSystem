@@ -14,16 +14,13 @@ namespace TransportManagementSystem.Controllers
             _context = context;
         }
 
-        // GET: Assignments
         public async Task<IActionResult> Index()
         {
-            // Only show drivers with status "Available"
             var drivers = await _context.Drivers
                 .Where(d => d.Driver_Status == "Available")
                 .Include(d => d.AssignedBus)
                 .ToListAsync();
 
-            // Only show buses with status "In Service"
             var buses = await _context.Buses
                 .Where(b => b.Bus_Status == "In Service")
                 .Include(b => b.CurrentDriver)
@@ -39,7 +36,6 @@ namespace TransportManagementSystem.Controllers
             return View();
         }
 
-        // POST: Assign Driver to Bus
         [HttpPost]
         public async Task<IActionResult> AssignDriverToBus(long driverId, long busId)
         {
@@ -52,48 +48,39 @@ namespace TransportManagementSystem.Controllers
                 return RedirectToAction("Index");
             }
 
-            // Check if driver is available
             if (driver.Driver_Status != "Available")
             {
-                TempData["Error"] = "Ce chauffeur n'est pas disponible. Statut actuel: " + driver.Driver_Status;
+                TempData["Error"] = "Ce chauffeur n'est pas disponible.";
                 return RedirectToAction("Index");
             }
 
-            // Check if bus is in service
             if (bus.Bus_Status != "In Service")
             {
-                TempData["Error"] = "Ce bus n'est pas en service. Statut actuel: " + bus.Bus_Status;
+                TempData["Error"] = "Ce bus n'est pas en service.";
                 return RedirectToAction("Index");
             }
 
-            // Check if bus already has a driver
             if (bus.Bus_CurrentDriverId != null)
             {
                 TempData["Error"] = "Ce bus a déjà un chauffeur. Désassignez-le d'abord.";
                 return RedirectToAction("Index");
             }
 
-            // Check if driver already has a bus
             if (driver.Driver_AssignedBusId != null)
             {
-                TempData["Error"] = "Ce chauffeur a déjà un bus. Désassignez-le d'abord.";
+                TempData["Error"] = "Ce chauffeur a déjà un bus.";
                 return RedirectToAction("Index");
             }
 
-            // Assign driver to bus
             driver.Driver_AssignedBusId = busId;
             bus.Bus_CurrentDriverId = driverId;
-
-            // Update driver status to "On Route" when assigned
             driver.Driver_Status = "On Route";
 
             await _context.SaveChangesAsync();
-
             TempData["Success"] = $"Chauffeur {driver.Driver_FirstName} {driver.Driver_LastName} assigné au bus {bus.Bus_Code}.";
             return RedirectToAction("Index");
         }
 
-        // POST: Assign Bus to Trajectory
         [HttpPost]
         public async Task<IActionResult> AssignBusToTrajectory(long busId, int trajectoryId)
         {
@@ -113,44 +100,32 @@ namespace TransportManagementSystem.Controllers
             return RedirectToAction("Index");
         }
 
-        // POST: Unassign Driver
         [HttpPost]
         public async Task<IActionResult> UnassignDriver(long driverId)
         {
             var driver = await _context.Drivers.FindAsync(driverId);
-
             if (driver != null && driver.Driver_AssignedBusId != null)
             {
                 var bus = await _context.Buses.FindAsync(driver.Driver_AssignedBusId.Value);
-                if (bus != null)
-                {
-                    bus.Bus_CurrentDriverId = null;
-                }
+                if (bus != null) bus.Bus_CurrentDriverId = null;
                 driver.Driver_AssignedBusId = null;
-
-                // Reset driver status to "Available" when unassigned
                 driver.Driver_Status = "Available";
-
                 await _context.SaveChangesAsync();
-                TempData["Success"] = "Chauffeur désassigné avec succès.";
+                TempData["Success"] = "Chauffeur désassigné.";
             }
-
             return RedirectToAction("Index");
         }
 
-        // POST: Unassign Bus from Trajectory
         [HttpPost]
         public async Task<IActionResult> UnassignBus(long busId)
         {
             var bus = await _context.Buses.FindAsync(busId);
-
             if (bus != null)
             {
                 bus.Bus_CurrentTrajectoryId = null;
                 await _context.SaveChangesAsync();
-                TempData["Success"] = "Trajet désassigné avec succès.";
+                TempData["Success"] = "Trajet désassigné.";
             }
-
             return RedirectToAction("Index");
         }
     }

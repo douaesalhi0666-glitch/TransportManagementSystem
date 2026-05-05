@@ -1,21 +1,49 @@
-﻿@{
-    ViewData["Title"] = "Regroupement intelligent du personnel";
+﻿@model IEnumerable<TransportManagementSystem.Models.TrajectoryStop>
+
+@{
+    ViewData["Title"] = "Points de ramassage - Tous les arrêts";
     Layout = "~/Views/Shared/_Layout.cshtml";
 }
 
-<h2>🗺️ Regroupement intelligent des points du personnel</h2>
-<p>Clustering K‑Means ({{k}} clusters) – Cliquez sur un cluster pour créer un arrêt suggéré.</p>
+<h2>🗺️ Tous les points de ramassage (arrêts) par trajectoire</h2>
+<p>Liste et visualisation de tous les arrêts créés pour chaque trajectoire.</p>
 
-<div class="row mb-3">
-    <div class="col-auto">
-        <label for="kSlider">Nombre de clusters :</label>
-        <input type="range" id="kSlider" min="2" max="10" value="5" step="1" />
-        <span id="kValue">5</span>
-        <button id="refreshBtn" class="btn btn-primary btn-sm">Actualiser</button>
+<div id="map" style="height: 500px; width: 100%; border-radius: 10px; margin-bottom: 20px;"></div>
+
+<div class="card">
+    <div class="card-header bg-primary text-white">
+        <h5>📋 Tableau des arrêts</h5>
+    </div>
+    <div class="card-body">
+        <table class="table table-striped table-bordered" id="stopsTable">
+            <thead>
+                <tr>
+                    <th>ID Trajectoire</th>
+                    <th>Trajectoire</th>
+                    <th>Code</th>
+                    <th>Ordre</th>
+                    <th>Nom de l'arrêt</th>
+                    <th>Latitude</th>
+                    <th>Longitude</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var stop in Model.OrderBy(s => s.TS_TrajectoryId).ThenBy(s => s.TS_OrderIndex))
+                {
+                    <tr>
+                        <td>@stop.TS_TrajectoryId</td>
+                        <td>@(stop.Trajectory?.Trajectory_Name)</td>
+                        <td>@(stop.Trajectory?.Trajectory_Code)</td>
+                        <td>@stop.TS_OrderIndex</td>
+                        <td>@stop.TS_Name</td>
+                        <td>@stop.TS_Latitude</td>
+                        <td>@stop.TS_Longitude</td>
+                    </tr>
+                }
+            </tbody>
+        </table>
     </div>
 </div>
-
-<div id="map" style="height: 600px; width: 100%; border-radius: 10px;"></div>
 
 @section Scripts {
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
@@ -23,50 +51,33 @@
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
 
     <style>
-        .cluster-marker {
-        background-color: #ff5722;
+        .stop-marker {
+        background-color: #28a745;
         color: white;
         border-radius: 50%;
         text-align: center;
-        font-size: 14px;
+        font-size: 12px;
         font-weight: bold;
-        width: 30px;
-        height: 30px;
+        width: 24px;
+        height: 24px;
         display: flex;
         align-items: center;
         justify-content: center;
         border: 2px solid white;
         box-shadow: 0 2px 6px rgba(0,0,0,0.3);
-        cursor: pointer;
-        }
-
-        .person-marker {
-        background-color: #1976d2;
-        color: white;
-        border-radius: 50%;
-        text-align: center;
-        font-size: 10px;
-        width: 20px;
-        height: 20px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        border: 1px solid white;
         }
     </style>
 
     <script>
         let map;
-        let currentMarkers = { persons: [], clusters: [] };
-        let k = 5;
+        const colorPalette = ['#3388ff', '#ff3333', '#33ff33', '#ff33cc', '#ff9933', '#33cccc', '#9966ff', '#66ff99'];
 
-        function getK() { return parseInt(document.getElementById('kSlider').value); }
+        async function loadData() {
+        const trajResponse = await fetch('/Clustering/GetTrajectoriesWithStops');
+        const trajectories = await trajResponse.json();
 
-        async function loadClusters() {
-        k = getK();
-        document.getElementById('kValue').innerText = k;
-        const response = await fetch(`/Clustering/GetClusters?k=${k}`);
-        const data = await response.json();
+        const stopsResponse = await fetch('/Clustering/GetAllStops');
+        const allStops = await stopsResponse.json();
 
         if (!map) {
         map = L.map('map').setView([46.603354, 1.888334], 6);
@@ -75,56 +86,44 @@
         }).addTo(map);
         }
 
-        // Nettoyage
-        currentMarkers.persons.forEach(m => map.removeLayer(m));
-        currentMarkers.clusters.forEach(m => map.removeLayer(m));
-        currentMarkers = { persons: [], clusters: [] };
-
-        // Points du personnel
-        data.points.forEach(p => {
-        const icon = L.divIcon({ html: '👤', iconSize: [20, 20], className: 'person-marker' });
-        const marker = L.marker([p.lat, p.lng], { icon })
-        .bindPopup(`${p.name}<br/>ID: ${p.personnelId}`);
-        marker.addTo(map);
-        currentMarkers.persons.push(marker);
+        map.eachLayer(layer => {
+        if (layer instanceof L.Marker || layer instanceof L.Polyline) {
+        map.removeLayer(layer);
+        }
         });
 
-        // Centres de clusters
-        data.clusters.forEach((cluster, idx) => {
-        const icon = L.divIcon({ html: `${idx+1}`, iconSize: [30, 30], className: 'cluster-marker' });
-        const marker = L.marker([cluster.lat, cluster.lng], { icon })
-        .bindPopup(`
-        <strong>Cluster ${idx+1}</strong><br/>
-        ${cluster.size} personnes<br/>
-        <button onclick="createStop(${cluster.lat}, ${cluster.lng}, ${idx+1})">Créer un arrêt ici</button>
-        `);
-        marker.addTo(map);
-        currentMarkers.clusters.push(marker);
+        trajectories.forEach((traj, idx) => {
+        if (traj.stops && traj.stops.length >= 2) {
+        const points = traj.stops.map(s => [s.tS_Latitude, s.tS_Longitude]);
+        const color = colorPalette[idx % colorPalette.length];
+        L.polyline(points, { color: color, weight: 4, opacity: 0.7 })
+        .bindPopup(`<strong>${traj.trajectory_Name}</strong><br>${traj.trajectory_Code}`)
+        .addTo(map);
+        }
         });
+
+        allStops.forEach(stop => {
+        const icon = L.divIcon({
+        html: stop.tS_OrderIndex.toString(),
+        iconSize: [24, 24],
+        className: 'stop-marker'
+        });
+        const popupContent = `<strong>${stop.tS_Name}</strong><br/>
+        Trajectoire: ${stop.trajectoryName}<br/>
+        Ordre: ${stop.tS_OrderIndex}<br/>
+        Coordonnées: ${stop.tS_Latitude}, ${stop.tS_Longitude}`;
+        L.marker([stop.tS_Latitude, stop.tS_Longitude], { icon })
+        .bindPopup(popupContent)
+        .addTo(map);
+        });
+
+        if (allStops.length > 0) {
+        const latLngs = allStops.map(s => [s.tS_Latitude, s.tS_Longitude]);
+        const bounds = L.latLngBounds(latLngs);
+        map.fitBounds(bounds);
+        }
         }
 
-        window.createStop = async function(lat, lng, clusterId) {
-        const name = prompt("Nom de l'arrêt suggéré :", `Cluster ${clusterId}`);
-        if (!name) return;
-        const res = await fetch('/Clustering/CreateStop', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name: name, latitude: lat, longitude: lng })
-        });
-        if (res.ok) {
-        alert("Arrêt créé avec succès !");
-        loadClusters(); // rafraîchir
-        } else {
-        alert("Erreur lors de la création.");
-        }
-        };
-
-        document.getElementById('refreshBtn').addEventListener('click', loadClusters);
-        document.getElementById('kSlider').addEventListener('input', function() {
-        document.getElementById('kValue').innerText = this.value;
-        loadClusters();
-        });
-
-        loadClusters();
+        loadData();
     </script>
 }

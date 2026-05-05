@@ -51,7 +51,7 @@
             <button type="submit" class="btn btn-primary w-100">Se connecter</button>
         </form>
         <hr />
-        <p class="text-center small">admin@transport.com / ID: 1 / mot de passe : admin123</p>
+        <p class="text-center small">admin@sews.ma / ID: 1 / mot de passe : admin123</p>
     </div>
 
     <script>
@@ -61,13 +61,13 @@
             const passwordInput = document.getElementById('password');
 
             function togglePasswordField() {
-                if (emailInput.value === 'admin@transport.com' && idInput.value === '1') {
+                if (emailInput.value === 'admin@sews.ma' && idInput.value === '1') {
                     passwordGroup.style.display = 'block';
                     passwordInput.required = true;
                 } else {
                     passwordGroup.style.display = 'none';
                     passwordInput.required = false;
-                    passwordInput.value = ''; // Efface le mot de passe si le champ est masqué
+                    passwordInput.value = '';
                 }
             }
 

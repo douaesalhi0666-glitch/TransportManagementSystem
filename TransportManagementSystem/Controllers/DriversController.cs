@@ -122,17 +122,49 @@ namespace TransportManagementSystem.Controllers
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> DeleteConfirmed(long id)
         {
-            var driver = await _context.Drivers.FindAsync(id);
-            if (driver != null)
+            var driver = await _context.Drivers
+                .FindAsync(id);
+
+            if (driver == null)
             {
-                if (driver.Driver_AssignedBusId != null)
-                {
-                    var bus = await _context.Buses.FindAsync(driver.Driver_AssignedBusId);
-                    if (bus != null) bus.Bus_CurrentDriverId = null;
-                }
-                _context.Drivers.Remove(driver);
-                await _context.SaveChangesAsync();
+                return NotFound();
             }
+
+            // 1. Libérer le bus si le chauffeur y est assigné
+            if (driver.Driver_AssignedBusId != null)
+            {
+                var bus = await _context.Buses.FindAsync(driver.Driver_AssignedBusId);
+                if (bus != null && bus.Bus_CurrentDriverId == driver.Driver_id)
+                {
+                    bus.Bus_CurrentDriverId = null;
+                }
+            }
+
+            // 2. Supprimer les enregistrements liés dans DriverPerformance_tbl
+            var performances = _context.DriverPerformance_tbl.Where(p => p.Driver_Id == driver.Driver_id);
+            if (performances.Any())
+            {
+                _context.DriverPerformance_tbl.RemoveRange(performances);
+            }
+
+            // 3. Supprimer les missions liées dans DriverMissions_tbl (si la table existe)
+            var missions = _context.DriverMissions_tbl.Where(m => m.Driver_Id == driver.Driver_id);
+            if (missions.Any())
+            {
+                _context.DriverMissions_tbl.RemoveRange(missions);
+            }
+
+            // 4. Supprimer les logs de recommandation liés (si la table existe)
+            var logs = _context.RecommendationLogs.Where(r => r.Recommended_DriverId == driver.Driver_id);
+            if (logs.Any())
+            {
+                _context.RecommendationLogs.RemoveRange(logs);
+            }
+
+            // 5. Enfin, supprimer le chauffeur
+            _context.Drivers.Remove(driver);
+            await _context.SaveChangesAsync();
+
             return RedirectToAction(nameof(Index));
         }
 
@@ -214,7 +246,6 @@ namespace TransportManagementSystem.Controllers
             var now = DateTime.Now;
             var currentHour = now.Hour;
 
-            // Vérifier si la mission du jour est déjà terminée
             var missionEnded = await _context.DriverMissions_tbl
                 .AnyAsync(m => m.Driver_Id == driverId && m.Mission_Date == now.Date && m.Status == "Completed");
 
@@ -225,9 +256,7 @@ namespace TransportManagementSystem.Controllers
                 return Json(new { statusText = "🔴 Hors service (mission terminée)", statusClass = "bg-danger" });
             }
 
-            string newStatus;
-            string statusText;
-            string statusClass;
+            string newStatus, statusText, statusClass;
 
             if (currentHour >= 7 && currentHour < 8)
             {

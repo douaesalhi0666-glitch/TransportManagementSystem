@@ -18,77 +18,177 @@ namespace TransportManagementSystem.Controllers
             _context = context;
         }
 
-        // GET: /Clustering/DispatcherView
-        public IActionResult DispatcherView()
+        // ---------- STOPS VIEWER PAGE ----------
+        public async Task<IActionResult> DispatcherView()
         {
-            return View();
+            var stops = await _context.TrajectoryStops
+                .Include(s => s.Trajectory)
+                .OrderBy(s => s.TS_TrajectoryId)
+                .ThenBy(s => s.TS_OrderIndex)
+                .ToListAsync();
+            return View(stops);
         }
 
-        // API : /Clustering/GetClusters?k=5
         [HttpGet]
-        public async Task<IActionResult> GetClusters(int k = 5)
+        public async Task<IActionResult> GetAllStops()
         {
-            var personnel = await _context.Personnel
-                .Where(p => p.Personnel_Latitude != null && p.Personnel_Longitude != null)
-                .Select(p => new { p.Personnel_Id, p.Personnel_FirstName, p.Personnel_LastName, lat = p.Personnel_Latitude.Value, lng = p.Personnel_Longitude.Value })
+            var stops = await _context.TrajectoryStops
+                .Include(s => s.Trajectory)
+                .Select(s => new
+                {
+                    s.TS_Id,
+                    s.TS_Name,
+                    s.TS_OrderIndex,
+                    s.TS_Latitude,
+                    s.TS_Longitude,
+                    TrajectoryName = s.Trajectory != null ? s.Trajectory.Trajectory_Name : "Inconnue",
+                    TrajectoryCode = s.Trajectory != null ? s.Trajectory.Trajectory_Code : "N/A",
+                    s.TS_TrajectoryId
+                })
+                .ToListAsync();
+            return Ok(stops);
+        }
+
+        [HttpGet]
+        public async Task<IActionResult> GetTrajectoriesWithStops()
+        {
+            var trajectories = await _context.Trajectories
+                .Where(t => t.Trajectory_Status == "Active")
+                .Include(t => t.Stops)
+                .Select(t => new
+                {
+                    t.Trajectory_Id,
+                    t.Trajectory_Name,
+                    t.Trajectory_Code,
+                    Stops = t.Stops
+                        .OrderBy(s => s.TS_OrderIndex)
+                        .Select(s => new
+                        {
+                            s.TS_Id,
+                            s.TS_Name,
+                            s.TS_OrderIndex,
+                            s.TS_Latitude,
+                            s.TS_Longitude
+                        })
+                })
+                .ToListAsync();
+            return Ok(trajectories);
+        }
+
+        // ---------- CLUSTERING FOR PICKUP POINTS ----------
+        [HttpGet]
+        public async Task<IActionResult> GetTrajectoriesForPickup()
+        {
+            var trajectories = await _context.Trajectories
+                .Where(t => t.Trajectory_Status == "Active")
+                .Select(t => new { t.Trajectory_Id, t.Trajectory_Name, t.Trajectory_Code })
+                .ToListAsync();
+            return Ok(trajectories);
+        }
+
+        [HttpPost]
+        public async Task<IActionResult> SuggestPickupPoints([FromBody] PickupRequest request)
+        {
+            if (request.TrajectoryId <= 0)
+                return BadRequest("Trajectoire invalide");
+
+            var personnelPoints = await _context.PersonnelTrajectoryAssignments
+                .Where(pta => pta.PTA_TrajectoryId == request.TrajectoryId && pta.PTA_Status == "Active")
+                .Select(pta => pta.Personnel)
+                .Where(p => p != null && p.Personnel_Latitude != null && p.Personnel_Longitude != null)
+                .Select(p => new ClusterPoint
+                {
+                    X = (double)p.Personnel_Latitude!.Value,
+                    Y = (double)p.Personnel_Longitude!.Value,
+                    Data = new { p.Personnel_Id, p.Personnel_FirstName, p.Personnel_LastName }
+                })
                 .ToListAsync();
 
-            if (personnel.Count == 0)
-                return Ok(new { clusters = new List<object>(), points = new List<object>() });
+            if (!personnelPoints.Any())
+            {
+                personnelPoints = await _context.Personnel
+                    .Where(p => p.AssignedTrajectoryId == request.TrajectoryId && p.IsAssigned == true
+                                && p.Personnel_Latitude != null && p.Personnel_Longitude != null)
+                    .Select(p => new ClusterPoint
+                    {
+                        X = (double)p.Personnel_Latitude!.Value,
+                        Y = (double)p.Personnel_Longitude!.Value,
+                        Data = new { p.Personnel_Id, p.Personnel_FirstName, p.Personnel_LastName }
+                    })
+                    .ToListAsync();
+            }
 
-            // Conversion en liste de points (Lat, Lng)
-            var points = personnel.Select(p => new ClusterPoint { X = (double)p.lat, Y = (double)p.lng, Data = p }).ToList();
+            if (personnelPoints.Count == 0)
+                return Ok(new { clusters = new List<object>(), points = new List<object>(), message = "Aucun personnel avec coordonnées pour cette trajectoire." });
 
-            // Exécution KMeans
-            var clusters = KMeans(points, k);
+            int k = request.NumberOfClusters;
+            k = Math.Max(1, Math.Min(k, personnelPoints.Count)); // éviter k > nb points
 
-            // Préparer la réponse : centres et points affectés
+            // Ajouter un très petit bruit aux points en double pour que KMeans puisse les séparer
+            var distinctPoints = personnelPoints
+                .Select(p => new { p.X, p.Y })
+                .Distinct()
+                .ToList();
+            if (distinctPoints.Count < k)
+            {
+                k = distinctPoints.Count;
+            }
+
+            var pointsWithNoise = personnelPoints.Select(p => new ClusterPoint
+            {
+                X = p.X + new Random().NextDouble() * 0.000001,
+                Y = p.Y + new Random().NextDouble() * 0.000001,
+                Data = p.Data
+            }).ToList();
+
+            var clusters = KMeans(pointsWithNoise, k);
+
             var result = new
             {
-                clusters = clusters.Select(c => new { lat = c.CenterX, lng = c.CenterY, size = c.Points.Count }),
-                points = clusters.SelectMany(c => c.Points.Select(p => new
-                {
-                    lat = p.X,
-                    lng = p.Y,
-                    personnelId = ((dynamic)p.Data).Personnel_Id,
-                    name = ((dynamic)p.Data).Personnel_FirstName + " " + ((dynamic)p.Data).Personnel_LastName
-                }))
+                clusters = clusters.Select(c => new { lat = c.CenterX, lng = c.CenterY, count = c.Points.Count }),
+                points = personnelPoints.Select(p => new { lat = p.X, lng = p.Y })
             };
             return Ok(result);
         }
 
-        // POST : /Clustering/CreateStop
         [HttpPost]
-        public async Task<IActionResult> CreateStop([FromBody] CreateStopModel model)
+        public async Task<IActionResult> CreateStopForTrajectory([FromBody] CreateTrajectoryStopModel model)
         {
-            if (model == null || model.Latitude == 0 || model.Longitude == 0)
-                return BadRequest("Coordonnées invalides");
+            if (model.TrajectoryId == 0 || string.IsNullOrWhiteSpace(model.Name))
+                return BadRequest("Données invalides");
 
-            var stop = new SuggestedStop
+            int maxOrder = await _context.TrajectoryStops
+                .Where(s => s.TS_TrajectoryId == model.TrajectoryId)
+                .MaxAsync(s => (int?)s.TS_OrderIndex) ?? 0;
+
+            var stop = new TrajectoryStop
             {
-                Name = model.Name,
-                Latitude = (decimal)model.Latitude,
-                Longitude = (decimal)model.Longitude,
-                CreatedAt = DateTime.Now,
-                IsActive = true
+                TS_TrajectoryId = model.TrajectoryId,
+                TS_Name = model.Name,
+                TS_OrderIndex = maxOrder + 1,
+                TS_Latitude = model.Latitude,
+                TS_Longitude = model.Longitude
             };
-            _context.SuggestedStops.Add(stop);
+            _context.TrajectoryStops.Add(stop);
             await _context.SaveChangesAsync();
-            return Ok(new { id = stop.Id });
+            return Ok(new { stopId = stop.TS_Id });
         }
 
-        // --- Implémentation KMeans ---
+        public IActionResult DefinePickupPoints()
+        {
+            return View();
+        }
+
+        // ---------- UTILITAIRES ----------
         private List<Cluster> KMeans(List<ClusterPoint> points, int k, int maxIterations = 100)
         {
             if (points.Count == 0) return new List<Cluster>();
             Random rand = new Random();
-            // Initialisation des centres aléatoires parmi les points
             var centers = points.OrderBy(x => rand.Next()).Take(k).Select(p => new { X = p.X, Y = p.Y }).ToList();
 
             var clusters = new List<Cluster>();
             for (int iter = 0; iter < maxIterations; iter++)
             {
-                // Assignation de chaque point au centre le plus proche
                 clusters = new List<Cluster>();
                 for (int i = 0; i < k; i++)
                     clusters.Add(new Cluster { CenterX = centers[i].X, CenterY = centers[i].Y });
@@ -109,7 +209,6 @@ namespace TransportManagementSystem.Controllers
                     clusters[bestCluster].Points.Add(point);
                 }
 
-                // Recalcul des centres
                 bool changed = false;
                 for (int i = 0; i < k; i++)
                 {
@@ -127,17 +226,14 @@ namespace TransportManagementSystem.Controllers
             return clusters;
         }
 
-        private double Distance(double x1, double y1, double x2, double y2)
-        {
-            return Math.Sqrt(Math.Pow(x1 - x2, 2) + Math.Pow(y1 - y2, 2));
-        }
+        private double Distance(double x1, double y1, double x2, double y2) =>
+            Math.Sqrt(Math.Pow(x1 - x2, 2) + Math.Pow(y1 - y2, 2));
 
-        // Classes auxiliaires
         private class ClusterPoint
         {
             public double X { get; set; }
             public double Y { get; set; }
-            public object Data { get; set; }
+            public object? Data { get; set; }
         }
 
         private class Cluster
@@ -148,10 +244,17 @@ namespace TransportManagementSystem.Controllers
         }
     }
 
-    public class CreateStopModel
+    public class PickupRequest
     {
-        public string Name { get; set; }
-        public double Latitude { get; set; }
-        public double Longitude { get; set; }
+        public int TrajectoryId { get; set; }
+        public int NumberOfClusters { get; set; } = 5;
+    }
+
+    public class CreateTrajectoryStopModel
+    {
+        public int TrajectoryId { get; set; }
+        public string Name { get; set; } = string.Empty;
+        public decimal Latitude { get; set; }
+        public decimal Longitude { get; set; }
     }
 }
