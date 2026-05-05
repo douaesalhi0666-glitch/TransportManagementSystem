@@ -147,12 +147,15 @@
                     
                     if (trajectoryLine) map.removeLayer(trajectoryLine);
                     if (data.stops && data.stops.length > 0) {
-                        const points = data.stops.map(s => [parseFloat(s.Latitude), parseFloat(s.Longitude)]);
-                        trajectoryLine = L.polyline(points, { color: 'blue', weight: 4, opacity: 0.7 }).addTo(map);
+                        // Utiliser les noms de propriétés en minuscules (camelCase)
+                        const points = data.stops.map(s => [parseFloat(s.latitude), parseFloat(s.longitude)]);
+                        trajectoryLine = L.polyline(points, { color: '#3388ff', weight: 5, opacity: 0.7 }).addTo(map);
+                        map.fitBounds(points); // centre automatiquement la carte sur l'ensemble de la trajectoire
                         data.stops.forEach(stop => {
-                            const stopIcon = L.divIcon({ html: stop.TS_OrderIndex.toString(), iconSize: [24, 24], className: 'stop-marker' });
-                            L.marker([parseFloat(stop.Latitude), parseFloat(stop.Longitude)], { icon: stopIcon })
-                                .bindPopup(`<strong>${stop.TS_Name}</strong>`).addTo(map);
+                            const stopIcon = L.divIcon({ html: stop.tS_OrderIndex.toString(), iconSize: [24, 24], className: 'stop-marker' });
+                            L.marker([parseFloat(stop.latitude), parseFloat(stop.longitude)], { icon: stopIcon })
+                                .bindPopup(`<strong>${stop.tS_Name}</strong>`)
+                                .addTo(map);
                         });
                     }
                 }

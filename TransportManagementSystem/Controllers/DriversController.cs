@@ -14,7 +14,10 @@ namespace TransportManagementSystem.Controllers
             _context = context;
         }
 
-        // GET: Drivers
+        // ==============================
+        // GESTION CRUD DES CHAUFFEURS
+        // ==============================
+
         public async Task<IActionResult> Index()
         {
             var drivers = await _context.Drivers
@@ -23,13 +26,8 @@ namespace TransportManagementSystem.Controllers
             return View(drivers);
         }
 
-        // GET: Drivers/Create
-        public IActionResult Create()
-        {
-            return View();
-        }
+        public IActionResult Create() => View();
 
-        // POST: Drivers/Create
         [HttpPost]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> Create(Driver driver)
@@ -54,42 +52,24 @@ namespace TransportManagementSystem.Controllers
             return View(driver);
         }
 
-        // GET: Drivers/Edit/5
         public async Task<IActionResult> Edit(long? id)
         {
-            if (id == null)
-            {
-                return NotFound();
-            }
-
+            if (id == null) return NotFound();
             var driver = await _context.Drivers
                 .Include(d => d.AssignedBus)
                 .FirstOrDefaultAsync(d => d.Driver_id == id);
-
-            if (driver == null)
-            {
-                return NotFound();
-            }
+            if (driver == null) return NotFound();
 
             if (driver.Driver_AssignedBusId != null)
-            {
-                ViewBag.Warning = $"⚠️ Ce chauffeur est actuellement assigné au bus {driver.AssignedBus?.Bus_Code}. " +
-                                  "Si vous le mettez hors service, ce bus n'aura plus de chauffeur.";
-            }
-
+                ViewBag.Warning = $"⚠️ Ce chauffeur est actuellement assigné au bus {driver.AssignedBus?.Bus_Code}. Si vous le mettez hors service, ce bus n'aura plus de chauffeur.";
             return View(driver);
         }
 
-        // POST: Drivers/Edit/5
         [HttpPost]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> Edit(long id, Driver driver)
         {
-            if (id != driver.Driver_id)
-            {
-                return NotFound();
-            }
-
+            if (id != driver.Driver_id) return NotFound();
             if (ModelState.IsValid)
             {
                 try
@@ -98,12 +78,9 @@ namespace TransportManagementSystem.Controllers
                         .AsNoTracking()
                         .Include(d => d.AssignedBus)
                         .FirstOrDefaultAsync(d => d.Driver_id == id);
-
                     if (existingDriver != null)
                     {
-                        if (existingDriver.Driver_AssignedBusId != null &&
-                            driver.Driver_Status == "Off Duty" &&
-                            existingDriver.Driver_Status != "Off Duty")
+                        if (existingDriver.Driver_AssignedBusId != null && driver.Driver_Status == "Off Duty" && existingDriver.Driver_Status != "Off Duty")
                         {
                             var bus = await _context.Buses.FindAsync(existingDriver.Driver_AssignedBusId);
                             if (bus != null)
@@ -123,40 +100,24 @@ namespace TransportManagementSystem.Controllers
                 }
                 catch (DbUpdateConcurrencyException)
                 {
-                    if (!DriverExists(driver.Driver_id))
-                    {
-                        return NotFound();
-                    }
-                    else
-                    {
-                        throw;
-                    }
+                    if (!DriverExists(driver.Driver_id)) return NotFound();
+                    else throw;
                 }
                 return RedirectToAction(nameof(Index));
             }
             return View(driver);
         }
 
-        // GET: Drivers/Delete/5
         public async Task<IActionResult> Delete(long? id)
         {
-            if (id == null)
-            {
-                return NotFound();
-            }
-
+            if (id == null) return NotFound();
             var driver = await _context.Drivers
                 .Include(d => d.AssignedBus)
                 .FirstOrDefaultAsync(m => m.Driver_id == id);
-            if (driver == null)
-            {
-                return NotFound();
-            }
-
+            if (driver == null) return NotFound();
             return View(driver);
         }
 
-        // POST: Drivers/Delete/5
         [HttpPost, ActionName("Delete")]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> DeleteConfirmed(long id)
@@ -167,10 +128,7 @@ namespace TransportManagementSystem.Controllers
                 if (driver.Driver_AssignedBusId != null)
                 {
                     var bus = await _context.Buses.FindAsync(driver.Driver_AssignedBusId);
-                    if (bus != null)
-                    {
-                        bus.Bus_CurrentDriverId = null;
-                    }
+                    if (bus != null) bus.Bus_CurrentDriverId = null;
                 }
                 _context.Drivers.Remove(driver);
                 await _context.SaveChangesAsync();
@@ -178,54 +136,129 @@ namespace TransportManagementSystem.Controllers
             return RedirectToAction(nameof(Index));
         }
 
-        private bool DriverExists(long id)
-        {
-            return _context.Drivers.Any(e => e.Driver_id == id);
-        }
+        private bool DriverExists(long id) => _context.Drivers.Any(e => e.Driver_id == id);
 
-        // ========== AUTO STATUS MANAGEMENT ==========
+        // ========================================================
+        // API POUR LE TABLEAU DE BORD DU CHAUFFEUR
+        // ========================================================
+
+        [HttpGet]
+        public async Task<IActionResult> GetDashboardData()
+        {
+            var driverIdStr = HttpContext.Session.GetString("DriverId");
+            if (string.IsNullOrEmpty(driverIdStr))
+                return Unauthorized();
+
+            var driverId = long.Parse(driverIdStr);
+            var driver = await _context.Drivers
+                .Include(d => d.AssignedBus)
+                    .ThenInclude(b => b.CurrentTrajectory)
+                .FirstOrDefaultAsync(d => d.Driver_id == driverId);
+
+            if (driver?.AssignedBus == null)
+                return Ok(new { hasBus = false });
+
+            var bus = driver.AssignedBus;
+            var trajectory = bus.CurrentTrajectory;
+            var stops = new List<object>();
+            if (trajectory != null)
+            {
+                stops = await _context.TrajectoryStops
+                    .Where(s => s.TS_TrajectoryId == trajectory.Trajectory_Id)
+                    .OrderBy(s => s.TS_OrderIndex)
+                    .Select(s => new
+                    {
+                        s.TS_OrderIndex,
+                        s.TS_Name,
+                        Latitude = s.TS_Latitude,
+                        Longitude = s.TS_Longitude
+                    })
+                    .ToListAsync<object>();
+            }
+
+            return Ok(new
+            {
+                hasBus = true,
+                bus = new
+                {
+                    bus.Bus_Code,
+                    bus.Bus_PlateNumber,
+                    bus.Bus_Model,
+                    bus.Bus_Brand,
+                    bus.Bus_Status,
+                    currentLatitude = bus.Bus_CurrentLatitude,
+                    currentLongitude = bus.Bus_CurrentLongitude
+                },
+                trajectory = trajectory != null ? new
+                {
+                    trajectory.Trajectory_Id,
+                    trajectory.Trajectory_Name,
+                    trajectory.Trajectory_Code
+                } : null,
+                stops = stops
+            });
+        }
 
         [HttpGet]
         public async Task<IActionResult> GetCurrentStatus()
         {
             var driverIdStr = HttpContext.Session.GetString("DriverId");
             if (string.IsNullOrEmpty(driverIdStr))
-            {
                 return Json(new { statusText = "Non connecté", statusClass = "bg-secondary" });
-            }
 
             var driverId = long.Parse(driverIdStr);
-            var newStatus = await CalculateDriverStatus(driverId);
-
             var driver = await _context.Drivers.FindAsync(driverId);
-            if (driver != null && driver.Driver_Status != newStatus)
+            if (driver == null)
+                return Json(new { statusText = "Inconnu", statusClass = "bg-secondary" });
+
+            var now = DateTime.Now;
+            var currentHour = now.Hour;
+
+            // Vérifier si la mission du jour est déjà terminée
+            var missionEnded = await _context.DriverMissions_tbl
+                .AnyAsync(m => m.Driver_Id == driverId && m.Mission_Date == now.Date && m.Status == "Completed");
+
+            if (missionEnded)
             {
-                driver.Driver_Status = newStatus;
-                driver.Driver_UpdatedAt = DateTime.Now;
+                driver.Driver_Status = "Off Duty";
                 await _context.SaveChangesAsync();
+                return Json(new { statusText = "🔴 Hors service (mission terminée)", statusClass = "bg-danger" });
             }
 
-            string statusText = "";
-            string statusClass = "";
+            string newStatus;
+            string statusText;
+            string statusClass;
 
-            switch (newStatus)
+            if (currentHour >= 7 && currentHour < 8)
             {
-                case "On Route":
-                    statusText = "🔄 En route";
-                    statusClass = "bg-warning";
-                    break;
-                case "Available":
-                    statusText = "✅ Disponible";
-                    statusClass = "bg-success";
-                    break;
-                case "Off Duty":
-                    statusText = "🔴 Hors service";
-                    statusClass = "bg-danger";
-                    break;
-                default:
-                    statusText = newStatus;
-                    statusClass = "bg-secondary";
-                    break;
+                newStatus = "On Route";
+                statusText = "🔄 En route";
+                statusClass = "bg-warning";
+            }
+            else if (currentHour >= 8 && currentHour < 17)
+            {
+                newStatus = "Available";
+                statusText = "✅ Disponible";
+                statusClass = "bg-success";
+            }
+            else if (currentHour >= 17)
+            {
+                newStatus = "On Route";
+                statusText = "🔄 En route (retour)";
+                statusClass = "bg-warning";
+            }
+            else
+            {
+                newStatus = "Off Duty";
+                statusText = "🔴 Hors service";
+                statusClass = "bg-danger";
+            }
+
+            if (driver.Driver_Status != newStatus)
+            {
+                driver.Driver_Status = newStatus;
+                driver.Driver_UpdatedAt = now;
+                await _context.SaveChangesAsync();
             }
 
             return Json(new { statusText = statusText, statusClass = statusClass });
@@ -236,24 +269,17 @@ namespace TransportManagementSystem.Controllers
         {
             var driverIdStr = HttpContext.Session.GetString("DriverId");
             if (string.IsNullOrEmpty(driverIdStr))
-            {
                 return Json(new { success = false, message = "Non connecté" });
-            }
 
             var driverId = long.Parse(driverIdStr);
             var driver = await _context.Drivers.FindAsync(driverId);
-
             if (driver == null)
-            {
                 return Json(new { success = false, message = "Chauffeur non trouvé" });
-            }
 
-            driver.Driver_Status = "Off Duty";
-            driver.Driver_UpdatedAt = DateTime.Now;
-
+            var now = DateTime.Now;
+            var today = now.Date;
             var mission = await _context.DriverMissions_tbl
-                .Where(m => m.Driver_Id == driverId && m.Mission_Date == DateTime.Now.Date)
-                .FirstOrDefaultAsync();
+                .FirstOrDefaultAsync(m => m.Driver_Id == driverId && m.Mission_Date == today);
 
             if (mission == null)
             {
@@ -261,53 +287,24 @@ namespace TransportManagementSystem.Controllers
                 {
                     Driver_Id = driverId,
                     Bus_Id = driver.Driver_AssignedBusId ?? 0,
-                    Mission_Date = DateTime.Now.Date,
-                    StartTime = DateTime.Now,
+                    Mission_Date = today,
+                    StartTime = now,
+                    EndTime = now,
                     Status = "Completed"
                 };
                 _context.DriverMissions_tbl.Add(mission);
             }
             else
             {
-                mission.EndTime = DateTime.Now;
+                mission.EndTime = now;
                 mission.Status = "Completed";
             }
 
+            driver.Driver_Status = "Off Duty";
+            driver.Driver_UpdatedAt = now;
             await _context.SaveChangesAsync();
 
             return Json(new { success = true, message = "Mission terminée. Bonne soirée !" });
-        }
-
-        private async Task<string> CalculateDriverStatus(long driverId)
-        {
-            var now = DateTime.Now;
-            var currentHour = now.Hour;
-
-            var mission = await _context.DriverMissions_tbl
-                .Where(m => m.Driver_Id == driverId && m.Mission_Date == now.Date && m.Status == "Completed")
-                .FirstOrDefaultAsync();
-
-            if (mission != null)
-            {
-                return "Off Duty";
-            }
-
-            if (currentHour >= 7 && currentHour < 8)
-            {
-                return "On Route";
-            }
-            else if (currentHour >= 8 && currentHour < 17)
-            {
-                return "Available";
-            }
-            else if (currentHour >= 17)
-            {
-                return "On Route";
-            }
-            else
-            {
-                return "Off Duty";
-            }
         }
     }
 }
