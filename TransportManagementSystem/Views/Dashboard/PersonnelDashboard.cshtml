@@ -34,7 +34,7 @@
         let lastAlertTypes = {};
         let currentTrajectoryId = null;
         let checkInterval;
-        const SPEED_KMH = 30; // km/h
+        const SPEED_KMH = 30; // km/h (fallback si pas d'IA)
 
         // ----- Utilitaires -----
         function haversine(lat1, lon1, lat2, lon2) {
@@ -48,16 +48,6 @@
                       Math.sin(Δλ/2) * Math.sin(Δλ/2);
             const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
             return R * c;
-        }
-
-        function formatTravelTime(distanceMeters) {
-            let hours = distanceMeters / 1000 / SPEED_KMH;
-            let minutes = hours * 60;
-            if (minutes < 1) return "< 1 min";
-            if (minutes < 60) return Math.round(minutes) + " min";
-            let hrs = Math.floor(minutes / 60);
-            let mins = Math.round(minutes % 60);
-            return hrs + " h " + mins + " min";
         }
 
         // ----- Alertes -----
@@ -106,7 +96,7 @@
                 }
                 const data = await response.json();
 
-                // Point de référence pour l'ETA : arrêt personnel s'il existe, sinon point de départ de la trajectoire
+                // Point de référence pour l'ETA : arrêt personnel ou départ de la trajectoire
                 let refLat = null, refLng = null;
                 if (data.personnelStop) {
                     refLat = data.personnelStop.tS_Latitude;
@@ -118,7 +108,7 @@
 
                 document.getElementById('assignmentInfo').innerHTML = `
                     <strong>Trajectoire :</strong> ${data.trajectory.trajectory_Name} (${data.trajectory.trajectory_Code})<br/>
-                    <strong>Arrêt personnel :</strong> ${data.personnelStop ? data.personnelStop.tS_Name : 'Non défini (ETA calculé depuis le départ)'}<br/>
+                    <strong>Arrêt personnel :</strong> ${data.personnelStop ? data.personnelStop.tS_Name : 'Non défini (ETA depuis le départ)'}<br/>
                     <strong>Bus sur cette trajectoire :</strong> ${data.buses.length}
                 `;
                 currentTrajectoryId = data.trajectory.trajectory_Id;
@@ -145,7 +135,7 @@
                         .addTo(map);
                 });
 
-                // Arrêt personnel s'il existe
+                // Arrêt personnel
                 if (data.personnelStop) {
                     if (personStopMarker) map.removeLayer(personStopMarker);
                     const icon = L.divIcon({ html: '📍', iconSize: [28, 28], className: 'stop-marker' });
@@ -154,17 +144,21 @@
                         .addTo(map);
                 }
 
-                // Bus avec popup (incluant l'ETA)
+                // Bus avec popup (incluant ETA)
                 if (window.busLayer) map.removeLayer(window.busLayer);
                 window.busLayer = L.layerGroup().addTo(map);
                 busMarkers = {};
                 data.buses.forEach(bus => {
                     const busIcon = L.divIcon({ html: '🚌', iconSize: [30, 30], className: 'bus-marker' });
+                    // Utiliser l'ETA fourni par le backend (IA) s'il existe, sinon calcul simple
                     let etaText = "";
-                    if (refLat && refLng) {
+                    if (bus.etaMinutes !== undefined && bus.etaMinutes !== null) {
+                        etaText = `<br/>🚏 Arrive dans : ${bus.etaMinutes} min (IA)`;
+                    } else if (refLat && refLng) {
                         const distToRef = haversine(refLat, refLng, bus.lat, bus.lng);
-                        const eta = formatTravelTime(distToRef);
-                        etaText = `<br/>🚏 Arrive dans : ${eta}`;
+                        let minutes = Math.round(distToRef / 1000 / SPEED_KMH * 60);
+                        minutes = Math.max(1, minutes);
+                        etaText = `<br/>🚏 Arrive dans : ${minutes} min (approx)`;
                     }
                     const popupContent = `<b>${bus.bus_Code}</b><br/>Plaque: ${bus.bus_PlateNumber}<br/>Statut: ${bus.bus_Status}${etaText}`;
                     const marker = L.marker([bus.lat, bus.lng], { icon: busIcon })
@@ -173,7 +167,7 @@
                     busMarkers[bus.bus_Id] = marker;
                 });
 
-                // Centrage : sur l'arrêt personnel, sinon sur le premier bus, avec zoom 15
+                // Centrage
                 if (data.personnelStop) {
                     map.setView([data.personnelStop.tS_Latitude, data.personnelStop.tS_Longitude], 15);
                 } else if (data.buses.length > 0) {
@@ -195,23 +189,24 @@
         // Vérification de proximité et mise à jour des popups
         async function checkProximity(data, refLat, refLng) {
             if (!data.personnelStop && !(refLat && refLng)) return;
-            // Si pas de point de référence, on reste sur arrêt personnel s'il existe, sinon on sort
-            if (!data.personnelStop && (!refLat || !refLng)) return;
             const stopLat = data.personnelStop ? data.personnelStop.tS_Latitude : refLat;
             const stopLng = data.personnelStop ? data.personnelStop.tS_Longitude : refLng;
-
             for (const bus of data.buses) {
                 const distance = haversine(stopLat, stopLng, bus.lat, bus.lng);
-
-                // Mettre à jour le popup du bus avec ETA frais
                 const marker = busMarkers[bus.bus_Id];
                 if (marker) {
-                    const eta = formatTravelTime(distance);
-                    const newPopup = `<b>${bus.bus_Code}</b><br/>Plaque: ${bus.bus_PlateNumber}<br/>Statut: ${bus.bus_Status}<br/>🚏 Arrive dans : ${eta}`;
+                    let etaText = "";
+                    if (bus.etaMinutes !== undefined && bus.etaMinutes !== null) {
+                        etaText = `<br/>🚏 Arrive dans : ${bus.etaMinutes} min (IA)`;
+                    } else {
+                        let minutes = Math.round(distance / 1000 / SPEED_KMH * 60);
+                        minutes = Math.max(1, minutes);
+                        etaText = `<br/>🚏 Arrive dans : ${minutes} min (approx)`;
+                    }
+                    const newPopup = `<b>${bus.bus_Code}</b><br/>Plaque: ${bus.bus_PlateNumber}<br/>Statut: ${bus.bus_Status}${etaText}`;
                     marker.bindPopup(newPopup);
                 }
 
-                // Déclencher alerte si seuil atteint
                 let triggerType = null;
                 if (distance <= 200 && lastAlertTypes[bus.bus_Id] !== '200m') {
                     triggerType = '200m';

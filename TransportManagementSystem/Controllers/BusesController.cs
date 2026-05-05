@@ -2,16 +2,20 @@
 using Microsoft.EntityFrameworkCore;
 using TransportManagementSystem.Data;
 using TransportManagementSystem.Models;
+using TransportManagementSystem.Services;
+using System;
 
 namespace TransportManagementSystem.Controllers
 {
     public class BusesController : Controller
     {
         private readonly ApplicationDbContext _context;
+        private readonly ETAPredictionService _etaService;
 
-        public BusesController(ApplicationDbContext context)
+        public BusesController(ApplicationDbContext context, ETAPredictionService etaService)
         {
             _context = context;
+            _etaService = etaService;
         }
 
         // ==============================
@@ -215,7 +219,7 @@ namespace TransportManagementSystem.Controllers
         }
 
         // ========================================================
-        // API POUR LE TABLEAU DE BORD DU PERSONNEL (CORRIGÉE)
+        // API POUR LE TABLEAU DE BORD DU PERSONNEL (avec ETA IA)
         // ========================================================
         [HttpGet]
         public async Task<IActionResult> GetPersonnelDashboardData()
@@ -225,8 +229,6 @@ namespace TransportManagementSystem.Controllers
                 return Unauthorized();
 
             var personnelId = long.Parse(personnelIdStr);
-
-            // Récupérer le personnel avec ses assignations directes (AssignedTrajectory, AssignedBus)
             var personnel = await _context.Personnel
                 .Include(p => p.AssignedTrajectory)
                 .Include(p => p.AssignedBus)
@@ -235,16 +237,12 @@ namespace TransportManagementSystem.Controllers
             Trajectory? trajectory = null;
             TrajectoryStop? stop = null;
 
-            // 1. Vérifier s'il y a une assignation directe (via AssignedTrajectoryId)
             if (personnel?.AssignedTrajectory != null && personnel.AssignedBus != null)
             {
                 trajectory = personnel.AssignedTrajectory;
-                // Optionnel : récupérer un arrêt spécifique si vous avez un champ PersonnelStopId
-                // stop = await _context.TrajectoryStops.FirstOrDefaultAsync(s => s.TS_Id == personnel.PersonnelStopId);
             }
             else
             {
-                // 2. Sinon, chercher dans la table PersonnelTrajectoryAssignments (ancienne méthode)
                 var assignment = await _context.PersonnelTrajectoryAssignments
                     .Include(a => a.Trajectory)
                     .Include(a => a.Stop)
@@ -262,44 +260,71 @@ namespace TransportManagementSystem.Controllers
             if (trajectory == null)
                 return NotFound("Trajectoire introuvable.");
 
-            // Bus actifs sur cette trajectoire
-            var buses = await _context.Buses
-                .Where(b => b.Bus_CurrentTrajectoryId == trajectory.Trajectory_Id
-                            && b.Bus_CurrentLatitude != null
-                            && b.Bus_CurrentLongitude != null)
-                .Select(b => new
-                {
-                    b.Bus_Id,
-                    b.Bus_Code,
-                    b.Bus_PlateNumber,
-                    b.Bus_Status,
-                    lat = b.Bus_CurrentLatitude,
-                    lng = b.Bus_CurrentLongitude,
-                    b.Bus_LastLocationUpdateTime
-                }).ToListAsync();
+            double? refLat = null;
+            double? refLng = null;
+            if (stop != null)
+            {
+                refLat = (double)stop.TS_Latitude;
+                refLng = (double)stop.TS_Longitude;
+            }
+            else if (trajectory.Trajectory_StartLatitude.HasValue && trajectory.Trajectory_StartLongitude.HasValue)
+            {
+                refLat = (double)trajectory.Trajectory_StartLatitude.Value;
+                refLng = (double)trajectory.Trajectory_StartLongitude.Value;
+            }
 
-            // Tous les arrêts de la trajectoire
-            var stops = await _context.TrajectoryStops
+            var buses = await _context.Buses
+                .Where(b => b.Bus_CurrentTrajectoryId == trajectory.Trajectory_Id && b.Bus_CurrentLatitude != null && b.Bus_CurrentLongitude != null)
+                .Select(b => new { b.Bus_Id, b.Bus_Code, b.Bus_PlateNumber, b.Bus_Status, lat = b.Bus_CurrentLatitude, lng = b.Bus_CurrentLongitude, b.Bus_LastLocationUpdateTime })
+                .ToListAsync();
+
+            var stopsList = await _context.TrajectoryStops
                 .Where(s => s.TS_TrajectoryId == trajectory.Trajectory_Id)
                 .OrderBy(s => s.TS_OrderIndex)
-                .Select(s => new
-                {
-                    s.TS_Id,
-                    s.TS_Name,
-                    s.TS_OrderIndex,
-                    s.TS_Latitude,
-                    s.TS_Longitude,
-                    s.TS_PlannedArrivalTime,
-                    s.TS_PlannedDepartureTime
-                }).ToListAsync();
+                .Select(s => new { s.TS_Id, s.TS_Name, s.TS_OrderIndex, s.TS_Latitude, s.TS_Longitude, s.TS_PlannedArrivalTime, s.TS_PlannedDepartureTime })
+                .ToListAsync();
 
-            var personnelStop = stop != null ? new
+            var personnelStop = stop != null ? new { stop.TS_Id, stop.TS_Name, stop.TS_Latitude, stop.TS_Longitude } : null;
+
+            var busesWithETA = new System.Collections.Generic.List<object>();
+            if (refLat.HasValue && refLng.HasValue)
             {
-                stop.TS_Id,
-                stop.TS_Name,
-                stop.TS_Latitude,
-                stop.TS_Longitude
-            } : null;
+                foreach (var bus in buses)
+                {
+                    // Conversion sécurisée : on sait que lat/lng ne sont pas null grâce au Where
+                    double busLat = bus.lat.HasValue ? (double)bus.lat.Value : 0;
+                    double busLng = bus.lng.HasValue ? (double)bus.lng.Value : 0;
+                    double distance = CalculateDistance(refLat.Value, refLng.Value, busLat, busLng);
+                    float eta = _etaService.PredictETA((float)(distance / 1000.0), DateTime.Now);
+                    busesWithETA.Add(new
+                    {
+                        bus.Bus_Id,
+                        bus.Bus_Code,
+                        bus.Bus_PlateNumber,
+                        bus.Bus_Status,
+                        lat = bus.lat,
+                        lng = bus.lng,
+                        bus.Bus_LastLocationUpdateTime,
+                        etaMinutes = Math.Round(eta)
+                    });
+                }
+            }
+            else
+            {
+                foreach (var bus in buses)
+                {
+                    busesWithETA.Add(new
+                    {
+                        bus.Bus_Id,
+                        bus.Bus_Code,
+                        bus.Bus_PlateNumber,
+                        bus.Bus_Status,
+                        lat = bus.lat,
+                        lng = bus.lng,
+                        bus.Bus_LastLocationUpdateTime
+                    });
+                }
+            }
 
             return Ok(new
             {
@@ -315,8 +340,8 @@ namespace TransportManagementSystem.Controllers
                     EndLng = trajectory.Trajectory_EndLongitude
                 },
                 PersonnelStop = personnelStop,
-                Stops = stops,
-                Buses = buses
+                Stops = stopsList,
+                Buses = busesWithETA
             });
         }
 
@@ -328,7 +353,6 @@ namespace TransportManagementSystem.Controllers
                 return Unauthorized();
 
             var personnelId = long.Parse(personnelIdStr);
-
             var lastAlert = await _context.Alerts
                 .Where(a => a.Alert_PersonnelId == personnelId && a.Alert_BusId == model.BusId)
                 .OrderByDescending(a => a.Alert_SentAt)
@@ -359,11 +383,20 @@ namespace TransportManagementSystem.Controllers
             }
             return Ok(new { alertType = "none" });
         }
+
+        private double CalculateDistance(double lat1, double lon1, double lat2, double lon2)
+        {
+            const double R = 6371e3;
+            var φ1 = lat1 * Math.PI / 180;
+            var φ2 = lat2 * Math.PI / 180;
+            var Δφ = (lat2 - lat1) * Math.PI / 180;
+            var Δλ = (lon2 - lon1) * Math.PI / 180;
+            var a = Math.Sin(Δφ / 2) * Math.Sin(Δφ / 2) + Math.Cos(φ1) * Math.Cos(φ2) * Math.Sin(Δλ / 2) * Math.Sin(Δλ / 2);
+            var c = 2 * Math.Atan2(Math.Sqrt(a), Math.Sqrt(1 - a));
+            return R * c;
+        }
     }
 
-    // ========================================================
-    // MODÈLES INTERNES (DTO)
-    // ========================================================
     public class LocationUpdateModel
     {
         public decimal Latitude { get; set; }
