@@ -112,14 +112,14 @@ namespace TransportManagementSystem.Controllers
 
         // API: POST /Personnel/UpdatePersonnel
         [HttpPost]
-        //[ValidateAntiForgeryToken]
         public async Task<IActionResult> UpdatePersonnel([FromBody] PersonnelUpdateModel model)
         {
             if (model == null || model.Personnel_Id == 0)
-                return BadRequest("Données invalides");
+                return BadRequest(new { success = false, message = "Données invalides" });
 
             var personnel = await _context.Personnel.FindAsync(model.Personnel_Id);
-            if (personnel == null) return NotFound();
+            if (personnel == null)
+                return NotFound(new { success = false, message = "Personnel non trouvé" });
 
             personnel.Personnel_FirstName = model.Personnel_FirstName;
             personnel.Personnel_LastName = model.Personnel_LastName;
@@ -175,7 +175,7 @@ namespace TransportManagementSystem.Controllers
         private bool PersonnelExists(long id) => _context.Personnel.Any(e => e.Personnel_Id == id);
     }
 
-    // Modèle pour la mise à jour – toutes les chaînes sont initialisées pour éviter CS8618
+    // Modèle pour la mise à jour
     public class PersonnelUpdateModel
     {
         public long Personnel_Id { get; set; }
@@ -195,6 +195,6 @@ namespace TransportManagementSystem.Controllers
         public string HomeAddress { get; set; } = string.Empty;
         public int? AssignedTrajectoryId { get; set; }
         public long? AssignedBusId { get; set; }
-        public bool? IsAssigned { get; set; }
+        public bool IsAssigned { get; set; }
     }
 }
