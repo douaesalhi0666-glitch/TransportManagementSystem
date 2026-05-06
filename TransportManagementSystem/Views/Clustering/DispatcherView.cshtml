@@ -8,40 +8,112 @@
 <h2>🗺️ Tous les points de ramassage (arrêts) par trajectoire</h2>
 <p>Liste et visualisation de tous les arrêts créés pour chaque trajectoire.</p>
 
+<div class="row mb-3">
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-body">
+                <label>Filtrer par trajectoire</label>
+                <select id="trajectoryFilter" class="form-control">
+                    <option value="all">-- Toutes les trajectoires --</option>
+                    @foreach (var group in Model.GroupBy(s => s.TS_TrajectoryId))
+                    {
+                        var firstStop = group.FirstOrDefault();
+                        if (firstStop != null && firstStop.Trajectory != null)
+                        {
+                            <option value="@firstStop.TS_TrajectoryId">
+                                @firstStop.Trajectory.Trajectory_Name (@firstStop.Trajectory.Trajectory_Code)
+                            </option>
+                        }
+                    }
+                </select>
+            </div>
+        </div>
+    </div>
+</div>
+
 <div id="map" style="height: 500px; width: 100%; border-radius: 10px; margin-bottom: 20px;"></div>
 
 <div class="card">
-    <div class="card-header bg-primary text-white">
-        <h5>📋 Tableau des arrêts</h5>
+    <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+        <h5 class="mb-0">📋 Tableau des arrêts</h5>
+        <span id="tableFilterInfo" class="badge bg-light text-dark">Tous les arrêts</span>
     </div>
     <div class="card-body">
-        <table class="table table-striped table-bordered" id="stopsTable">
-            <thead>
-                <tr>
-                    <th>ID Trajectoire</th>
-                    <th>Trajectoire</th>
-                    <th>Code</th>
-                    <th>Ordre</th>
-                    <th>Nom de l'arrêt</th>
-                    <th>Latitude</th>
-                    <th>Longitude</th>
-                </tr>
-            </thead>
-            <tbody>
-                @foreach (var stop in Model.OrderBy(s => s.TS_TrajectoryId).ThenBy(s => s.TS_OrderIndex))
-                {
+        <div class="table-responsive">
+            <table class="table table-striped table-bordered" id="stopsTable">
+                <thead>
                     <tr>
-                        <td>@stop.TS_TrajectoryId</td>
-                        <td>@(stop.Trajectory?.Trajectory_Name)</td>
-                        <td>@(stop.Trajectory?.Trajectory_Code)</td>
-                        <td>@stop.TS_OrderIndex</td>
-                        <td>@stop.TS_Name</td>
-                        <td>@stop.TS_Latitude</td>
-                        <td>@stop.TS_Longitude</td>
+                        <th>ID Trajectoire</th>
+                        <th>Trajectoire</th>
+                        <th>Code</th>
+                        <th>Ordre</th>
+                        <th>Nom de l'arrêt</th>
+                        <th>Latitude</th>
+                        <th>Longitude</th>
+                        <th>Actions</th>
                     </tr>
-                }
-            </tbody>
-        </table>
+                </thead>
+                <tbody id="stopsTableBody">
+                    @foreach (var stop in Model.OrderBy(s => s.TS_TrajectoryId).ThenBy(s => s.TS_OrderIndex))
+                    {
+                        <tr data-id="@stop.TS_Id" data-trajectory="@stop.TS_TrajectoryId" data-lat="@stop.TS_Latitude" data-lng="@stop.TS_Longitude" data-name="@stop.TS_Name" data-order="@stop.TS_OrderIndex">
+                            <td>@stop.TS_TrajectoryId</td>
+                            <td>@(stop.Trajectory?.Trajectory_Name)</td>
+                            <td>@(stop.Trajectory?.Trajectory_Code)</td>
+                            <td><span class="original-order">@stop.TS_OrderIndex</span></td>
+                            <td><span class="stop-name">@stop.TS_Name</span></td>
+                            <td>@stop.TS_Latitude</td>
+                            <td>@stop.TS_Longitude</td>
+                            <td>
+                                <button class="btn btn-sm btn-warning edit-stop" data-id="@stop.TS_Id" data-name="@stop.TS_Name" data-lat="@stop.TS_Latitude" data-lng="@stop.TS_Longitude" data-order="@stop.TS_OrderIndex" data-trajectory="@stop.TS_TrajectoryId">
+                                    ✏️ Modifier
+                                </button>
+                                <button class="btn btn-sm btn-danger delete-stop" data-id="@stop.TS_Id" data-name="@stop.TS_Name">
+                                    🗑️ Supprimer
+                                </button>
+                             </td>
+                         </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Modifier Arrêt -->
+<div class="modal fade" id="editStopModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-warning">
+                <h5 class="modal-title">✏️ Modifier l'arrêt</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <input type="hidden" id="editStopId" />
+                <div class="mb-3">
+                    <label>Nom de l'arrêt</label>
+                    <input type="text" id="editStopName" class="form-control" />
+                </div>
+                <div class="row">
+                    <div class="col-md-6">
+                        <label>Latitude</label>
+                        <input type="text" id="editStopLat" class="form-control" />
+                    </div>
+                    <div class="col-md-6">
+                        <label>Longitude</label>
+                        <input type="text" id="editStopLng" class="form-control" />
+                    </div>
+                </div>
+                <div class="mt-3">
+                    <label>Ordre</label>
+                    <input type="number" id="editStopOrder" class="form-control" />
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
+                <button type="button" class="btn btn-primary" id="saveStopChanges">Enregistrer</button>
+            </div>
+        </div>
     </div>
 </div>
 
@@ -49,80 +121,246 @@
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 
     <style>
-        .stop-marker {
-        background-color: #28a745;
-        color: white;
-        border-radius: 50%;
-        text-align: center;
-        font-size: 12px;
-        font-weight: bold;
-        width: 24px;
-        height: 24px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        border: 2px solid white;
-        box-shadow: 0 2px 6px rgba(0,0,0,0.3);
-        }
+        .stop-marker { background-color: #28a745; color: white; border-radius: 50%; text-align: center; font-size: 12px; font-weight: bold; width: 24px; height: 24px; display: flex; align-items: center; justify-content: center; border: 2px solid white; box-shadow: 0 2px 6px rgba(0,0,0,0.3); cursor: pointer; }
+        .stop-marker:hover { transform: scale(1.1); transition: transform 0.2s; }
     </style>
 
     <script>
         let map;
+        let currentMarkers = [];
+        let currentTrajectoryId = null;
+        let allStopsData = [];
         const colorPalette = ['#3388ff', '#ff3333', '#33ff33', '#ff33cc', '#ff9933', '#33cccc', '#9966ff', '#66ff99'];
 
         async function loadData() {
-        const trajResponse = await fetch('/Clustering/GetTrajectoriesWithStops');
-        const trajectories = await trajResponse.json();
+            const selectedTrajId = document.getElementById('trajectoryFilter').value;
+            currentTrajectoryId = selectedTrajId === 'all' ? null : parseInt(selectedTrajId);
 
-        const stopsResponse = await fetch('/Clustering/GetAllStops');
-        const allStops = await stopsResponse.json();
+            let url = '/Clustering/GetAllStops';
+            if (currentTrajectoryId) {
+                url = `/Clustering/GetFilteredStops?trajectoryId=${currentTrajectoryId}`;
+                document.getElementById('tableFilterInfo').innerHTML = `Trajectoire filtrée`;
+            } else {
+                document.getElementById('tableFilterInfo').innerHTML = `Tous les arrêts`;
+            }
 
-        if (!map) {
-        map = L.map('map').setView([46.603354, 1.888334], 6);
-        L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
-        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a> & CartoDB'
-        }).addTo(map);
+            const stopsResponse = await fetch(url);
+            const allStops = await stopsResponse.json();
+            allStopsData = allStops;
+
+            if (!map) {
+                map = L.map('map').setView([34.2610, -6.5800], 10);
+                L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
+                    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a> & CartoDB'
+                }).addTo(map);
+            }
+
+            map.eachLayer(layer => {
+                if (layer instanceof L.Marker || layer instanceof L.Polyline) {
+                    map.removeLayer(layer);
+                }
+            });
+            currentMarkers = [];
+
+            const trajectoriesResponse = await fetch('/Clustering/GetTrajectoriesWithStops');
+            const trajectories = await trajectoriesResponse.json();
+
+            trajectories.forEach(traj => {
+                if (!currentTrajectoryId || traj.trajectory_Id === currentTrajectoryId) {
+                    if (traj.stops && traj.stops.length >= 2) {
+                        const points = traj.stops.map(s => [s.tS_Latitude, s.tS_Longitude]);
+                        const color = colorPalette[(traj.trajectory_Id || 0) % colorPalette.length];
+                        L.polyline(points, { color: color, weight: 4, opacity: 0.7 })
+                            .bindPopup(`<strong>${traj.trajectory_Name}</strong><br>${traj.trajectory_Code}`)
+                            .addTo(map);
+                    }
+                }
+            });
+
+            const stopsList = allStops.map(stop => ({
+                id: stop.tS_Id,
+                name: stop.tS_Name,
+                lat: stop.tS_Latitude,
+                lng: stop.tS_Longitude,
+                orderIndex: stop.tS_OrderIndex,
+                trajectoryId: stop.tS_TrajectoryId,
+                trajectoryName: stop.trajectoryName,
+                trajectoryCode: stop.trajectoryCode
+            }));
+
+            stopsList.forEach((stop, idx) => {
+                const icon = L.divIcon({
+                    html: stop.orderIndex.toString(),
+                    iconSize: [24, 24],
+                    className: 'stop-marker'
+                });
+                
+                const popupContent = `
+                    <strong>${stop.name}</strong><br>
+                    Trajectoire: ${stop.trajectoryName}<br>
+                    Ordre: ${stop.orderIndex}<br>
+                    <button class="btn btn-sm btn-warning mt-2" onclick="editStopFromMap(${stop.id}, '${stop.name.replace(/'/g, "\\'")}', ${stop.lat}, ${stop.lng}, ${stop.orderIndex}, ${stop.trajectoryId})">✏️ Modifier</button>
+                    <button class="btn btn-sm btn-danger mt-2" onclick="deleteStopFromMap(${stop.id}, '${stop.name.replace(/'/g, "\\'")}')">🗑️ Supprimer</button>
+                `;
+                
+                const marker = L.marker([stop.lat, stop.lng], { icon })
+                    .bindPopup(popupContent)
+                    .addTo(map);
+                marker.on('click', function() { this.openPopup(); });
+                currentMarkers.push(marker);
+            });
+
+            if (allStops.length > 0) {
+                const bounds = L.latLngBounds(allStops.map(s => [s.tS_Latitude, s.tS_Longitude]));
+                map.fitBounds(bounds);
+            }
+
+            updateTable(allStops);
         }
 
-        map.eachLayer(layer => {
-        if (layer instanceof L.Marker || layer instanceof L.Polyline) {
-        map.removeLayer(layer);
+        function updateTable(stops) {
+            const tbody = document.getElementById('stopsTableBody');
+            tbody.innerHTML = '';
+            
+            const filteredStops = currentTrajectoryId ? stops.filter(s => s.tS_TrajectoryId === currentTrajectoryId) : stops;
+            
+            filteredStops.forEach(stop => {
+                const row = tbody.insertRow();
+                row.setAttribute('data-id', stop.tS_Id);
+                row.setAttribute('data-trajectory', stop.tS_TrajectoryId);
+                row.setAttribute('data-lat', stop.tS_Latitude);
+                row.setAttribute('data-lng', stop.tS_Longitude);
+                row.setAttribute('data-name', stop.tS_Name);
+                row.setAttribute('data-order', stop.tS_OrderIndex);
+                
+                row.insertCell(0).innerHTML = stop.tS_TrajectoryId;
+                row.insertCell(1).innerHTML = stop.trajectoryName || '-';
+                row.insertCell(2).innerHTML = stop.trajectoryCode || '-';
+                row.insertCell(3).innerHTML = `<span class="original-order">${stop.tS_OrderIndex}</span>`;
+                row.insertCell(4).innerHTML = `<span class="stop-name">${escapeHtml(stop.tS_Name)}</span>`;
+                row.insertCell(5).innerHTML = stop.tS_Latitude;
+                row.insertCell(6).innerHTML = stop.tS_Longitude;
+                
+                const actionsCell = row.insertCell(7);
+                actionsCell.innerHTML = `
+                    <button class="btn btn-sm btn-warning edit-stop" data-id="${stop.tS_Id}" data-name="${escapeHtml(stop.tS_Name)}" data-lat="${stop.tS_Latitude}" data-lng="${stop.tS_Longitude}" data-order="${stop.tS_OrderIndex}" data-trajectory="${stop.tS_TrajectoryId}">
+                        ✏️ Modifier
+                    </button>
+                    <button class="btn btn-sm btn-danger delete-stop" data-id="${stop.tS_Id}" data-name="${escapeHtml(stop.tS_Name)}">
+                        🗑️ Supprimer
+                    </button>
+                `;
+            });
+            
+            attachTableButtonEvents();
         }
-        });
 
-        trajectories.forEach((traj, idx) => {
-        if (traj.stops && traj.stops.length >= 2) {
-        const points = traj.stops.map(s => [s.tS_Latitude, s.tS_Longitude]);
-        const color = colorPalette[idx % colorPalette.length];
-        L.polyline(points, { color: color, weight: 4, opacity: 0.7 })
-        .bindPopup(`<strong>${traj.trajectory_Name}</strong><br>${traj.trajectory_Code}`)
-        .addTo(map);
+        function escapeHtml(text) {
+            if (!text) return '';
+            return text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
         }
-        });
 
-        allStops.forEach(stop => {
-        const icon = L.divIcon({
-        html: stop.tS_OrderIndex.toString(),
-        iconSize: [24, 24],
-        className: 'stop-marker'
-        });
-        const popupContent = `<strong>${stop.tS_Name}</strong><br/>
-        Trajectoire: ${stop.trajectoryName}<br/>
-        Ordre: ${stop.tS_OrderIndex}<br/>
-        Coordonnées: ${stop.tS_Latitude}, ${stop.tS_Longitude}`;
-        L.marker([stop.tS_Latitude, stop.tS_Longitude], { icon })
-        .bindPopup(popupContent)
-        .addTo(map);
-        });
+        function attachTableButtonEvents() {
+            document.querySelectorAll('.edit-stop').forEach(btn => {
+                btn.removeEventListener('click', editStopHandler);
+                btn.addEventListener('click', editStopHandler);
+            });
+            document.querySelectorAll('.delete-stop').forEach(btn => {
+                btn.removeEventListener('click', deleteStopHandler);
+                btn.addEventListener('click', deleteStopHandler);
+            });
+        }
 
-        if (allStops.length > 0) {
-        const latLngs = allStops.map(s => [s.tS_Latitude, s.tS_Longitude]);
-        const bounds = L.latLngBounds(latLngs);
-        map.fitBounds(bounds);
+        function editStopHandler(e) {
+            const btn = e.currentTarget;
+            const id = btn.dataset.id;
+            const name = btn.dataset.name;
+            const lat = btn.dataset.lat;
+            const lng = btn.dataset.lng;
+            const order = btn.dataset.order;
+            const trajectory = btn.dataset.trajectory;
+            openEditModal(id, name, lat, lng, order, trajectory);
         }
+
+        function deleteStopHandler(e) {
+            const btn = e.currentTarget;
+            const id = btn.dataset.id;
+            const name = btn.dataset.name;
+            deleteStop(id, name);
         }
+
+        window.editStopFromMap = function(id, name, lat, lng, order, trajectory) {
+            openEditModal(id, name, lat, lng, order, trajectory);
+        };
+
+        window.deleteStopFromMap = function(id, name) {
+            deleteStop(id, name);
+        };
+
+        function openEditModal(id, name, lat, lng, order, trajectory) {
+            document.getElementById('editStopId').value = id;
+            document.getElementById('editStopName').value = name;
+            document.getElementById('editStopLat').value = lat;
+            document.getElementById('editStopLng').value = lng;
+            document.getElementById('editStopOrder').value = order;
+            const editModal = new bootstrap.Modal(document.getElementById('editStopModal'));
+            editModal.show();
+        }
+
+        async function deleteStop(id, name) {
+            if (confirm(`Êtes-vous sûr de vouloir supprimer l'arrêt "${name}" ?`)) {
+                try {
+                    const response = await fetch(`/Clustering/DeleteStop?id=${id}`, {
+                        method: 'DELETE',
+                        headers: { 'Content-Type': 'application/json' }
+                    });
+                    if (response.ok) {
+                        alert('Arrêt supprimé avec succès !');
+                        loadData();
+                    } else {
+                        alert('Erreur lors de la suppression.');
+                    }
+                } catch (err) {
+                    alert('Erreur réseau.');
+                }
+            }
+        }
+
+        async function saveStopChanges() {
+            const id = document.getElementById('editStopId').value;
+            const name = document.getElementById('editStopName').value;
+            const lat = parseFloat(document.getElementById('editStopLat').value);
+            const lng = parseFloat(document.getElementById('editStopLng').value);
+            const order = parseInt(document.getElementById('editStopOrder').value);
+            
+            if (!name || isNaN(lat) || isNaN(lng) || isNaN(order)) {
+                alert('Veuillez remplir tous les champs correctement.');
+                return;
+            }
+            
+            try {
+                const response = await fetch('/Clustering/UpdateStop', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ id: parseInt(id), name: name, latitude: lat, longitude: lng, orderIndex: order })
+                });
+                if (response.ok) {
+                    alert('Arrêt modifié avec succès !');
+                    bootstrap.Modal.getInstance(document.getElementById('editStopModal')).hide();
+                    loadData();
+                } else {
+                    alert('Erreur lors de la modification.');
+                }
+            } catch (err) {
+                alert('Erreur réseau.');
+            }
+        }
+
+        document.getElementById('trajectoryFilter').addEventListener('change', () => loadData());
+        document.getElementById('saveStopChanges').addEventListener('click', saveStopChanges);
 
         loadData();
     </script>

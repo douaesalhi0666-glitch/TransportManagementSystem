@@ -18,4 +18,4 @@ namespace TransportManagementSystem.Models
         public int TotalWorkers { get; set; }
         public int WorkersDropped { get; set; }
     }
-}
+} 

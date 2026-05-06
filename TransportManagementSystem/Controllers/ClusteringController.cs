@@ -18,7 +18,10 @@ namespace TransportManagementSystem.Controllers
             _context = context;
         }
 
-        // ---------- STOPS VIEWER PAGE ----------
+        // ================================================
+        // STOPS VIEWER PAGE
+        // ================================================
+
         public async Task<IActionResult> DispatcherView()
         {
             var stops = await _context.TrajectoryStops
@@ -75,7 +78,41 @@ namespace TransportManagementSystem.Controllers
             return Ok(trajectories);
         }
 
-        // ---------- CLUSTERING FOR PICKUP POINTS ----------
+        [HttpGet]
+        public async Task<IActionResult> GetFilteredStops(int? trajectoryId)
+        {
+            var query = _context.TrajectoryStops
+                .Include(s => s.Trajectory)
+                .AsQueryable();
+
+            if (trajectoryId.HasValue && trajectoryId.Value > 0)
+            {
+                query = query.Where(s => s.TS_TrajectoryId == trajectoryId.Value);
+            }
+
+            var stops = await query
+                .OrderBy(s => s.TS_TrajectoryId)
+                .ThenBy(s => s.TS_OrderIndex)
+                .Select(s => new
+                {
+                    s.TS_Id,
+                    s.TS_Name,
+                    s.TS_OrderIndex,
+                    s.TS_Latitude,
+                    s.TS_Longitude,
+                    s.TS_TrajectoryId,
+                    TrajectoryName = s.Trajectory != null ? s.Trajectory.Trajectory_Name : "Inconnue",
+                    TrajectoryCode = s.Trajectory != null ? s.Trajectory.Trajectory_Code : "N/A"
+                })
+                .ToListAsync();
+
+            return Ok(stops);
+        }
+
+        // ================================================
+        // CLUSTERING FOR PICKUP POINTS
+        // ================================================
+
         [HttpGet]
         public async Task<IActionResult> GetTrajectoriesForPickup()
         {
@@ -122,9 +159,8 @@ namespace TransportManagementSystem.Controllers
                 return Ok(new { clusters = new List<object>(), points = new List<object>(), message = "Aucun personnel avec coordonnées pour cette trajectoire." });
 
             int k = request.NumberOfClusters;
-            k = Math.Max(1, Math.Min(k, personnelPoints.Count)); // éviter k > nb points
+            k = Math.Max(1, Math.Min(k, personnelPoints.Count));
 
-            // Ajouter un très petit bruit aux points en double pour que KMeans puisse les séparer
             var distinctPoints = personnelPoints
                 .Select(p => new { p.X, p.Y })
                 .Distinct()
@@ -179,7 +215,139 @@ namespace TransportManagementSystem.Controllers
             return View();
         }
 
-        // ---------- UTILITAIRES ----------
+        // ================================================
+        // DELETE AND UPDATE STOP METHODS
+        // ================================================
+
+        [HttpDelete]
+        public async Task<IActionResult> DeleteStop(int id)
+        {
+            var stop = await _context.TrajectoryStops.FindAsync(id);
+            if (stop == null)
+                return NotFound(new { success = false, message = "Arrêt non trouvé" });
+
+            int trajectoryId = stop.TS_TrajectoryId;
+            _context.TrajectoryStops.Remove(stop);
+            await _context.SaveChangesAsync();
+
+            // Reorder remaining stops
+            var remainingStops = await _context.TrajectoryStops
+                .Where(s => s.TS_TrajectoryId == trajectoryId)
+                .OrderBy(s => s.TS_OrderIndex)
+                .ToListAsync();
+
+            for (int i = 0; i < remainingStops.Count; i++)
+            {
+                remainingStops[i].TS_OrderIndex = i + 1;
+            }
+            await _context.SaveChangesAsync();
+
+            return Ok(new { success = true, message = "Arrêt supprimé avec succès" });
+        }
+
+        [HttpPost]
+        public async Task<IActionResult> UpdateStop([FromBody] UpdateStopModel model)
+        {
+            if (model == null || model.Id <= 0)
+                return BadRequest(new { success = false, message = "Données invalides" });
+
+            var stop = await _context.TrajectoryStops.FindAsync(model.Id);
+            if (stop == null)
+                return NotFound(new { success = false, message = "Arrêt non trouvé" });
+
+            stop.TS_Name = model.Name;
+            stop.TS_Latitude = model.Latitude;
+            stop.TS_Longitude = model.Longitude;
+            stop.TS_OrderIndex = model.OrderIndex;
+
+            await _context.SaveChangesAsync();
+
+            return Ok(new { success = true, message = "Arrêt modifié avec succès" });
+        }
+
+        // ================================================
+        // AI POWERED ROUTE OPTIMIZATION
+        // ================================================
+
+        [HttpPost]
+        public async Task<IActionResult> GetOptimizedRoute([FromBody] OptimizedRouteRequest request)
+        {
+            if (request.TrajectoryId <= 0)
+                return BadRequest("Trajectoire invalide");
+
+            var stops = await _context.TrajectoryStops
+                .Where(s => s.TS_TrajectoryId == request.TrajectoryId)
+                .OrderBy(s => s.TS_OrderIndex)
+                .ToListAsync();
+
+            if (!stops.Any())
+                return Ok(new List<object>());
+
+            var stopsList = stops.Select(s => new
+            {
+                s.TS_Id,
+                s.TS_Name,
+                s.TS_OrderIndex,
+                Lat = (double)s.TS_Latitude,
+                Lng = (double)s.TS_Longitude
+            }).ToList();
+
+            var remaining = stopsList.ToList();
+            var ordered = new List<object>();
+            double currentLat = request.DriverLatitude;
+            double currentLng = request.DriverLongitude;
+
+            while (remaining.Any())
+            {
+                int nearestIdx = 0;
+                double nearestDist = CalculateDistanceOptimized(currentLat, currentLng, remaining[0].Lat, remaining[0].Lng);
+
+                for (int i = 1; i < remaining.Count; i++)
+                {
+                    double dist = CalculateDistanceOptimized(currentLat, currentLng, remaining[i].Lat, remaining[i].Lng);
+                    if (dist < nearestDist)
+                    {
+                        nearestDist = dist;
+                        nearestIdx = i;
+                    }
+                }
+
+                var nextStop = remaining[nearestIdx];
+                ordered.Add(new
+                {
+                    nextStop.TS_Id,
+                    nextStop.TS_Name,
+                    nextStop.TS_OrderIndex,
+                    Lat = nextStop.Lat,
+                    Lng = nextStop.Lng,
+                    OptimizedOrder = ordered.Count + 1,
+                    DistanceFromPrevious = Math.Round(nearestDist, 2)
+                });
+
+                currentLat = nextStop.Lat;
+                currentLng = nextStop.Lng;
+                remaining.RemoveAt(nearestIdx);
+            }
+
+            return Ok(ordered);
+        }
+
+        private double CalculateDistanceOptimized(double lat1, double lon1, double lat2, double lon2)
+        {
+            const double R = 6371;
+            var dLat = (lat2 - lat1) * Math.PI / 180;
+            var dLon = (lon2 - lon1) * Math.PI / 180;
+            var a = Math.Sin(dLat / 2) * Math.Sin(dLat / 2) +
+                    Math.Cos(lat1 * Math.PI / 180) * Math.Cos(lat2 * Math.PI / 180) *
+                    Math.Sin(dLon / 2) * Math.Sin(dLon / 2);
+            var c = 2 * Math.Atan2(Math.Sqrt(a), Math.Sqrt(1 - a));
+            return R * c;
+        }
+
+        // ================================================
+        // UTILITIES
+        // ================================================
+
         private List<Cluster> KMeans(List<ClusterPoint> points, int k, int maxIterations = 100)
         {
             if (points.Count == 0) return new List<Cluster>();
@@ -244,6 +412,10 @@ namespace TransportManagementSystem.Controllers
         }
     }
 
+    // ================================================
+    // REQUEST MODELS
+    // ================================================
+
     public class PickupRequest
     {
         public int TrajectoryId { get; set; }
@@ -256,5 +428,21 @@ namespace TransportManagementSystem.Controllers
         public string Name { get; set; } = string.Empty;
         public decimal Latitude { get; set; }
         public decimal Longitude { get; set; }
+    }
+
+    public class OptimizedRouteRequest
+    {
+        public int TrajectoryId { get; set; }
+        public double DriverLatitude { get; set; }
+        public double DriverLongitude { get; set; }
+    }
+
+    public class UpdateStopModel
+    {
+        public int Id { get; set; }
+        public string Name { get; set; } = string.Empty;
+        public decimal Latitude { get; set; }
+        public decimal Longitude { get; set; }
+        public int OrderIndex { get; set; }
     }
 }
