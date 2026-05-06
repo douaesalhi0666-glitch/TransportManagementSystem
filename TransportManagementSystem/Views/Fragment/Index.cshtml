@@ -1,0 +1,68 @@
+﻿@{
+    ViewData["Title"] = "Gestion des Fragments";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+<h1>🧩 Gestion des fragments de trajet</h1>
+<p>Divisez un trajet en fragments selon la capacité des bus (max 20 personnes par fragment).</p>
+
+@if (TempData["Success"] != null)
+{
+    <div class="alert alert-success">
+        ✅ @TempData["Success"]
+    </div>
+}
+@if (TempData["Error"] != null)
+{
+    <div class="alert alert-danger">
+        ❌ @TempData["Error"]
+    </div>
+}
+
+<div class="row">
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header bg-primary text-white">
+                <h5>📊 Générer des fragments</h5>
+            </div>
+            <div class="card-body">
+                <form method="post" asp-action="GenerateFragments">
+                    <div class="mb-3">
+                        <label>Trajectoire</label>
+                        <select name="trajectoryId" class="form-control" required>
+                            <option value="">-- Sélectionnez une trajectoire --</option>
+                            @foreach (var traj in ViewBag.Trajectories)
+                            {
+                                <option value="@traj.Trajectory_Id">@traj.Trajectory_Name (@traj.Trajectory_Code)</option>
+                            }
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label>Capacité maximale par fragment</label>
+                        <input type="number" name="busCapacity" class="form-control" value="20" min="1" max="100" />
+                        <small class="text-muted">Nombre maximal de personnes par fragment (défaut: 20)</small>
+                    </div>
+                    <button type="submit" class="btn btn-primary w-100">🤖 Générer les fragments</button>
+                </form>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header bg-info text-white">
+                <h5>ℹ️ Comment ça marche</h5>
+            </div>
+            <div class="card-body">
+                <ol>
+                    <li>Chaque point de ramassage a un certain nombre de personnels assignés</li>
+                    <li>Le système parcourt les points dans l'ordre</li>
+                    <li>Il regroupe les points consécutifs dont la somme des personnels ≤ capacité du bus</li>
+                    <li>Chaque groupe forme un <strong>fragment</strong> qui sera pris en charge par un bus</li>
+                    <li>Un bus ne peut pas dépasser sa capacité (20 personnes par défaut)</li>
+                </ol>
+                <hr />
+                <a href="/Fragment/ViewFragments" class="btn btn-secondary w-100">📋 Voir tous les fragments existants</a>
+            </div>
+        </div>
+    </div>
+</div>

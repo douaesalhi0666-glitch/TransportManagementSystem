@@ -1,0 +1,62 @@
+﻿@{
+    ViewData["Title"] = "Assigner un bus au fragment";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+    var fragment = ViewBag.Fragment as TransportManagementSystem.Models.TrajectoryFragment;
+    var availableBuses = ViewBag.AvailableBuses as IEnumerable<TransportManagementSystem.Models.Bus>;
+}
+
+<h1>🚌 Assigner un bus au fragment</h1>
+
+@if (TempData["Success"] != null)
+{
+    <div class="alert alert-success">✅ @TempData["Success"]</div>
+}
+@if (TempData["Error"] != null)
+{
+    <div class="alert alert-danger">❌ @TempData["Error"]</div>
+}
+
+<div class="row">
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header bg-info text-white">
+                <h5>📌 Fragment sélectionné</h5>
+            </div>
+            <div class="card-body">
+                <p><strong>Code :</strong> @fragment?.Fragment_Code</p>
+                <p><strong>Nom :</strong> @fragment?.Fragment_Name</p>
+                <p><strong>Trajet :</strong> @fragment?.Trajectory?.Trajectory_Name</p>
+                <p><strong>Personnels à transporter :</strong> @fragment?.Total_Workers</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header bg-success text-white">
+                <h5>🚍 Assigner un bus</h5>
+            </div>
+            <div class="card-body">
+                <form method="post">
+                    <input type="hidden" name="fragmentId" value="@fragment?.Fragment_Id" />
+                    <div class="mb-3">
+                        <label>Bus disponible</label>
+                        <select name="busId" class="form-control" required>
+                            <option value="">-- Sélectionnez un bus --</option>
+                            @foreach (var bus in availableBuses)
+                            {
+                                <option value="@bus.Bus_Id">@bus.Bus_Code (@bus.Bus_PlateNumber) - Capacité @(bus.Bus_Capacity ?? 50) places</option>
+                            }
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label>Date et heure de départ</label>
+                        <input type="datetime-local" name="startTime" class="form-control" required value="@DateTime.Now.ToString("yyyy-MM-ddTHH:mm")" />
+                    </div>
+                    <button type="submit" class="btn btn-primary w-100">📅 Assigner ce bus</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<a href="/Fragment/ViewFragments" class="btn btn-secondary mt-3">Retour à la liste des fragments</a>
