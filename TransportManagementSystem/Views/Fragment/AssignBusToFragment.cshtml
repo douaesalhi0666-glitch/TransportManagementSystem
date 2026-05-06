@@ -1,8 +1,9 @@
-﻿@{
+﻿@using TransportManagementSystem.Models
+@{
     ViewData["Title"] = "Assigner un bus au fragment";
     Layout = "~/Views/Shared/_Layout.cshtml";
-    var fragment = ViewBag.Fragment as TransportManagementSystem.Models.TrajectoryFragment;
-    var availableBuses = ViewBag.AvailableBuses as IEnumerable<TransportManagementSystem.Models.Bus>;
+    var fragment = ViewBag.Fragment as TrajectoryFragment;
+    var availableBuses = ViewBag.AvailableBuses as IEnumerable<Bus>;
 }
 
 <h1>🚌 Assigner un bus au fragment</h1>

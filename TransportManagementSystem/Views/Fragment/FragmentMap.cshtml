@@ -1,4 +1,5 @@
-﻿@{
+﻿@using TransportManagementSystem.Models
+@{
     ViewData["Title"] = "Carte du fragment";
     Layout = "~/Views/Shared/_Layout.cshtml";
     var fragmentData = ViewBag.FragmentData as dynamic;
@@ -48,8 +49,20 @@ else
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
     <style>
-        .stop-marker { background-color: #28a745; color: white; border-radius: 50%; text-align: center; font-size: 12px; font-weight: bold; width: 30px; height: 30px; display: flex; align-items: center; justify-content: center; border: 2px solid white; }
-        .route-line { color: blue; }
+        .stop-marker {
+        background-color: #28a745;
+        color: white;
+        border-radius: 50%;
+        text-align: center;
+        font-size: 12px;
+        font-weight: bold;
+        width: 30px;
+        height: 30px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border: 2px solid white;
+        }
     </style>
 
     @if (fragmentData != null)
@@ -60,7 +73,7 @@ else
             <script>
                 var map = L.map('map');
                 L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
-                    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a> & CartoDB'
+                attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a> & CartoDB'
                 }).addTo(map);
 
                 var latLngs = [];
@@ -75,8 +88,8 @@ else
                         latLngs.push([@lat, @lng]);
                         var icon = L.divIcon({ html: '@order', iconSize: [30, 30], className: 'stop-marker' });
                         L.marker([@lat, @lng], { icon: icon })
-                            .bindPopup('<strong>@name</strong><br>Ordre: @order<br>Personnels: @workers')
-                            .addTo(map);
+                        .bindPopup('<strong>@name</strong><br>Ordre: @order<br>Personnels: @workers')
+                        .addTo(map);
                     </text>
                 }
 
@@ -89,7 +102,7 @@ else
             <script>
                 var map = L.map('map').setView([34.2610, -6.5800], 13);
                 L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
-                    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a> & CartoDB'
+                attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a> & CartoDB'
                 }).addTo(map);
                 L.marker([34.2610, -6.5800]).bindPopup('Fragment sans arrêts').addTo(map);
             </script>

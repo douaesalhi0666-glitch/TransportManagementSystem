@@ -81,7 +81,7 @@ namespace TransportManagementSystem.Controllers
             var fragments = await _context.TrajectoryFragments
                 .Include(f => f.Trajectory)
                 .Include(f => f.FragmentStops)
-                .ThenInclude(fs => fs.TrajectoryStop)
+                    .ThenInclude(fs => fs.TrajectoryStop!)
                 .ToListAsync();
 
             return View(fragments);
