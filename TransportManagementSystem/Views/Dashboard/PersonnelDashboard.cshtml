@@ -12,14 +12,50 @@
     .bus-marker { background-color: #007bff; color: white; border-radius: 50%; text-align: center; font-size: 16px; padding: 6px; width: 30px; height: 30px; display: flex; align-items: center; justify-content: center; border: 2px solid white; box-shadow: 0 2px 6px rgba(0,0,0,0.3); }
     .stop-marker { background-color: #28a745; color: white; border-radius: 50%; text-align: center; font-size: 12px; padding: 4px; width: 24px; height: 24px; display: flex; align-items: center; justify-content: center; border: 1px solid white; }
     .person-marker { background-color: #ffc107; color: black; border-radius: 50%; text-align: center; font-size: 14px; padding: 4px; width: 28px; height: 28px; display: flex; align-items: center; justify-content: center; border: 2px solid white; }
+    .info-card { margin-bottom: 20px; transition: transform 0.2s; }
+    .info-card:hover { transform: translateY(-5px); }
 </style>
 
 <h2>Bienvenue, @ViewBag.UserName</h2>
+
+<div class="row mb-4">
+    <div class="col-md-4">
+        <div class="card info-card border-primary">
+            <div class="card-header bg-primary text-white">
+                <h5 class="mb-0">📍 Ma trajectoire</h5>
+            </div>
+            <div class="card-body">
+                <div id="trajectoryInfo">Chargement...</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card info-card border-success">
+            <div class="card-header bg-success text-white">
+                <h5 class="mb-0">🚌 Mon bus</h5>
+            </div>
+            <div class="card-body">
+                <div id="busInfo">Chargement...</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card info-card border-info">
+            <div class="card-header bg-info text-white">
+                <h5 class="mb-0">🚛 Mon chauffeur</h5>
+            </div>
+            <div class="card-body">
+                <div id="driverInfo">Chargement...</div>
+            </div>
+        </div>
+    </div>
+</div>
+
 <div id="assignmentInfo" class="alert alert-info">
     Chargement de votre trajet...
 </div>
 
-<div id="map" style="height: 600px; width: 100%; border-radius: 10px; margin-bottom: 20px;"></div>
+<div id="map" style="height: 500px; width: 100%; border-radius: 10px; margin-bottom: 20px;"></div>
 
 <div class="toast-container position-fixed top-0 end-0 p-3" id="toastContainer"></div>
 
@@ -34,9 +70,10 @@
         let lastAlertTypes = {};
         let currentTrajectoryId = null;
         let checkInterval;
-        const SPEED_KMH = 30; // km/h (fallback si pas d'IA)
+        let currentRefLat = null;
+        let currentRefLng = null;
+        const SPEED_KMH = 30;
 
-        // ----- Utilitaires -----
         function haversine(lat1, lon1, lat2, lon2) {
             const R = 6371e3;
             const φ1 = lat1 * Math.PI / 180;
@@ -50,7 +87,6 @@
             return R * c;
         }
 
-        // ----- Alertes -----
         function showToast(title, message, type = 'warning') {
             const container = document.getElementById('toastContainer');
             const id = 'toast-' + Date.now();
@@ -86,7 +122,6 @@
             showBrowserNotification(title, message);
         }
 
-        // ----- Chargement des données et mise à jour carte -----
         async function loadPersonnelData() {
             try {
                 const response = await fetch('/Buses/GetPersonnelDashboardData');
@@ -96,19 +131,44 @@
                 }
                 const data = await response.json();
 
-                // Point de référence pour l'ETA : arrêt personnel ou départ de la trajectoire
-                let refLat = null, refLng = null;
+                // Update trajectory info
+                document.getElementById('trajectoryInfo').innerHTML = `
+                    <strong>${data.trajectory.trajectory_Name}</strong><br/>
+                    Code: ${data.trajectory.trajectory_Code}<br/>
+                    Distance: ${data.trajectory.Distance} km<br/>
+                    Durée estimée: ${data.trajectory.EstimatedDuration} min
+                `;
+
+                // Update bus info
+                if (data.assignedBus) {
+                    document.getElementById('busInfo').innerHTML = `
+                        <strong>${data.assignedBus.bus_Code}</strong><br/>
+                        Plaque: ${data.assignedBus.bus_PlateNumber}<br/>
+                        Modèle: ${data.assignedBus.bus_Brand} ${data.assignedBus.bus_Model}<br/>
+                        Capacité: ${data.assignedBus.Capacity} places
+                    `;
+                } else {
+                    document.getElementById('busInfo').innerHTML = 'Aucun bus assigné';
+                }
+
+                // Update driver info
+                document.getElementById('driverInfo').innerHTML = `
+                    <strong>${data.assignedDriver}</strong>
+                `;
+
                 if (data.personnelStop) {
-                    refLat = data.personnelStop.tS_Latitude;
-                    refLng = data.personnelStop.tS_Longitude;
-                } else if (data.trajectory && data.trajectory.StartLat && data.trajectory.StartLng) {
-                    refLat = data.trajectory.StartLat;
-                    refLng = data.trajectory.StartLng;
+                    currentRefLat = data.personnelStop.tS_Latitude;
+                    currentRefLng = data.personnelStop.tS_Longitude;
+                } else if (data.trajectory.StartLat && data.trajectory.StartLng) {
+                    currentRefLat = data.trajectory.StartLat;
+                    currentRefLng = data.trajectory.StartLng;
                 }
 
                 document.getElementById('assignmentInfo').innerHTML = `
                     <strong>Trajectoire :</strong> ${data.trajectory.trajectory_Name} (${data.trajectory.trajectory_Code})<br/>
-                    <strong>Arrêt personnel :</strong> ${data.personnelStop ? data.personnelStop.tS_Name : 'Non défini (ETA depuis le départ)'}<br/>
+                    <strong>Arrêt personnel :</strong> ${data.stopName}<br/>
+                    <strong>Chauffeur :</strong> ${data.assignedDriver}<br/>
+                    <strong>Bus :</strong> ${data.assignedBus ? data.assignedBus.bus_Code : 'Non assigné'}<br/>
                     <strong>Bus sur cette trajectoire :</strong> ${data.buses.length}
                 `;
                 currentTrajectoryId = data.trajectory.trajectory_Id;
@@ -120,14 +180,12 @@
                     }).addTo(map);
                 }
 
-                // Tracer la trajectoire (polyline)
                 if (trajectoryLine) map.removeLayer(trajectoryLine);
                 const points = data.stops.map(s => [s.tS_Latitude, s.tS_Longitude]);
                 if (points.length > 1) {
                     trajectoryLine = L.polyline(points, { color: 'blue', weight: 4, opacity: 0.6 }).addTo(map);
                 }
 
-                // Ajouter les arrêts
                 data.stops.forEach(stop => {
                     const icon = L.divIcon({ html: stop.tS_OrderIndex, iconSize: [24, 24], className: 'stop-marker' });
                     L.marker([stop.tS_Latitude, stop.tS_Longitude], { icon })
@@ -135,7 +193,6 @@
                         .addTo(map);
                 });
 
-                // Arrêt personnel
                 if (data.personnelStop) {
                     if (personStopMarker) map.removeLayer(personStopMarker);
                     const icon = L.divIcon({ html: '📍', iconSize: [28, 28], className: 'stop-marker' });
@@ -144,21 +201,14 @@
                         .addTo(map);
                 }
 
-                // Bus avec popup (incluant ETA)
                 if (window.busLayer) map.removeLayer(window.busLayer);
                 window.busLayer = L.layerGroup().addTo(map);
                 busMarkers = {};
                 data.buses.forEach(bus => {
                     const busIcon = L.divIcon({ html: '🚌', iconSize: [30, 30], className: 'bus-marker' });
-                    // Utiliser l'ETA fourni par le backend (IA) s'il existe, sinon calcul simple
                     let etaText = "";
                     if (bus.etaMinutes !== undefined && bus.etaMinutes !== null) {
-                        etaText = `<br/>🚏 Arrive dans : ${bus.etaMinutes} min (IA)`;
-                    } else if (refLat && refLng) {
-                        const distToRef = haversine(refLat, refLng, bus.lat, bus.lng);
-                        let minutes = Math.round(distToRef / 1000 / SPEED_KMH * 60);
-                        minutes = Math.max(1, minutes);
-                        etaText = `<br/>🚏 Arrive dans : ${minutes} min (approx)`;
+                        etaText = `<br/>🚏 Arrive dans : ${bus.etaMinutes} min`;
                     }
                     const popupContent = `<b>${bus.bus_Code}</b><br/>Plaque: ${bus.bus_PlateNumber}<br/>Statut: ${bus.bus_Status}${etaText}`;
                     const marker = L.marker([bus.lat, bus.lng], { icon: busIcon })
@@ -167,7 +217,6 @@
                     busMarkers[bus.bus_Id] = marker;
                 });
 
-                // Centrage
                 if (data.personnelStop) {
                     map.setView([data.personnelStop.tS_Latitude, data.personnelStop.tS_Longitude], 15);
                 } else if (data.buses.length > 0) {
@@ -176,64 +225,67 @@
                     map.setView([data.trajectory.StartLat, data.trajectory.StartLng], 15);
                 }
 
-                // Vérification périodique
                 if (checkInterval) clearInterval(checkInterval);
-                checkInterval = setInterval(() => checkProximity(data, refLat, refLng), 15000);
-                await checkProximity(data, refLat, refLng);
+                checkInterval = setInterval(() => checkProximity(currentRefLat, currentRefLng), 15000);
+                await checkProximity(currentRefLat, currentRefLng);
             } catch (error) {
                 console.error(error);
                 document.getElementById('assignmentInfo').innerHTML = '<div class="alert alert-danger">Erreur de chargement.</div>';
             }
         }
 
-        // Vérification de proximité et mise à jour des popups
-        async function checkProximity(data, refLat, refLng) {
-            if (!data.personnelStop && !(refLat && refLng)) return;
-            const stopLat = data.personnelStop ? data.personnelStop.tS_Latitude : refLat;
-            const stopLng = data.personnelStop ? data.personnelStop.tS_Longitude : refLng;
-            for (const bus of data.buses) {
-                const distance = haversine(stopLat, stopLng, bus.lat, bus.lng);
-                const marker = busMarkers[bus.bus_Id];
-                if (marker) {
-                    let etaText = "";
-                    if (bus.etaMinutes !== undefined && bus.etaMinutes !== null) {
-                        etaText = `<br/>🚏 Arrive dans : ${bus.etaMinutes} min (IA)`;
-                    } else {
-                        let minutes = Math.round(distance / 1000 / SPEED_KMH * 60);
-                        minutes = Math.max(1, minutes);
-                        etaText = `<br/>🚏 Arrive dans : ${minutes} min (approx)`;
+        async function checkProximity(refLat, refLng) {
+            if (!refLat || !refLng) return;
+            
+            try {
+                const response = await fetch('/Buses/GetPersonnelDashboardData');
+                if (!response.ok) return;
+                const data = await response.json();
+                
+                const stopLat = refLat;
+                const stopLng = refLng;
+                
+                for (const bus of data.buses) {
+                    const distance = haversine(stopLat, stopLng, bus.lat, bus.lng);
+                    const marker = busMarkers[bus.bus_Id];
+                    if (marker) {
+                        let etaText = "";
+                        if (bus.etaMinutes !== undefined && bus.etaMinutes !== null) {
+                            etaText = `<br/>🚏 Arrive dans : ${bus.etaMinutes} min`;
+                        }
+                        const newPopup = `<b>${bus.bus_Code}</b><br/>Plaque: ${bus.bus_PlateNumber}<br/>Statut: ${bus.bus_Status}${etaText}`;
+                        marker.bindPopup(newPopup);
                     }
-                    const newPopup = `<b>${bus.bus_Code}</b><br/>Plaque: ${bus.bus_PlateNumber}<br/>Statut: ${bus.bus_Status}${etaText}`;
-                    marker.bindPopup(newPopup);
-                }
 
-                let triggerType = null;
-                if (distance <= 200 && lastAlertTypes[bus.bus_Id] !== '200m') {
-                    triggerType = '200m';
-                } else if (distance <= 500 && lastAlertTypes[bus.bus_Id] !== '200m' && lastAlertTypes[bus.bus_Id] !== '500m') {
-                    triggerType = '500m';
-                }
-                if (triggerType) {
-                    const res = await fetch('/Buses/CheckProximityAlert', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({
-                            busId: bus.bus_Id,
-                            busCode: bus.bus_Code,
-                            trajectoryId: currentTrajectoryId,
-                            distance: distance
-                        })
-                    });
-                    const alertRes = await res.json();
-                    if (alertRes.alertType !== 'none') {
-                        triggerAlert(bus.bus_Code, distance, alertRes.alertType);
-                        lastAlertTypes[bus.bus_Id] = alertRes.alertType;
+                    let triggerType = null;
+                    if (distance <= 200 && lastAlertTypes[bus.bus_Id] !== '200m') {
+                        triggerType = '200m';
+                    } else if (distance <= 500 && lastAlertTypes[bus.bus_Id] !== '200m' && lastAlertTypes[bus.bus_Id] !== '500m') {
+                        triggerType = '500m';
+                    }
+                    if (triggerType) {
+                        const res = await fetch('/Buses/CheckProximityAlert', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
+                                busId: bus.bus_Id,
+                                busCode: bus.bus_Code,
+                                trajectoryId: currentTrajectoryId,
+                                distance: distance
+                            })
+                        });
+                        const alertRes = await res.json();
+                        if (alertRes.alertType !== 'none') {
+                            triggerAlert(bus.bus_Code, distance, alertRes.alertType);
+                            lastAlertTypes[bus.bus_Id] = alertRes.alertType;
+                        }
                     }
                 }
+            } catch (error) {
+                console.error('Error in checkProximity:', error);
             }
         }
 
-        // Géolocalisation du personnel
         if (navigator.geolocation) {
             navigator.geolocation.getCurrentPosition(pos => {
                 if (!map) return;
@@ -245,7 +297,6 @@
             });
         }
 
-        // Permission notifications
         if ("Notification" in window && Notification.permission !== "denied") {
             Notification.requestPermission();
         }

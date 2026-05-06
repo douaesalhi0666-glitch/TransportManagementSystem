@@ -46,7 +46,18 @@ namespace TransportManagementSystem.Controllers
                     s.TS_Longitude,
                     TrajectoryName = s.Trajectory != null ? s.Trajectory.Trajectory_Name : "Inconnue",
                     TrajectoryCode = s.Trajectory != null ? s.Trajectory.Trajectory_Code : "N/A",
-                    s.TS_TrajectoryId
+                    s.TS_TrajectoryId,
+                    Workers = _context.Personnel
+                        .Where(p => p.AssignedStopId == s.TS_Id && p.IsAssigned == true)
+                        .Select(p => new
+                        {
+                            p.Personnel_Id,
+                            p.Personnel_FirstName,
+                            p.Personnel_LastName,
+                            p.Personnel_PhoneNumber,
+                            p.Personnel_Email
+                        })
+                        .ToList()
                 })
                 .ToListAsync();
             return Ok(stops);
@@ -71,7 +82,9 @@ namespace TransportManagementSystem.Controllers
                             s.TS_Name,
                             s.TS_OrderIndex,
                             s.TS_Latitude,
-                            s.TS_Longitude
+                            s.TS_Longitude,
+                            WorkerCount = _context.Personnel
+                                .Count(p => p.AssignedStopId == s.TS_Id && p.IsAssigned == true)
                         })
                 })
                 .ToListAsync();
@@ -102,11 +115,234 @@ namespace TransportManagementSystem.Controllers
                     s.TS_Longitude,
                     s.TS_TrajectoryId,
                     TrajectoryName = s.Trajectory != null ? s.Trajectory.Trajectory_Name : "Inconnue",
-                    TrajectoryCode = s.Trajectory != null ? s.Trajectory.Trajectory_Code : "N/A"
+                    TrajectoryCode = s.Trajectory != null ? s.Trajectory.Trajectory_Code : "N/A",
+                    Workers = _context.Personnel
+                        .Where(p => p.AssignedStopId == s.TS_Id && p.IsAssigned == true)
+                        .Select(p => new
+                        {
+                            p.Personnel_Id,
+                            p.Personnel_FirstName,
+                            p.Personnel_LastName,
+                            p.Personnel_PhoneNumber
+                        })
+                        .ToList()
                 })
                 .ToListAsync();
 
             return Ok(stops);
+        }
+
+        [HttpGet]
+        public async Task<IActionResult> GetWorkersByStop(int stopId)
+        {
+            var stop = await _context.TrajectoryStops
+                .FirstOrDefaultAsync(s => s.TS_Id == stopId);
+
+            if (stop == null)
+                return NotFound(new { message = "Arrêt non trouvé" });
+
+            var workers = await _context.Personnel
+                .Where(p => p.AssignedStopId == stopId && p.IsAssigned == true)
+                .Select(p => new
+                {
+                    p.Personnel_Id,
+                    p.Personnel_FirstName,
+                    p.Personnel_LastName,
+                    p.Personnel_PhoneNumber,
+                    p.Personnel_Email,
+                    p.HomeAddress
+                })
+                .ToListAsync();
+
+            return Ok(new
+            {
+                stopId = stop.TS_Id,
+                stopName = stop.TS_Name,
+                workers = workers
+            });
+        }
+
+        // ========== WORKER ASSIGNMENT METHODS (FIXED WITH long CONVERSION) ==========
+
+        [HttpGet]
+        public async Task<IActionResult> GetUnassignedWorkersForTrajectory(int trajectoryId)
+        {
+            var workers = await _context.Personnel
+                .Where(p => p.AssignedTrajectoryId == trajectoryId
+                            && p.IsAssigned == true
+                            && p.AssignedStopId == null)
+                .Select(p => new
+                {
+                    p.Personnel_Id,
+                    p.Personnel_FirstName,
+                    p.Personnel_LastName,
+                    p.Personnel_PhoneNumber,
+                    p.Personnel_Email,
+                    p.HomeAddress,
+                    p.Personnel_Latitude,
+                    p.Personnel_Longitude
+                })
+                .ToListAsync();
+
+            return Ok(workers);
+        }
+
+        [HttpPost]
+        public async Task<IActionResult> AssignWorkerToStop([FromBody] AssignWorkerRequest request)
+        {
+            if (request.WorkerId <= 0 || request.StopId <= 0)
+                return BadRequest(new { success = false, message = "Données invalides" });
+
+            // Convert to long to match Personnel_Id type
+            var worker = await _context.Personnel.FindAsync((long)request.WorkerId);
+            if (worker == null)
+                return NotFound(new { success = false, message = "Travailleur non trouvé" });
+
+            var stop = await _context.TrajectoryStops.FindAsync(request.StopId);
+            if (stop == null)
+                return NotFound(new { success = false, message = "Arrêt non trouvé" });
+
+            worker.AssignedStopId = request.StopId;
+            await _context.SaveChangesAsync();
+
+            return Ok(new
+            {
+                success = true,
+                message = $"Travailleur {worker.Personnel_FirstName} {worker.Personnel_LastName} assigné à l'arrêt {stop.TS_Name}"
+            });
+        }
+
+        [HttpPost]
+        public async Task<IActionResult> RemoveWorkerFromStop([FromBody] RemoveWorkerRequest request)
+        {
+            if (request.WorkerId <= 0)
+                return BadRequest(new { success = false, message = "Données invalides" });
+
+            // Convert to long to match Personnel_Id type
+            var worker = await _context.Personnel.FindAsync((long)request.WorkerId);
+            if (worker == null)
+                return NotFound(new { success = false, message = "Travailleur non trouvé" });
+
+            worker.AssignedStopId = null;
+            await _context.SaveChangesAsync();
+
+            return Ok(new
+            {
+                success = true,
+                message = $"Travailleur {worker.Personnel_FirstName} {worker.Personnel_LastName} retiré de l'arrêt"
+            });
+        }
+
+        [HttpPost]
+        public async Task<IActionResult> AutoAssignWorkersToStop(int stopId)
+        {
+            var stop = await _context.TrajectoryStops.FindAsync(stopId);
+            if (stop == null)
+                return BadRequest(new { success = false, message = "Arrêt non trouvé" });
+
+            var trajectoryId = stop.TS_TrajectoryId;
+
+            var unassignedWorkers = await _context.Personnel
+                .Where(p => p.AssignedTrajectoryId == trajectoryId
+                            && p.IsAssigned == true
+                            && p.AssignedStopId == null
+                            && p.Personnel_Latitude != null
+                            && p.Personnel_Longitude != null)
+                .ToListAsync();
+
+            int assignedCount = 0;
+            foreach (var worker in unassignedWorkers)
+            {
+                double distance = CalculateDistance(
+                    (double)stop.TS_Latitude,
+                    (double)stop.TS_Longitude,
+                    (double)worker.Personnel_Latitude.Value,
+                    (double)worker.Personnel_Longitude.Value
+                );
+
+                if (distance <= 5.0)
+                {
+                    worker.AssignedStopId = stopId;
+                    assignedCount++;
+                }
+            }
+
+            await _context.SaveChangesAsync();
+
+            return Ok(new
+            {
+                success = true,
+                message = $"{assignedCount} travailleurs assignés automatiquement à l'arrêt {stop.TS_Name}"
+            });
+        }
+
+        [HttpPost]
+        public async Task<IActionResult> AutoAssignAllWorkersToNearestStop(int trajectoryId)
+        {
+            var stops = await _context.TrajectoryStops
+                .Where(s => s.TS_TrajectoryId == trajectoryId)
+                .OrderBy(s => s.TS_OrderIndex)
+                .ToListAsync();
+
+            if (!stops.Any())
+                return BadRequest(new { success = false, message = "Aucun arrêt trouvé pour cette trajectoire" });
+
+            var unassignedWorkers = await _context.Personnel
+                .Where(p => p.AssignedTrajectoryId == trajectoryId
+                            && p.IsAssigned == true
+                            && p.AssignedStopId == null
+                            && p.Personnel_Latitude != null
+                            && p.Personnel_Longitude != null)
+                .ToListAsync();
+
+            int assignedCount = 0;
+            foreach (var worker in unassignedWorkers)
+            {
+                TrajectoryStop nearestStop = null;
+                double minDistance = double.MaxValue;
+
+                foreach (var stop in stops)
+                {
+                    double distance = CalculateDistance(
+                        (double)stop.TS_Latitude,
+                        (double)stop.TS_Longitude,
+                        (double)worker.Personnel_Latitude.Value,
+                        (double)worker.Personnel_Longitude.Value
+                    );
+
+                    if (distance < minDistance)
+                    {
+                        minDistance = distance;
+                        nearestStop = stop;
+                    }
+                }
+
+                if (nearestStop != null)
+                {
+                    worker.AssignedStopId = nearestStop.TS_Id;
+                    assignedCount++;
+                }
+            }
+
+            await _context.SaveChangesAsync();
+
+            return Ok(new
+            {
+                success = true,
+                message = $"{assignedCount} travailleurs assignés automatiquement à l'arrêt le plus proche"
+            });
+        }
+
+        private double CalculateDistance(double lat1, double lon1, double lat2, double lon2)
+        {
+            const double R = 6371;
+            var dLat = (lat2 - lat1) * Math.PI / 180;
+            var dLon = (lon2 - lon1) * Math.PI / 180;
+            var a = Math.Sin(dLat / 2) * Math.Sin(dLat / 2) +
+                    Math.Cos(lat1 * Math.PI / 180) * Math.Cos(lat2 * Math.PI / 180) *
+                    Math.Sin(dLon / 2) * Math.Sin(dLon / 2);
+            var c = 2 * Math.Atan2(Math.Sqrt(a), Math.Sqrt(1 - a));
+            return R * c;
         }
 
         // ================================================
@@ -227,10 +463,19 @@ namespace TransportManagementSystem.Controllers
                 return NotFound(new { success = false, message = "Arrêt non trouvé" });
 
             int trajectoryId = stop.TS_TrajectoryId;
+
+            var workersAtStop = await _context.Personnel
+                .Where(p => p.AssignedStopId == id)
+                .ToListAsync();
+
+            foreach (var worker in workersAtStop)
+            {
+                worker.AssignedStopId = null;
+            }
+
             _context.TrajectoryStops.Remove(stop);
             await _context.SaveChangesAsync();
 
-            // Reorder remaining stops
             var remainingStops = await _context.TrajectoryStops
                 .Where(s => s.TS_TrajectoryId == trajectoryId)
                 .OrderBy(s => s.TS_OrderIndex)
@@ -444,5 +689,16 @@ namespace TransportManagementSystem.Controllers
         public decimal Latitude { get; set; }
         public decimal Longitude { get; set; }
         public int OrderIndex { get; set; }
+    }
+
+    public class AssignWorkerRequest
+    {
+        public int WorkerId { get; set; }
+        public int StopId { get; set; }
+    }
+
+    public class RemoveWorkerRequest
+    {
+        public int WorkerId { get; set; }
     }
 }

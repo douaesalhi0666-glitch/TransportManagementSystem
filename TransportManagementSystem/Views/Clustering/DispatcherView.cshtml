@@ -9,7 +9,7 @@
 <p>Liste et visualisation de tous les arrêts créés pour chaque trajectoire.</p>
 
 <div class="row mb-3">
-    <div class="col-md-6">
+    <div class="col-md-4">
         <div class="card">
             <div class="card-body">
                 <label>Filtrer par trajectoire</label>
@@ -26,6 +26,16 @@
                         }
                     }
                 </select>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card">
+            <div class="card-body">
+                <label>Assignation automatique IA</label>
+                <button id="autoAssignAllBtn" class="btn btn-primary w-100">
+                    🤖 IA: Assigner tous au plus proche
+                </button>
             </div>
         </div>
     </div>
@@ -50,6 +60,7 @@
                         <th>Nom de l'arrêt</th>
                         <th>Latitude</th>
                         <th>Longitude</th>
+                        <th>Personnels</th>
                         <th>Actions</th>
                     </tr>
                 </thead>
@@ -64,18 +75,66 @@
                             <td><span class="stop-name">@stop.TS_Name</span></td>
                             <td>@stop.TS_Latitude</td>
                             <td>@stop.TS_Longitude</td>
+                            <td><span class="workers-count" id="workersCount-@stop.TS_Id">0</span></td>
                             <td>
-                                <button class="btn btn-sm btn-warning edit-stop" data-id="@stop.TS_Id" data-name="@stop.TS_Name" data-lat="@stop.TS_Latitude" data-lng="@stop.TS_Longitude" data-order="@stop.TS_OrderIndex" data-trajectory="@stop.TS_TrajectoryId">
-                                    ✏️ Modifier
-                                </button>
-                                <button class="btn btn-sm btn-danger delete-stop" data-id="@stop.TS_Id" data-name="@stop.TS_Name">
-                                    🗑️ Supprimer
-                                </button>
-                             </td>
-                         </tr>
+                                <button class="btn btn-sm btn-info view-workers" data-id="@stop.TS_Id" data-name="@stop.TS_Name">👥 Voir</button>
+                                <button class="btn btn-sm btn-success assign-worker" data-id="@stop.TS_Id" data-name="@stop.TS_Name" data-trajectory="@stop.TS_TrajectoryId">➕ Assigner</button>
+                                <button class="btn btn-sm btn-warning edit-stop" data-id="@stop.TS_Id" data-name="@stop.TS_Name" data-lat="@stop.TS_Latitude" data-lng="@stop.TS_Longitude" data-order="@stop.TS_OrderIndex" data-trajectory="@stop.TS_TrajectoryId">✏️ Modifier</button>
+                                <button class="btn btn-sm btn-danger delete-stop" data-id="@stop.TS_Id" data-name="@stop.TS_Name">🗑️ Supprimer</button>
+                            </td>
+                        </tr>
                     }
                 </tbody>
             </table>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Voir Personnels -->
+<div class="modal fade" id="viewWorkersModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header bg-info text-white">
+                <h5 class="modal-title">👥 Personnels assignés à l'arrêt</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div id="workersList"></div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fermer</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Assigner Personnel -->
+<div class="modal fade" id="assignWorkerModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header bg-success text-white">
+                <h5 class="modal-title">➕ Assigner un personnel à l'arrêt</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <input type="hidden" id="assignStopId" />
+                <input type="hidden" id="assignTrajectoryId" />
+                <div class="mb-3">
+                    <label>Arrêt</label>
+                    <input type="text" id="assignStopName" class="form-control" readonly />
+                </div>
+                <div class="mb-3">
+                    <label>Personnel non assigné</label>
+                    <select id="workerSelect" class="form-control"></select>
+                </div>
+                <div class="mt-3">
+                    <button id="autoAssignToStopBtn" class="btn btn-primary">🤖 IA: Assigner automatiquement</button>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
+                <button type="button" class="btn btn-primary" id="confirmAssignBtn">Assigner</button>
+            </div>
         </div>
     </div>
 </div>
@@ -126,6 +185,7 @@
     <style>
         .stop-marker { background-color: #28a745; color: white; border-radius: 50%; text-align: center; font-size: 12px; font-weight: bold; width: 24px; height: 24px; display: flex; align-items: center; justify-content: center; border: 2px solid white; box-shadow: 0 2px 6px rgba(0,0,0,0.3); cursor: pointer; }
         .stop-marker:hover { transform: scale(1.1); transition: transform 0.2s; }
+        .worker-list-item { border-left: 3px solid #28a745; margin-bottom: 8px; padding-left: 10px; }
     </style>
 
     <script>
@@ -141,10 +201,10 @@
 
             let url = '/Clustering/GetAllStops';
             if (currentTrajectoryId) {
-                url = `/Clustering/GetFilteredStops?trajectoryId=${currentTrajectoryId}`;
-                document.getElementById('tableFilterInfo').innerHTML = `Trajectoire filtrée`;
+                url = '/Clustering/GetFilteredStops?trajectoryId=' + currentTrajectoryId;
+                document.getElementById('tableFilterInfo').innerHTML = 'Trajectoire filtrée';
             } else {
-                document.getElementById('tableFilterInfo').innerHTML = `Tous les arrêts`;
+                document.getElementById('tableFilterInfo').innerHTML = 'Tous les arrêts';
             }
 
             const stopsResponse = await fetch(url);
@@ -158,7 +218,7 @@
                 }).addTo(map);
             }
 
-            map.eachLayer(layer => {
+            map.eachLayer(function(layer) {
                 if (layer instanceof L.Marker || layer instanceof L.Polyline) {
                     map.removeLayer(layer);
                 }
@@ -168,45 +228,60 @@
             const trajectoriesResponse = await fetch('/Clustering/GetTrajectoriesWithStops');
             const trajectories = await trajectoriesResponse.json();
 
-            trajectories.forEach(traj => {
+            trajectories.forEach(function(traj) {
                 if (!currentTrajectoryId || traj.trajectory_Id === currentTrajectoryId) {
                     if (traj.stops && traj.stops.length >= 2) {
-                        const points = traj.stops.map(s => [s.tS_Latitude, s.tS_Longitude]);
+                        const points = traj.stops.map(function(s) { return [s.tS_Latitude, s.tS_Longitude]; });
                         const color = colorPalette[(traj.trajectory_Id || 0) % colorPalette.length];
                         L.polyline(points, { color: color, weight: 4, opacity: 0.7 })
-                            .bindPopup(`<strong>${traj.trajectory_Name}</strong><br>${traj.trajectory_Code}`)
+                            .bindPopup('<strong>' + traj.trajectory_Name + '</strong><br>' + traj.trajectory_Code)
                             .addTo(map);
                     }
                 }
             });
 
-            const stopsList = allStops.map(stop => ({
-                id: stop.tS_Id,
-                name: stop.tS_Name,
-                lat: stop.tS_Latitude,
-                lng: stop.tS_Longitude,
-                orderIndex: stop.tS_OrderIndex,
-                trajectoryId: stop.tS_TrajectoryId,
-                trajectoryName: stop.trajectoryName,
-                trajectoryCode: stop.trajectoryCode
-            }));
+            const stopsList = allStops.map(function(stop) {
+                return {
+                    id: stop.tS_Id,
+                    name: stop.tS_Name,
+                    lat: stop.tS_Latitude,
+                    lng: stop.tS_Longitude,
+                    orderIndex: stop.tS_OrderIndex,
+                    trajectoryId: stop.tS_TrajectoryId,
+                    trajectoryName: stop.trajectoryName,
+                    trajectoryCode: stop.trajectoryCode,
+                    workers: stop.workers || []
+                };
+            });
 
-            stopsList.forEach((stop, idx) => {
+            stopsList.forEach(function(stop) {
                 const icon = L.divIcon({
                     html: stop.orderIndex.toString(),
                     iconSize: [24, 24],
                     className: 'stop-marker'
                 });
-                
-                const popupContent = `
-                    <strong>${stop.name}</strong><br>
-                    Trajectoire: ${stop.trajectoryName}<br>
-                    Ordre: ${stop.orderIndex}<br>
-                    <button class="btn btn-sm btn-warning mt-2" onclick="editStopFromMap(${stop.id}, '${stop.name.replace(/'/g, "\\'")}', ${stop.lat}, ${stop.lng}, ${stop.orderIndex}, ${stop.trajectoryId})">✏️ Modifier</button>
-                    <button class="btn btn-sm btn-danger mt-2" onclick="deleteStopFromMap(${stop.id}, '${stop.name.replace(/'/g, "\\'")}')">🗑️ Supprimer</button>
-                `;
-                
-                const marker = L.marker([stop.lat, stop.lng], { icon })
+
+                let workersListHtml = '';
+                if (stop.workers && stop.workers.length > 0) {
+                    workersListHtml = '<ul style="margin-top:5px; margin-bottom:0; padding-left:15px;">';
+                    stop.workers.forEach(function(w) {
+                        workersListHtml += '<li>' + w.personnel_FirstName + ' ' + w.personnel_LastName + '</li>';
+                    });
+                    workersListHtml += '</ul>';
+                } else {
+                    workersListHtml = '<p class="text-muted small mb-0">Aucun personnel</p>';
+                }
+
+                const popupContent = '<strong>' + stop.name + '</strong><br>' +
+                    'Trajectoire: ' + stop.trajectoryName + '<br>' +
+                    'Ordre: ' + stop.orderIndex + '<br>' +
+                    '<strong>Personnels (' + stop.workers.length + '):</strong><br>' +
+                    workersListHtml +
+                    '<button class="btn btn-sm btn-success mt-2" onclick="openAssignModal(' + stop.id + ', \'' + stop.name.replace(/'/g, "\\'") + '\', ' + stop.trajectoryId + ')">➕ Assigner</button>' +
+                    '<button class="btn btn-sm btn-warning mt-2" onclick="editStopFromMap(' + stop.id + ', \'' + stop.name.replace(/'/g, "\\'") + '\', ' + stop.lat + ', ' + stop.lng + ', ' + stop.orderIndex + ', ' + stop.trajectoryId + ')">✏️ Modifier</button>' +
+                    '<button class="btn btn-sm btn-danger mt-2" onclick="deleteStopFromMap(' + stop.id + ', \'' + stop.name.replace(/'/g, "\\'") + '\')">🗑️ Supprimer</button>';
+
+                const marker = L.marker([stop.lat, stop.lng], { icon: icon })
                     .bindPopup(popupContent)
                     .addTo(map);
                 marker.on('click', function() { this.openPopup(); });
@@ -214,7 +289,7 @@
             });
 
             if (allStops.length > 0) {
-                const bounds = L.latLngBounds(allStops.map(s => [s.tS_Latitude, s.tS_Longitude]));
+                const bounds = L.latLngBounds(allStops.map(function(s) { return [s.tS_Latitude, s.tS_Longitude]; }));
                 map.fitBounds(bounds);
             }
 
@@ -224,10 +299,10 @@
         function updateTable(stops) {
             const tbody = document.getElementById('stopsTableBody');
             tbody.innerHTML = '';
-            
-            const filteredStops = currentTrajectoryId ? stops.filter(s => s.tS_TrajectoryId === currentTrajectoryId) : stops;
-            
-            filteredStops.forEach(stop => {
+
+            const filteredStops = currentTrajectoryId ? stops.filter(function(s) { return s.tS_TrajectoryId === currentTrajectoryId; }) : stops;
+
+            filteredStops.forEach(function(stop) {
                 const row = tbody.insertRow();
                 row.setAttribute('data-id', stop.tS_Id);
                 row.setAttribute('data-trajectory', stop.tS_TrajectoryId);
@@ -235,26 +310,21 @@
                 row.setAttribute('data-lng', stop.tS_Longitude);
                 row.setAttribute('data-name', stop.tS_Name);
                 row.setAttribute('data-order', stop.tS_OrderIndex);
-                
+
                 row.insertCell(0).innerHTML = stop.tS_TrajectoryId;
                 row.insertCell(1).innerHTML = stop.trajectoryName || '-';
                 row.insertCell(2).innerHTML = stop.trajectoryCode || '-';
-                row.insertCell(3).innerHTML = `<span class="original-order">${stop.tS_OrderIndex}</span>`;
-                row.insertCell(4).innerHTML = `<span class="stop-name">${escapeHtml(stop.tS_Name)}</span>`;
+                row.insertCell(3).innerHTML = '<span class="original-order">' + stop.tS_OrderIndex + '</span>';
+                row.insertCell(4).innerHTML = '<span class="stop-name">' + escapeHtml(stop.tS_Name) + '</span>';
                 row.insertCell(5).innerHTML = stop.tS_Latitude;
                 row.insertCell(6).innerHTML = stop.tS_Longitude;
-                
-                const actionsCell = row.insertCell(7);
-                actionsCell.innerHTML = `
-                    <button class="btn btn-sm btn-warning edit-stop" data-id="${stop.tS_Id}" data-name="${escapeHtml(stop.tS_Name)}" data-lat="${stop.tS_Latitude}" data-lng="${stop.tS_Longitude}" data-order="${stop.tS_OrderIndex}" data-trajectory="${stop.tS_TrajectoryId}">
-                        ✏️ Modifier
-                    </button>
-                    <button class="btn btn-sm btn-danger delete-stop" data-id="${stop.tS_Id}" data-name="${escapeHtml(stop.tS_Name)}">
-                        🗑️ Supprimer
-                    </button>
-                `;
+                row.insertCell(7).innerHTML = '<span class="workers-count-badge badge bg-info">' + (stop.workers ? stop.workers.length : 0) + '</span>';
+                row.insertCell(8).innerHTML = '<button class="btn btn-sm btn-info view-workers" data-id="' + stop.tS_Id + '" data-name="' + escapeHtml(stop.tS_Name) + '">👥 Voir (' + (stop.workers ? stop.workers.length : 0) + ')</button>' +
+                    '<button class="btn btn-sm btn-success assign-worker" data-id="' + stop.tS_Id + '" data-name="' + escapeHtml(stop.tS_Name) + '" data-trajectory="' + stop.tS_TrajectoryId + '">➕ Assigner</button>' +
+                    '<button class="btn btn-sm btn-warning edit-stop" data-id="' + stop.tS_Id + '" data-name="' + escapeHtml(stop.tS_Name) + '" data-lat="' + stop.tS_Latitude + '" data-lng="' + stop.tS_Longitude + '" data-order="' + stop.tS_OrderIndex + '" data-trajectory="' + stop.tS_TrajectoryId + '">✏️ Modifier</button>' +
+                    '<button class="btn btn-sm btn-danger delete-stop" data-id="' + stop.tS_Id + '" data-name="' + escapeHtml(stop.tS_Name) + '">🗑️ Supprimer</button>';
             });
-            
+
             attachTableButtonEvents();
         }
 
@@ -263,15 +333,205 @@
             return text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
         }
 
+        async function showWorkersModal(stopId, stopName) {
+            try {
+                const response = await fetch('/Clustering/GetWorkersByStop?stopId=' + stopId);
+                const data = await response.json();
+
+                const workersListDiv = document.getElementById('workersList');
+                if (data.workers && data.workers.length > 0) {
+                    let html = '<h5>Arrêt: ' + data.stopName + '</h5><hr>';
+                    html += '<div class="list-group">';
+                    data.workers.forEach(function(worker) {
+                        html += '<div class="list-group-item worker-list-item">' +
+                            '<strong>' + worker.personnel_FirstName + ' ' + worker.personnel_LastName + '</strong><br>' +
+                            '<small>📞 ' + (worker.personnel_phoneNumber || 'Non renseigné') + '</small><br>' +
+                            '<small>📧 ' + (worker.personnel_email || 'Non renseigné') + '</small><br>' +
+                            '<small>🏠 ' + (worker.homeAddress || 'Adresse non renseignée') + '</small>' +
+                            '<button class="btn btn-sm btn-danger mt-2 remove-worker" data-id="' + worker.personnel_Id + '" data-name="' + worker.personnel_FirstName + ' ' + worker.personnel_LastName + '">🗑️ Retirer</button>' +
+                            '</div>';
+                    });
+                    html += '</div>';
+                    workersListDiv.innerHTML = html;
+
+                    document.querySelectorAll('.remove-worker').forEach(function(btn) {
+                        btn.removeEventListener('click', removeWorkerHandler);
+                        btn.addEventListener('click', removeWorkerHandler);
+                    });
+                } else {
+                    workersListDiv.innerHTML = '<div class="alert alert-info">Aucun personnel assigné à cet arrêt.</div>';
+                }
+
+                const modal = new bootstrap.Modal(document.getElementById('viewWorkersModal'));
+                modal.show();
+            } catch (error) {
+                console.error(error);
+                alert('Erreur lors du chargement des personnels.');
+            }
+        }
+
+        async function removeWorkerHandler(e) {
+            const btn = e.currentTarget;
+            const workerId = btn.dataset.id;
+            const workerName = btn.dataset.name;
+
+            if (confirm('Retirer ' + workerName + ' de cet arrêt ?')) {
+                try {
+                    const response = await fetch('/Clustering/RemoveWorkerFromStop', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ workerId: parseInt(workerId) })
+                    });
+                    const result = await response.json();
+                    if (result.success) {
+                        alert(result.message);
+                        location.reload();
+                    } else {
+                        alert('Erreur: ' + result.message);
+                    }
+                } catch (err) {
+                    alert('Erreur réseau.');
+                }
+            }
+        }
+
+        async function openAssignModal(stopId, stopName, trajectoryId) {
+            document.getElementById('assignStopId').value = stopId;
+            document.getElementById('assignStopName').value = stopName;
+            document.getElementById('assignTrajectoryId').value = trajectoryId;
+
+            const workerSelect = document.getElementById('workerSelect');
+            workerSelect.innerHTML = '<option value="">-- Chargement... --</option>';
+
+            try {
+                const response = await fetch('/Clustering/GetUnassignedWorkersForTrajectory?trajectoryId=' + trajectoryId);
+                const workers = await response.json();
+
+                if (workers.length > 0) {
+                    workerSelect.innerHTML = '<option value="">-- Sélectionner un personnel --</option>';
+                    workers.forEach(function(w) {
+                        workerSelect.innerHTML += '<option value="' + w.personnel_Id + '">' + w.personnel_FirstName + ' ' + w.personnel_LastName + ' - ' + (w.homeAddress || 'Adresse inconnue') + '</option>';
+                    });
+                } else {
+                    workerSelect.innerHTML = '<option value="">Aucun personnel non assigné</option>';
+                }
+            } catch (err) {
+                workerSelect.innerHTML = '<option value="">Erreur de chargement</option>';
+            }
+
+            const modal = new bootstrap.Modal(document.getElementById('assignWorkerModal'));
+            modal.show();
+        }
+
+        async function confirmAssign() {
+            const stopId = document.getElementById('assignStopId').value;
+            const workerId = document.getElementById('workerSelect').value;
+
+            if (!workerId) {
+                alert('Veuillez sélectionner un personnel.');
+                return;
+            }
+
+            try {
+                const response = await fetch('/Clustering/AssignWorkerToStop', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ workerId: parseInt(workerId), stopId: parseInt(stopId) })
+                });
+                const result = await response.json();
+                if (result.success) {
+                    alert(result.message);
+                    bootstrap.Modal.getInstance(document.getElementById('assignWorkerModal')).hide();
+                    loadData();
+                } else {
+                    alert('Erreur: ' + result.message);
+                }
+            } catch (err) {
+                alert('Erreur réseau.');
+            }
+        }
+
+        async function autoAssignToStop() {
+            const stopId = document.getElementById('assignStopId').value;
+            const stopName = document.getElementById('assignStopName').value;
+
+            if (confirm('Assigner automatiquement les personnels proches à l\'arrêt ' + stopName + ' ?')) {
+                try {
+                    const response = await fetch('/Clustering/AutoAssignWorkersToStop?stopId=' + stopId, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' }
+                    });
+                    const result = await response.json();
+                    if (result.success) {
+                        alert(result.message);
+                        bootstrap.Modal.getInstance(document.getElementById('assignWorkerModal')).hide();
+                        loadData();
+                    } else {
+                        alert('Erreur: ' + result.message);
+                    }
+                } catch (err) {
+                    alert('Erreur réseau.');
+                }
+            }
+        }
+
+        async function autoAssignAll() {
+            if (!currentTrajectoryId) {
+                alert('Veuillez d\'abord sélectionner une trajectoire dans le filtre.');
+                return;
+            }
+
+            if (confirm('Assigner automatiquement TOUS les personnels non assignés à l\'arrêt le plus proche ?')) {
+                try {
+                    const response = await fetch('/Clustering/AutoAssignAllWorkersToNearestStop?trajectoryId=' + currentTrajectoryId, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' }
+                    });
+                    const result = await response.json();
+                    if (result.success) {
+                        alert(result.message);
+                        loadData();
+                    } else {
+                        alert('Erreur: ' + result.message);
+                    }
+                } catch (err) {
+                    alert('Erreur réseau.');
+                }
+            }
+        }
+
         function attachTableButtonEvents() {
-            document.querySelectorAll('.edit-stop').forEach(btn => {
+            document.querySelectorAll('.view-workers').forEach(function(btn) {
+                btn.removeEventListener('click', viewWorkersHandler);
+                btn.addEventListener('click', viewWorkersHandler);
+            });
+            document.querySelectorAll('.assign-worker').forEach(function(btn) {
+                btn.removeEventListener('click', assignWorkerHandler);
+                btn.addEventListener('click', assignWorkerHandler);
+            });
+            document.querySelectorAll('.edit-stop').forEach(function(btn) {
                 btn.removeEventListener('click', editStopHandler);
                 btn.addEventListener('click', editStopHandler);
             });
-            document.querySelectorAll('.delete-stop').forEach(btn => {
+            document.querySelectorAll('.delete-stop').forEach(function(btn) {
                 btn.removeEventListener('click', deleteStopHandler);
                 btn.addEventListener('click', deleteStopHandler);
             });
+        }
+
+        function viewWorkersHandler(e) {
+            const btn = e.currentTarget;
+            const id = btn.dataset.id;
+            const name = btn.dataset.name;
+            showWorkersModal(id, name);
+        }
+
+        function assignWorkerHandler(e) {
+            const btn = e.currentTarget;
+            const id = btn.dataset.id;
+            const name = btn.dataset.name;
+            const trajectory = btn.dataset.trajectory;
+            openAssignModal(id, name, trajectory);
         }
 
         function editStopHandler(e) {
@@ -311,9 +571,9 @@
         }
 
         async function deleteStop(id, name) {
-            if (confirm(`Êtes-vous sûr de vouloir supprimer l'arrêt "${name}" ?`)) {
+            if (confirm('Êtes-vous sûr de vouloir supprimer l\'arrêt "' + name + '" ?')) {
                 try {
-                    const response = await fetch(`/Clustering/DeleteStop?id=${id}`, {
+                    const response = await fetch('/Clustering/DeleteStop?id=' + id, {
                         method: 'DELETE',
                         headers: { 'Content-Type': 'application/json' }
                     });
@@ -335,12 +595,12 @@
             const lat = parseFloat(document.getElementById('editStopLat').value);
             const lng = parseFloat(document.getElementById('editStopLng').value);
             const order = parseInt(document.getElementById('editStopOrder').value);
-            
+
             if (!name || isNaN(lat) || isNaN(lng) || isNaN(order)) {
                 alert('Veuillez remplir tous les champs correctement.');
                 return;
             }
-            
+
             try {
                 const response = await fetch('/Clustering/UpdateStop', {
                     method: 'POST',
@@ -359,8 +619,11 @@
             }
         }
 
-        document.getElementById('trajectoryFilter').addEventListener('change', () => loadData());
-        document.getElementById('saveStopChanges').addEventListener('click', saveStopChanges);
+        document.getElementById('trajectoryFilter').addEventListener('change', function() { loadData(); });
+        document.getElementById('saveStopChanges').addEventListener('click', function() { saveStopChanges(); });
+        document.getElementById('confirmAssignBtn').addEventListener('click', function() { confirmAssign(); });
+        document.getElementById('autoAssignToStopBtn').addEventListener('click', function() { autoAssignToStop(); });
+        document.getElementById('autoAssignAllBtn').addEventListener('click', function() { autoAssignAll(); });
 
         loadData();
     </script>
