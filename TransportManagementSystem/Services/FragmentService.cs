@@ -17,12 +17,10 @@ namespace TransportManagementSystem.Services
             _context = context;
         }
 
-        // Generate fragments for a trajectory based on bus capacity
-        public async Task<List<TrajectoryFragment>> GenerateFragments(int trajectoryId, int busCapacity = 20)
+        public async Task<List<FragmentResult>> GenerateFragments(int trajectoryId, int busCapacity = 20)
         {
-            var fragments = new List<TrajectoryFragment>();
+            var fragments = new List<FragmentResult>();
 
-            // Get all stops for this trajectory with worker counts
             var stops = await _context.TrajectoryStops
                 .Where(s => s.TS_TrajectoryId == trajectoryId)
                 .OrderBy(s => s.TS_OrderIndex)
@@ -41,63 +39,58 @@ namespace TransportManagementSystem.Services
             if (!stops.Any())
                 return fragments;
 
-            int fragmentId = 1;
-            int currentFragmentTotal = 0;
-            var currentFragmentStops = new List<StopWorkers>();
+            int fragmentCounter = 1;
+            int currentTotal = 0;
+            var currentStops = new List<StopWorkers>();
 
             foreach (var stop in stops)
             {
-                if (currentFragmentTotal + stop.WorkerCount <= busCapacity)
+                if (currentTotal + stop.WorkerCount <= busCapacity)
                 {
-                    // Add to current fragment
-                    currentFragmentStops.Add(stop);
-                    currentFragmentTotal += stop.WorkerCount;
+                    currentStops.Add(stop);
+                    currentTotal += stop.WorkerCount;
                 }
                 else
                 {
-                    // Save current fragment if it has stops
-                    if (currentFragmentStops.Any())
+                    if (currentStops.Any())
                     {
-                        fragments.Add(new TrajectoryFragment
+                        fragments.Add(new FragmentResult
                         {
-                            FragmentId = fragmentId++,
-                            FragmentCode = $"FRG-{trajectoryId}-{fragmentId}",
-                            FragmentName = $"Fragment {fragmentId} - {currentFragmentStops.First().StopName} to {currentFragmentStops.Last().StopName}",
-                            TotalWorkers = currentFragmentTotal,
-                            Stops = new List<StopWorkers>(currentFragmentStops)
+                            FragmentId = fragmentCounter,
+                            FragmentCode = $"FRG-{trajectoryId}-{fragmentCounter}",
+                            FragmentName = $"Fragment {fragmentCounter} - {currentStops.First().StopName} to {currentStops.Last().StopName}",
+                            TotalWorkers = currentTotal,
+                            Stops = new List<StopWorkers>(currentStops)
                         });
+                        fragmentCounter++;
                     }
 
-                    // Start new fragment
-                    currentFragmentStops = new List<StopWorkers> { stop };
-                    currentFragmentTotal = stop.WorkerCount;
+                    currentStops = new List<StopWorkers> { stop };
+                    currentTotal = stop.WorkerCount;
                 }
             }
 
-            // Add last fragment
-            if (currentFragmentStops.Any())
+            if (currentStops.Any())
             {
-                fragments.Add(new TrajectoryFragment
+                fragments.Add(new FragmentResult
                 {
-                    FragmentId = fragmentId++,
-                    FragmentCode = $"FRG-{trajectoryId}-{fragmentId}",
-                    FragmentName = $"Fragment {fragmentId} - {currentFragmentStops.First().StopName} to {currentFragmentStops.Last().StopName}",
-                    TotalWorkers = currentFragmentTotal,
-                    Stops = new List<StopWorkers>(currentFragmentStops)
+                    FragmentId = fragmentCounter,
+                    FragmentCode = $"FRG-{trajectoryId}-{fragmentCounter}",
+                    FragmentName = $"Fragment {fragmentCounter} - {currentStops.First().StopName} to {currentStops.Last().StopName}",
+                    TotalWorkers = currentTotal,
+                    Stops = new List<StopWorkers>(currentStops)
                 });
             }
 
             return fragments;
         }
 
-        // Save fragments to database
-        public async Task<List<TrajectoryFragment>> SaveFragments(int trajectoryId, List<TrajectoryFragment> fragments)
+        public async Task<List<TrajectoryFragment>> SaveFragments(int trajectoryId, List<FragmentResult> fragments)
         {
             var savedFragments = new List<TrajectoryFragment>();
 
             foreach (var fragment in fragments)
             {
-                // Create fragment record
                 var dbFragment = new TrajectoryFragment
                 {
                     Trajectory_Id = trajectoryId,
@@ -110,7 +103,6 @@ namespace TransportManagementSystem.Services
                 _context.TrajectoryFragments.Add(dbFragment);
                 await _context.SaveChangesAsync();
 
-                // Add stops to fragment
                 int stopOrder = 1;
                 foreach (var stop in fragment.Stops)
                 {
@@ -126,20 +118,12 @@ namespace TransportManagementSystem.Services
 
                 await _context.SaveChangesAsync();
 
-                savedFragments.Add(new TrajectoryFragment
-                {
-                    FragmentId = dbFragment.Fragment_Id,
-                    FragmentCode = dbFragment.Fragment_Code,
-                    FragmentName = dbFragment.Fragment_Name,
-                    TotalWorkers = dbFragment.Total_Workers,
-                    Stops = fragment.Stops
-                });
+                savedFragments.Add(dbFragment);
             }
 
             return savedFragments;
         }
 
-        // Assign bus to a fragment
         public async Task<bool> AssignBusToFragment(long busId, int fragmentId, DateTime startTime)
         {
             var bus = await _context.Buses.FindAsync(busId);
@@ -157,14 +141,12 @@ namespace TransportManagementSystem.Services
             };
             _context.BusFragmentAssignments.Add(assignment);
 
-            // Update bus status
             bus.Bus_Status = "On Route";
 
             await _context.SaveChangesAsync();
             return true;
         }
 
-        // Assign driver to a fragment
         public async Task<bool> AssignDriverToFragment(long driverId, int fragmentId, DateTime startTime)
         {
             var driver = await _context.Drivers.FindAsync(driverId);
@@ -182,15 +164,13 @@ namespace TransportManagementSystem.Services
             };
             _context.DriverFragmentAssignments.Add(assignment);
 
-            // Update driver status
             driver.Driver_Status = "On Route";
 
             await _context.SaveChangesAsync();
             return true;
         }
 
-        // Get fragment details for map display
-        public async Task<object> GetFragmentMapData(int fragmentId)
+        public async Task<object?> GetFragmentMapData(int fragmentId)
         {
             var fragment = await _context.TrajectoryFragments
                 .FirstOrDefaultAsync(f => f.Fragment_Id == fragmentId);
@@ -242,7 +222,7 @@ namespace TransportManagementSystem.Services
         public int WorkerCount { get; set; }
     }
 
-    public class TrajectoryFragment
+    public class FragmentResult
     {
         public int FragmentId { get; set; }
         public string FragmentCode { get; set; } = string.Empty;

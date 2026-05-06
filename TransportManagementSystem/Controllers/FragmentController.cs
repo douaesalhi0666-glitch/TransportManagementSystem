@@ -1,4 +1,8 @@
-﻿using Microsoft.AspNetCore.Mvc;
+﻿using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Threading.Tasks;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using TransportManagementSystem.Data;
 using TransportManagementSystem.Models;
@@ -17,7 +21,6 @@ namespace TransportManagementSystem.Controllers
             _fragmentService = new FragmentService(context);
         }
 
-        // GET: Fragment generation page
         public async Task<IActionResult> Index()
         {
             var trajectories = await _context.Trajectories
@@ -27,7 +30,6 @@ namespace TransportManagementSystem.Controllers
             return View();
         }
 
-        // POST: Generate fragments for a trajectory
         [HttpPost]
         public async Task<IActionResult> GenerateFragments(int trajectoryId, int busCapacity = 20)
         {
@@ -45,24 +47,22 @@ namespace TransportManagementSystem.Controllers
             return RedirectToAction("FragmentsResult");
         }
 
-        // GET: Show generated fragments
         public IActionResult FragmentsResult()
         {
             if (TempData["Fragments"] == null)
                 return RedirectToAction("Index");
 
             var fragmentsJson = TempData["Fragments"] as string;
-            var fragments = System.Text.Json.JsonSerializer.Deserialize<List<TrajectoryFragment>>(fragmentsJson ?? "[]");
+            var fragments = System.Text.Json.JsonSerializer.Deserialize<List<FragmentResult>>(fragmentsJson ?? "[]");
             ViewBag.TrajectoryId = TempData["TrajectoryId"];
 
             return View(fragments);
         }
 
-        // POST: Save fragments to database
         [HttpPost]
         public async Task<IActionResult> SaveFragments(int trajectoryId, string fragmentsJson)
         {
-            var fragments = System.Text.Json.JsonSerializer.Deserialize<List<TrajectoryFragment>>(fragmentsJson);
+            var fragments = System.Text.Json.JsonSerializer.Deserialize<List<FragmentResult>>(fragmentsJson);
 
             if (fragments == null || !fragments.Any())
             {
@@ -76,7 +76,6 @@ namespace TransportManagementSystem.Controllers
             return RedirectToAction("Index");
         }
 
-        // GET: View all fragments
         public async Task<IActionResult> ViewFragments()
         {
             var fragments = await _context.TrajectoryFragments
@@ -88,7 +87,6 @@ namespace TransportManagementSystem.Controllers
             return View(fragments);
         }
 
-        // GET: Assign bus to fragment page
         public async Task<IActionResult> AssignBusToFragment(int fragmentId)
         {
             var fragment = await _context.TrajectoryFragments
@@ -105,7 +103,6 @@ namespace TransportManagementSystem.Controllers
             return View();
         }
 
-        // POST: Assign bus to fragment
         [HttpPost]
         public async Task<IActionResult> AssignBusToFragment(int fragmentId, long busId, DateTime startTime)
         {
@@ -119,7 +116,6 @@ namespace TransportManagementSystem.Controllers
             return RedirectToAction("ViewFragments");
         }
 
-        // GET: Fragment map view
         public async Task<IActionResult> FragmentMap(int fragmentId)
         {
             var fragmentData = await _fragmentService.GetFragmentMapData(fragmentId);
