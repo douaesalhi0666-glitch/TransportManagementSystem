@@ -5,7 +5,7 @@
     Layout = "~/Views/Shared/_Layout.cshtml";
 }
 
-<h1>🎫 Assigner le personnel à un trajet / bus</h1>
+<h1>🎫 Assigner le personnel à un trajet</h1>
 <hr />
 
 @if (TempData["Success"] != null)
@@ -18,14 +18,13 @@
 }
 
 <div class="row">
-    <!-- Colonne gauche : Formulaire d'assignation -->
+    <!-- Colonne gauche : Formulaire -->
     <div class="col-md-5">
         <div class="card mb-4">
             <div class="card-header bg-primary text-white">
                 <h5>Assigner un personnel</h5>
             </div>
             <div class="card-body">
-                <!-- Sélection du personnel -->
                 <div class="mb-3">
                     <label for="personnelSelect" class="form-label">Personnel non assigné</label>
                     <select id="personnelSelect" class="form-select">
@@ -39,9 +38,8 @@
                     </select>
                 </div>
 
-                <!-- Sélection du trajet -->
                 <div class="mb-3">
-                    <label for="trajectorySelect" class="form-label">Trajet (manuel)</label>
+                    <label for="trajectorySelect" class="form-label">Trajet</label>
                     <select id="trajectorySelect" class="form-select">
                         <option value="">-- Choisir un trajet --</option>
                         @foreach (var t in ViewBag.Trajectories)
@@ -59,45 +57,52 @@
         </div>
     </div>
 
-    <!-- Colonne droite : Listes des assignations actuelles -->
+    <!-- Colonne droite : Assignations actuelles -->
     <div class="col-md-7">
         <div class="card">
             <div class="card-header bg-secondary text-white">
-                <h5>📋 Assignations actuelles (personnel → trajet / bus)</h5>
+                <h5>📋 Assignations actuelles (personnel → trajet)</h5>
             </div>
             <div class="card-body">
                 @if (Model.Any())
                 {
-                    <table class="table table-striped">
-                        <thead>
-                            <tr>
-                                <th>ID Personnel</th>
-                                <th>Nom</th>
-                                <th>Trajet assigné</th>
-                                <th>Bus assigné</th>
-                                <th>Action</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            @foreach (var p in Model)
-                            {
+                    <div class="table-responsive">
+                        <table class="table table-striped table-bordered">
+                            <thead class="table-dark">
                                 <tr>
-                                    <td>@p.Personnel_Id</td>
-                                    <td>@p.Personnel_FirstName @p.Personnel_LastName</td>
-                                    <td>@p.AssignedTrajectory?.Trajectory_Name ?? "Non défini"</td>
-                                    <td>@p.AssignedBus?.Bus_Code ?? "Non défini"</td>
-                                    <td>
-                                        <form method="post" asp-action="UnassignPersonnel" style="display:inline;">
-                                            <input type="hidden" name="personnelId" value="@p.Personnel_Id" />
-                                            <button type="submit" class="btn btn-sm btn-danger" onclick="return confirm('Désassigner ce personnel ?')">
-                                                ❌ Désassigner
-                                            </button>
-                                        </form>
-                                    </td>
+                                    <th>ID Personnel</th>
+                                    <th>Nom complet</th>
+                                    <th>Trajet assigné</th>
+                                    <th>Action</th>
                                 </tr>
-                            }
-                        </tbody>
-                    </table>
+                            </thead>
+                            <tbody>
+                                @foreach (var p in Model)
+                                {
+                                    <tr>
+                                        <td>@p.Personnel_Id</td>
+                                        <td>@p.Personnel_FirstName @p.Personnel_LastName</td>
+                                        <td>
+                                            @if (p.AssignedTrajectory != null)
+                                            {
+                                                @p.AssignedTrajectory.Trajectory_Name
+                                            }
+                                            else
+                                            {
+                                                <span class="text-muted">Non défini</span>
+                                            }
+                                         </td>
+                                        <td>
+                                            <form method="post" asp-action="UnassignPersonnel" onsubmit="return confirm('Désassigner ce personnel ?');">
+                                                <input type="hidden" name="personnelId" value="@p.Personnel_Id" />
+                                                <button type="submit" class="btn btn-sm btn-danger">❌ Désassigner</button>
+                                            </form>
+                                         </td>
+                                     </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
                 }
                 else
                 {

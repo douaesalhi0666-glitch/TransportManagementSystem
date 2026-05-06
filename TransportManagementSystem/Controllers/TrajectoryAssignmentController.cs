@@ -25,18 +25,19 @@ namespace TransportManagementSystem.Controllers
                 .Where(p => p.IsAssigned != true)
                 .ToListAsync();
 
-            ViewBag.Trajectories = await _context.Trajectories.ToListAsync();
+            ViewBag.Trajectories = await _context.Trajectories
+                .Where(t => t.Trajectory_Status == "Active")
+                .ToListAsync();
 
             var assignments = await _context.Personnel
                 .Include(p => p.AssignedTrajectory)
-                .Include(p => p.AssignedBus)
                 .Where(p => p.IsAssigned == true)
                 .ToListAsync();
 
             return View(assignments);
         }
 
-        // POST: AI-based assignment (corrigée)
+        // POST: AI-based assignment (sans bus)
         [HttpPost]
         public async Task<IActionResult> AssignPersonnelAI(long personnelId)
         {
@@ -92,49 +93,18 @@ namespace TransportManagementSystem.Controllers
                 return RedirectToAction("AssignPersonnel");
             }
 
-            // Recherche d'un bus disponible sur ce trajet
-            var availableBuses = await _context.Buses
-                .Where(b => b.Bus_Status == "In Service" && b.Bus_CurrentTrajectoryId == bestTrajectory.Trajectory_Id)
-                .OrderBy(b => b.Bus_Id)
-                .ToListAsync();
-
-            if (!availableBuses.Any())
-            {
-                TempData["Error"] = $"Aucun bus disponible sur le trajet {bestTrajectory.Trajectory_Name}.";
-                return RedirectToAction("AssignPersonnel");
-            }
-
-            Bus? selectedBus = null;
-            foreach (var bus in availableBuses)
-            {
-                int currentOccupancy = await _context.Personnel
-                    .CountAsync(p => p.AssignedBusId == bus.Bus_Id);
-                int capacity = bus.Bus_Capacity ?? 50;
-                if (currentOccupancy < capacity)
-                {
-                    selectedBus = bus;
-                    break;
-                }
-            }
-
-            if (selectedBus == null)
-            {
-                TempData["Error"] = $"Tous les bus du trajet {bestTrajectory.Trajectory_Name} sont pleins.";
-                return RedirectToAction("AssignPersonnel");
-            }
-
-            // Assignation
+            // Assignation : seulement la trajectoire, pas de bus
             personnel.AssignedTrajectoryId = bestTrajectory.Trajectory_Id;
-            personnel.AssignedBusId = selectedBus.Bus_Id;
+            personnel.AssignedBusId = null;
             personnel.IsAssigned = true;
 
             await _context.SaveChangesAsync();
 
-            TempData["Success"] = $"🤖 {personnel.Personnel_FirstName} {personnel.Personnel_LastName} assigné au trajet {bestTrajectory.Trajectory_Name} (distance: {bestDistance:F1} km) et au bus {selectedBus.Bus_Code}.";
+            TempData["Success"] = $"🤖 {personnel.Personnel_FirstName} {personnel.Personnel_LastName} assigné au trajet {bestTrajectory.Trajectory_Name} (distance: {bestDistance:F1} km).";
             return RedirectToAction("AssignPersonnel");
         }
 
-        // POST: Manual assignment
+        // POST: Manual assignment (sans bus)
         [HttpPost]
         public async Task<IActionResult> AssignPersonnelManual(long personnelId, int trajectoryId)
         {
@@ -146,43 +116,13 @@ namespace TransportManagementSystem.Controllers
                 return RedirectToAction("AssignPersonnel");
             }
 
-            var availableBuses = await _context.Buses
-                .Where(b => b.Bus_CurrentTrajectoryId == trajectoryId && b.Bus_Status == "In Service")
-                .OrderBy(b => b.Bus_Id)
-                .ToListAsync();
-
-            if (!availableBuses.Any())
-            {
-                TempData["Error"] = "Aucun bus disponible sur ce trajet.";
-                return RedirectToAction("AssignPersonnel");
-            }
-
-            Bus? selectedBus = null;
-            foreach (var bus in availableBuses)
-            {
-                int currentOccupancy = await _context.Personnel
-                    .CountAsync(p => p.AssignedBusId == bus.Bus_Id);
-                int capacity = bus.Bus_Capacity ?? 50;
-                if (currentOccupancy < capacity)
-                {
-                    selectedBus = bus;
-                    break;
-                }
-            }
-
-            if (selectedBus == null)
-            {
-                TempData["Error"] = "Tous les bus de ce trajet sont pleins.";
-                return RedirectToAction("AssignPersonnel");
-            }
-
             personnel.AssignedTrajectoryId = trajectoryId;
-            personnel.AssignedBusId = selectedBus.Bus_Id;
+            personnel.AssignedBusId = null;
             personnel.IsAssigned = true;
 
             await _context.SaveChangesAsync();
 
-            TempData["Success"] = $"{personnel.Personnel_FirstName} {personnel.Personnel_LastName} assigné au trajet {trajectory.Trajectory_Name} et au bus {selectedBus.Bus_Code}.";
+            TempData["Success"] = $"{personnel.Personnel_FirstName} {personnel.Personnel_LastName} assigné au trajet {trajectory.Trajectory_Name}.";
             return RedirectToAction("AssignPersonnel");
         }
 
@@ -202,12 +142,11 @@ namespace TransportManagementSystem.Controllers
             return RedirectToAction("AssignPersonnel");
         }
 
-        // Autres actions (ViewAssignments, BusOccupancy, RemovePersonnelFromBus) inchangées
+        // ========== Autres actions (non modifiées) ==========
         public async Task<IActionResult> ViewAssignments()
         {
             var assignments = await _context.Personnel
                 .Include(p => p.AssignedTrajectory)
-                .Include(p => p.AssignedBus)
                 .Where(p => p.IsAssigned == true)
                 .ToListAsync();
             return View(assignments);
