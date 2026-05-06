@@ -11,7 +11,31 @@
     <a href="/Personnel/Create" class="btn btn-primary">Ajouter un personnel</a>
 </p>
 
-<table class="table table-striped">
+<!-- Barre de recherche et filtres -->
+<div class="row mb-3">
+    <div class="col-md-4">
+        <input type="text" id="searchInput" class="form-control" placeholder="Rechercher par ID, prénom ou nom" />
+    </div>
+    <div class="col-md-2">
+        <select id="statusFilter" class="form-select">
+            <option value="">Tous les statuts</option>
+            <option value="Active">Actif</option>
+            <option value="Inactive">Inactif</option>
+        </select>
+    </div>
+    <div class="col-md-2">
+        <select id="assignedFilter" class="form-select">
+            <option value="">Tous</option>
+            <option value="assigned">Assigné</option>
+            <option value="unassigned">Non assigné</option>
+        </select>
+    </div>
+    <div class="col-md-2">
+        <button id="resetFilter" class="btn btn-secondary">Réinitialiser</button>
+    </div>
+</div>
+
+<table class="table table-striped" id="personnelTable">
     <thead>
         <tr>
             <th>ID</th>
@@ -32,12 +56,12 @@
     <tbody>
         @foreach (var item in Model)
         {
-            <tr>
+            var isAssigned = item.AssignedBusId != null || item.AssignedTrajectoryId != null;
+            <tr id="row-@item.Personnel_Id" data-status="@item.Personnel_Status" data-assigned="@(isAssigned ? "assigned" : "unassigned")">
                 <td>@item.Personnel_Id</td>
                 <td>@item.Personnel_FirstName</td>
                 <td>@item.Personnel_LastName</td>
                 <td>
-
                     @if (item.Personnel_Gender == "Male")
                     {
                         <span>Homme</span>
@@ -48,7 +72,7 @@
                     }
                     else
                     {
-                        <span>@item.Personnel_Gender</span>
+                        @item.Personnel_Gender
                     }
                 </td>
                 <td>@item.Personnel_Email</td>
@@ -87,7 +111,7 @@
                     }
                 </td>
                 <td>
-                    <a href="/Personnel/Edit/@item.Personnel_Id" class="btn btn-sm btn-warning">Modifier</a>
+                    <button class="btn btn-sm btn-warning edit-btn" data-id="@item.Personnel_Id">Modifier</button>
                     <a href="/Personnel/Delete/@item.Personnel_Id" class="btn btn-sm btn-danger">Supprimer</a>
                 </td>
             </tr>
@@ -96,3 +120,237 @@
 </table>
 
 <a href="/Dashboard/AdminDashboard" class="btn btn-secondary">Retour au Dashboard</a>
+
+<!-- Modal d'édition -->
+<div class="modal fade" id="editModal" tabindex="-1" aria-labelledby="editModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title" id="editModalLabel">Modifier le personnel</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <form id="editForm">
+                    <input type="hidden" id="edit_Personnel_Id" name="Personnel_Id" />
+                    
+                    <div class="row">
+                        <div class="col-md-6 mb-2">
+                            <label>Prénom</label>
+                            <input type="text" id="edit_FirstName" name="Personnel_FirstName" class="form-control" required />
+                        </div>
+                        <div class="col-md-6 mb-2">
+                            <label>Nom</label>
+                            <input type="text" id="edit_LastName" name="Personnel_LastName" class="form-control" required />
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-4 mb-2">
+                            <label>Genre</label>
+                            <select id="edit_Gender" name="Personnel_Gender" class="form-select">
+                                <option value="Male">Homme</option>
+                                <option value="Female">Femme</option>
+                            </select>
+                        </div>
+                        <div class="col-md-4 mb-2">
+                            <label>Date de naissance</label>
+                            <input type="date" id="edit_DateOfBirth" name="Personnel_DateOfBirth" class="form-control" />
+                        </div>
+                        <div class="col-md-4 mb-2">
+                            <label>Statut</label>
+                            <select id="edit_Status" name="Personnel_Status" class="form-select">
+                                <option value="Active">Actif</option>
+                                <option value="Inactive">Inactif</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6 mb-2">
+                            <label>Email</label>
+                            <input type="email" id="edit_Email" name="Personnel_Email" class="form-control" />
+                        </div>
+                        <div class="col-md-6 mb-2">
+                            <label>Téléphone</label>
+                            <input type="text" id="edit_PhoneNumber" name="Personnel_PhoneNumber" class="form-control" />
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6 mb-2">
+                            <label>Code employé</label>
+                            <input type="text" id="edit_EmployeeCode" name="Personnel_EmployeeCode" class="form-control" required />
+                        </div>
+                        <div class="col-md-6 mb-2">
+                            <label>Département</label>
+                            <input type="text" id="edit_Department" name="Personnel_Department" class="form-control" />
+                        </div>
+                    </div>
+                    <div class="mb-2">
+                        <label>Adresse domicile</label>
+                        <input type="text" id="edit_HomeAddress" name="HomeAddress" class="form-control" />
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6 mb-2">
+                            <label>Adresse (rue)</label>
+                            <input type="text" id="edit_Address" name="Personnel_Address" class="form-control" />
+                        </div>
+                        <div class="col-md-6 mb-2">
+                            <label>Ville</label>
+                            <input type="text" id="edit_City" name="Personnel_City" class="form-control" />
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6 mb-2">
+                            <label>Latitude</label>
+                            <input type="number" step="any" id="edit_Latitude" name="Personnel_Latitude" class="form-control" />
+                        </div>
+                        <div class="col-md-6 mb-2">
+                            <label>Longitude</label>
+                            <input type="number" step="any" id="edit_Longitude" name="Personnel_Longitude" class="form-control" />
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6 mb-2">
+                            <label>Trajet assigné</label>
+                            <select id="edit_TrajectoryId" name="AssignedTrajectoryId" class="form-select">
+                                <option value="">-- Aucun --</option>
+                                @foreach (var traj in ViewBag.Trajectories)
+                                {
+                                    <option value="@traj.Trajectory_Id">@traj.Trajectory_Name</option>
+                                }
+                            </select>
+                        </div>
+                        <div class="col-md-6 mb-2">
+                            <label>Bus assigné</label>
+                            <select id="edit_BusId" name="AssignedBusId" class="form-select">
+                                <option value="">-- Aucun --</option>
+                                @foreach (var bus in ViewBag.Buses)
+                                {
+                                    <option value="@bus.Bus_Id">@bus.Bus_Code - @bus.Bus_PlateNumber</option>
+                                }
+                            </select>
+                        </div>
+                    </div>
+                    <div class="form-check mb-2">
+                        <input type="checkbox" id="edit_IsAssigned" name="IsAssigned" class="form-check-input" value="true" />
+                        <label class="form-check-label">Assigné</label>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
+                <button type="button" id="saveEditBtn" class="btn btn-primary">Enregistrer</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        $(document).ready(function() {
+        function filterTable() {
+        var searchText = $('#searchInput').val().toLowerCase();
+        var status = $('#statusFilter').val();
+        var assigned = $('#assignedFilter').val();
+
+        $('#personnelTable tbody tr').each(function() {
+        var id = $(this).find('td:first').text();
+        var firstName = $(this).find('td:nth-child(2)').text();
+        var lastName = $(this).find('td:nth-child(3)').text();
+        var rowStatus = $(this).data('status');
+        var rowAssigned = $(this).data('assigned');
+        var matchSearch = (id.toLowerCase().indexOf(searchText) !== -1) ||
+        (firstName.toLowerCase().indexOf(searchText) !== -1) ||
+        (lastName.toLowerCase().indexOf(searchText) !== -1);
+        var matchStatus = (status === '' || rowStatus === status);
+        var matchAssigned = (assigned === '' || rowAssigned === assigned);
+        if (matchSearch && matchStatus && matchAssigned) {
+        $(this).show();
+        } else {
+        $(this).hide();
+        }
+        });
+        }
+
+        $('#searchInput').on('keyup', filterTable);
+        $('#statusFilter').on('change', filterTable);
+        $('#assignedFilter').on('change', filterTable);
+        $('#resetFilter').click(function() {
+        $('#searchInput').val('');
+        $('#statusFilter').val('');
+        $('#assignedFilter').val('');
+        filterTable();
+        });
+
+        // Édition en ligne (modal)
+        $('.edit-btn').click(function() {
+        var id = $(this).data('id');
+        $.get('/Personnel/GetPersonnelData/' + id, function(data) {
+        $('#edit_Personnel_Id').val(data.personnel_Id);
+        $('#edit_FirstName').val(data.personnel_FirstName);
+        $('#edit_LastName').val(data.personnel_LastName);
+        $('#edit_Gender').val(data.personnel_Gender);
+        var dob = data.personnel_DateOfBirth ? data.personnel_DateOfBirth.split('T')[0] : '';
+        $('#edit_DateOfBirth').val(dob);
+        $('#edit_PhoneNumber').val(data.personnel_PhoneNumber);
+        $('#edit_Email').val(data.personnel_Email);
+        $('#edit_EmployeeCode').val(data.personnel_EmployeeCode);
+        $('#edit_Department').val(data.personnel_Department);
+        $('#edit_Status').val(data.personnel_Status);
+        $('#edit_Address').val(data.personnel_Address);
+        $('#edit_City').val(data.personnel_City);
+        $('#edit_Latitude').val(data.personnel_Latitude);
+        $('#edit_Longitude').val(data.personnel_Longitude);
+        $('#edit_HomeAddress').val(data.homeAddress);
+        $('#edit_TrajectoryId').val(data.assignedTrajectoryId);
+        $('#edit_BusId').val(data.assignedBusId);
+        $('#edit_IsAssigned').prop('checked', data.isAssigned === true);
+        $('#editModal').modal('show');
+        }).fail(function() {
+        alert('Erreur lors du chargement des données.');
+        });
+        });
+
+        $('#saveEditBtn').click(function() {
+        var formData = {
+        Personnel_Id: $('#edit_Personnel_Id').val(),
+        Personnel_FirstName: $('#edit_FirstName').val(),
+        Personnel_LastName: $('#edit_LastName').val(),
+        Personnel_Gender: $('#edit_Gender').val(),
+        Personnel_DateOfBirth: $('#edit_DateOfBirth').val() || null,
+        Personnel_PhoneNumber: $('#edit_PhoneNumber').val(),
+        Personnel_Email: $('#edit_Email').val(),
+        Personnel_EmployeeCode: $('#edit_EmployeeCode').val(),
+        Personnel_Department: $('#edit_Department').val(),
+        Personnel_Status: $('#edit_Status').val(),
+        Personnel_Address: $('#edit_Address').val(),
+        Personnel_City: $('#edit_City').val(),
+        Personnel_Latitude: $('#edit_Latitude').val() === '' ? null : parseFloat($('#edit_Latitude').val()),
+        Personnel_Longitude: $('#edit_Longitude').val() === '' ? null : parseFloat($('#edit_Longitude').val()),
+        HomeAddress: $('#edit_HomeAddress').val(),
+        AssignedTrajectoryId: $('#edit_TrajectoryId').val() === '' ? null : parseInt($('#edit_TrajectoryId').val()),
+        AssignedBusId: $('#edit_BusId').val() === '' ? null : parseInt($('#edit_BusId').val()),
+        IsAssigned: $('#edit_IsAssigned').is(':checked')
+        };
+
+        $.ajax({
+        url: '/Personnel/UpdatePersonnel',
+        type: 'POST',
+        contentType: 'application/json',
+        data: JSON.stringify(formData),
+        success: function(response) {
+        if (response.success) {
+        alert(response.message);
+        location.reload();
+        } else {
+        alert('Erreur : ' + (response.message || 'Vérifiez les données'));
+        }
+        },
+        error: function() {
+        alert('Erreur lors de l’envoi.');
+        }
+        });
+        });
+        });
+    </script>
+}

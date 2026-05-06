@@ -27,6 +27,14 @@ namespace TransportManagementSystem.Controllers
                 .Include(b => b.CurrentDriver)
                 .Include(b => b.CurrentTrajectory)
                 .ToListAsync();
+
+            ViewBag.Drivers = await _context.Drivers
+                .Where(d => d.Driver_Status == "Available" || d.Driver_Status == "On Route")
+                .ToListAsync();
+            ViewBag.Trajectories = await _context.Trajectories
+                .Where(t => t.Trajectory_Status == "Active")
+                .ToListAsync();
+
             return View(buses);
         }
 
@@ -45,6 +53,58 @@ namespace TransportManagementSystem.Controllers
                 return RedirectToAction(nameof(Index));
             }
             return View(bus);
+        }
+
+        // API: GET /Buses/GetBusData/{id}
+        [HttpGet]
+        public async Task<IActionResult> GetBusData(long id)
+        {
+            var bus = await _context.Buses
+                .Include(b => b.CurrentDriver)
+                .Include(b => b.CurrentTrajectory)
+                .FirstOrDefaultAsync(b => b.Bus_Id == id);
+            if (bus == null) return NotFound();
+
+            return Ok(new
+            {
+                bus.Bus_Id,
+                bus.Bus_Code,
+                bus.Bus_PlateNumber,
+                bus.Bus_Brand,
+                bus.Bus_Model,
+                bus.Bus_Year,
+                bus.Bus_Capacity,
+                bus.Bus_Status,
+                bus.Bus_CurrentDriverId,
+                bus.Bus_CurrentTrajectoryId
+            });
+        }
+
+        // API: POST /Buses/UpdateBus
+        [HttpPost]
+        public async Task<IActionResult> UpdateBus([FromBody] BusUpdateModel model)
+        {
+            if (model == null || model.Bus_Id == 0)
+                return BadRequest("Données invalides");
+
+            var bus = await _context.Buses.FindAsync(model.Bus_Id);
+            if (bus == null) return NotFound();
+
+            bus.Bus_Code = model.Bus_Code;
+            bus.Bus_PlateNumber = model.Bus_PlateNumber;
+            bus.Bus_Brand = model.Bus_Brand;
+            bus.Bus_Model = model.Bus_Model;
+            bus.Bus_Year = model.Bus_Year;
+            bus.Bus_Capacity = model.Bus_Capacity;
+            bus.Bus_Status = model.Bus_Status;
+            bus.Bus_CurrentDriverId = model.Bus_CurrentDriverId;
+            bus.Bus_CurrentTrajectoryId = model.Bus_CurrentTrajectoryId;
+            bus.Bus_UpdatedAt = DateTime.Now;
+
+            _context.Update(bus);
+            await _context.SaveChangesAsync();
+
+            return Ok(new { success = true, message = "Bus mis à jour avec succès" });
         }
 
         public async Task<IActionResult> Edit(long? id)
@@ -67,7 +127,6 @@ namespace TransportManagementSystem.Controllers
                     var existingBus = await _context.Buses.AsNoTracking().FirstOrDefaultAsync(b => b.Bus_Id == id);
                     if (existingBus == null) return NotFound();
 
-                    // Conserver les valeurs des champs non modifiés par le formulaire
                     bus.Bus_CurrentDriverId = existingBus.Bus_CurrentDriverId;
                     bus.Bus_CurrentTrajectoryId = existingBus.Bus_CurrentTrajectoryId;
                     bus.Bus_CurrentLatitude = existingBus.Bus_CurrentLatitude;
@@ -110,7 +169,7 @@ namespace TransportManagementSystem.Controllers
         private bool BusExists(long id) => _context.Buses.Any(e => e.Bus_Id == id);
 
         // ========================================================
-        // API POUR LES CARTES (position des bus)
+        // API POUR LES CARTES (à conserver)
         // ========================================================
         [HttpGet]
         public async Task<IActionResult> GetBusLocations()
@@ -131,7 +190,7 @@ namespace TransportManagementSystem.Controllers
         }
 
         // ========================================================
-        // API POUR LE TABLEAU DE BORD DU DRIVER
+        // API POUR LE TABLEAU DE BORD DU DRIVER (à conserver)
         // ========================================================
         [HttpGet]
         public async Task<IActionResult> GetDriverDashboardData()
@@ -419,5 +478,19 @@ namespace TransportManagementSystem.Controllers
         public string BusCode { get; set; } = string.Empty;
         public int TrajectoryId { get; set; }
         public double Distance { get; set; }
+    }
+
+    public class BusUpdateModel
+    {
+        public long Bus_Id { get; set; }
+        public string Bus_Code { get; set; } = string.Empty;
+        public string Bus_PlateNumber { get; set; } = string.Empty;
+        public string Bus_Brand { get; set; } = string.Empty;
+        public string Bus_Model { get; set; } = string.Empty;
+        public int? Bus_Year { get; set; }
+        public int? Bus_Capacity { get; set; }
+        public string Bus_Status { get; set; } = string.Empty;
+        public long? Bus_CurrentDriverId { get; set; }
+        public int? Bus_CurrentTrajectoryId { get; set; }
     }
 }

@@ -21,25 +21,23 @@ namespace TransportManagementSystem.Controllers
                 .Include(p => p.AssignedTrajectory)
                 .Include(p => p.AssignedBus)
                 .ToListAsync();
+
+            ViewBag.Trajectories = await _context.Trajectories.ToListAsync();
+            ViewBag.Buses = await _context.Buses.ToListAsync();
+
             return View(personnel);
         }
 
         // GET: Personnel/Details/5
         public async Task<IActionResult> Details(long? id)
         {
-            if (id == null)
-            {
-                return NotFound();
-            }
+            if (id == null) return NotFound();
 
             var personnel = await _context.Personnel
                 .Include(p => p.AssignedTrajectory)
                 .Include(p => p.AssignedBus)
                 .FirstOrDefaultAsync(m => m.Personnel_Id == id);
-            if (personnel == null)
-            {
-                return NotFound();
-            }
+            if (personnel == null) return NotFound();
 
             return View(personnel);
         }
@@ -79,84 +77,84 @@ namespace TransportManagementSystem.Controllers
             return View(personnel);
         }
 
-        // GET: Personnel/Edit/5
-        public async Task<IActionResult> Edit(long? id)
+        // API: GET /Personnel/GetPersonnelData/{id}
+        [HttpGet]
+        public async Task<IActionResult> GetPersonnelData(long id)
         {
-            if (id == null)
-            {
-                return NotFound();
-            }
+            var personnel = await _context.Personnel
+                .Include(p => p.AssignedTrajectory)
+                .Include(p => p.AssignedBus)
+                .FirstOrDefaultAsync(p => p.Personnel_Id == id);
+            if (personnel == null) return NotFound();
 
-            var personnel = await _context.Personnel.FindAsync(id);
-            if (personnel == null)
+            return Ok(new
             {
-                return NotFound();
-            }
-
-            ViewBag.Trajectories = await _context.Trajectories.ToListAsync();
-            ViewBag.Buses = await _context.Buses.ToListAsync();
-            return View(personnel);
+                personnel.Personnel_Id,
+                personnel.Personnel_FirstName,
+                personnel.Personnel_LastName,
+                personnel.Personnel_Gender,
+                personnel.Personnel_DateOfBirth,
+                personnel.Personnel_PhoneNumber,
+                personnel.Personnel_Email,
+                personnel.Personnel_EmployeeCode,
+                personnel.Personnel_Department,
+                personnel.Personnel_Status,
+                personnel.Personnel_Address,
+                personnel.Personnel_City,
+                personnel.Personnel_Latitude,
+                personnel.Personnel_Longitude,
+                personnel.HomeAddress,
+                personnel.IsAssigned,
+                AssignedTrajectoryId = personnel.AssignedTrajectoryId,
+                AssignedBusId = personnel.AssignedBusId
+            });
         }
 
-        // POST: Personnel/Edit/5
+        // API: POST /Personnel/UpdatePersonnel
         [HttpPost]
-        [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Edit(long id, Personnel personnel)
+        //[ValidateAntiForgeryToken]
+        public async Task<IActionResult> UpdatePersonnel([FromBody] PersonnelUpdateModel model)
         {
-            if (id != personnel.Personnel_Id)
-            {
-                return NotFound();
-            }
+            if (model == null || model.Personnel_Id == 0)
+                return BadRequest("Données invalides");
 
-            if (ModelState.IsValid)
-            {
-                try
-                {
-                    var existing = await _context.Personnel.AsNoTracking().FirstOrDefaultAsync(p => p.Personnel_Id == id);
-                    if (existing != null)
-                    {
-                        personnel.Personnel_CreatedAt = existing.Personnel_CreatedAt;
-                        personnel.Personnel_UpdatedAt = DateTime.Now;
-                        _context.Update(personnel);
-                        await _context.SaveChangesAsync();
-                    }
-                }
-                catch (DbUpdateConcurrencyException)
-                {
-                    if (!PersonnelExists(personnel.Personnel_Id))
-                    {
-                        return NotFound();
-                    }
-                    else
-                    {
-                        throw;
-                    }
-                }
-                return RedirectToAction(nameof(Index));
-            }
+            var personnel = await _context.Personnel.FindAsync(model.Personnel_Id);
+            if (personnel == null) return NotFound();
 
-            ViewBag.Trajectories = await _context.Trajectories.ToListAsync();
-            ViewBag.Buses = await _context.Buses.ToListAsync();
-            return View(personnel);
+            personnel.Personnel_FirstName = model.Personnel_FirstName;
+            personnel.Personnel_LastName = model.Personnel_LastName;
+            personnel.Personnel_Gender = model.Personnel_Gender;
+            personnel.Personnel_DateOfBirth = model.Personnel_DateOfBirth;
+            personnel.Personnel_PhoneNumber = model.Personnel_PhoneNumber;
+            personnel.Personnel_Email = model.Personnel_Email;
+            personnel.Personnel_EmployeeCode = model.Personnel_EmployeeCode;
+            personnel.Personnel_Department = model.Personnel_Department;
+            personnel.Personnel_Status = model.Personnel_Status;
+            personnel.Personnel_Address = model.Personnel_Address;
+            personnel.Personnel_City = model.Personnel_City;
+            personnel.Personnel_Latitude = model.Personnel_Latitude;
+            personnel.Personnel_Longitude = model.Personnel_Longitude;
+            personnel.HomeAddress = model.HomeAddress;
+            personnel.AssignedTrajectoryId = model.AssignedTrajectoryId;
+            personnel.AssignedBusId = model.AssignedBusId;
+            personnel.IsAssigned = model.IsAssigned;
+            personnel.Personnel_UpdatedAt = DateTime.Now;
+
+            _context.Update(personnel);
+            await _context.SaveChangesAsync();
+
+            return Ok(new { success = true, message = "Personnel mis à jour avec succès" });
         }
 
         // GET: Personnel/Delete/5
         public async Task<IActionResult> Delete(long? id)
         {
-            if (id == null)
-            {
-                return NotFound();
-            }
-
+            if (id == null) return NotFound();
             var personnel = await _context.Personnel
                 .Include(p => p.AssignedTrajectory)
                 .Include(p => p.AssignedBus)
                 .FirstOrDefaultAsync(m => m.Personnel_Id == id);
-            if (personnel == null)
-            {
-                return NotFound();
-            }
-
+            if (personnel == null) return NotFound();
             return View(personnel);
         }
 
@@ -174,9 +172,29 @@ namespace TransportManagementSystem.Controllers
             return RedirectToAction(nameof(Index));
         }
 
-        private bool PersonnelExists(long id)
-        {
-            return _context.Personnel.Any(e => e.Personnel_Id == id);
-        }
+        private bool PersonnelExists(long id) => _context.Personnel.Any(e => e.Personnel_Id == id);
+    }
+
+    // Modèle pour la mise à jour – toutes les chaînes sont initialisées pour éviter CS8618
+    public class PersonnelUpdateModel
+    {
+        public long Personnel_Id { get; set; }
+        public string Personnel_FirstName { get; set; } = string.Empty;
+        public string Personnel_LastName { get; set; } = string.Empty;
+        public string Personnel_Gender { get; set; } = string.Empty;
+        public DateTime? Personnel_DateOfBirth { get; set; }
+        public string Personnel_PhoneNumber { get; set; } = string.Empty;
+        public string Personnel_Email { get; set; } = string.Empty;
+        public string Personnel_EmployeeCode { get; set; } = string.Empty;
+        public string Personnel_Department { get; set; } = string.Empty;
+        public string Personnel_Status { get; set; } = string.Empty;
+        public string Personnel_Address { get; set; } = string.Empty;
+        public string Personnel_City { get; set; } = string.Empty;
+        public decimal? Personnel_Latitude { get; set; }
+        public decimal? Personnel_Longitude { get; set; }
+        public string HomeAddress { get; set; } = string.Empty;
+        public int? AssignedTrajectoryId { get; set; }
+        public long? AssignedBusId { get; set; }
+        public bool? IsAssigned { get; set; }
     }
 }

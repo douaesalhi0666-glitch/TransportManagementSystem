@@ -18,6 +18,16 @@ namespace TransportManagementSystem.Controllers
         public async Task<IActionResult> Index()
         {
             var trajectories = await _context.Trajectories.ToListAsync();
+
+            // Récupérer les bus et les trajectoires assignées
+            var buses = await _context.Buses.ToListAsync();
+            var assignedTrajectoryIds = buses
+                .Where(b => b.Bus_CurrentTrajectoryId.HasValue)
+                .Select(b => b.Bus_CurrentTrajectoryId.Value)
+                .ToHashSet();
+
+            ViewBag.AssignedTrajectoryIds = assignedTrajectoryIds;
+
             return View(trajectories);
         }
 

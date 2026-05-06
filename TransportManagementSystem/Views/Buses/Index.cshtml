@@ -11,7 +11,25 @@
     <a href="/Buses/Create" class="btn btn-primary">Ajouter un bus</a>
 </p>
 
-<table class="table table-striped">
+<!-- Barre de recherche et filtre -->
+<div class="row mb-3">
+    <div class="col-md-4">
+        <input type="text" id="searchInput" class="form-control" placeholder="Rechercher par ID ou Code" />
+    </div>
+    <div class="col-md-3">
+        <select id="statusFilter" class="form-select">
+            <option value="">Tous les statuts</option>
+            <option value="In Service">En service</option>
+            <option value="Maintenance">Maintenance</option>
+            <option value="Out of Service">Hors service</option>
+        </select>
+    </div>
+    <div class="col-md-2">
+        <button id="resetFilter" class="btn btn-secondary">Réinitialiser</button>
+    </div>
+</div>
+
+<table class="table table-striped" id="busesTable">
     <thead>
         <tr>
             <th>ID</th>
@@ -30,7 +48,7 @@
     <tbody>
         @foreach (var item in Model)
         {
-            <tr>
+            <tr id="row-@item.Bus_Id" data-status="@item.Bus_Status">
                 <td>@item.Bus_Id</td>
                 <td>@item.Bus_Code</td>
                 <td>@item.Bus_PlateNumber</td>
@@ -73,7 +91,7 @@
                     }
                 </td>
                 <td>
-                    <a href="/Buses/Edit/@item.Bus_Id" class="btn btn-sm btn-warning">Modifier</a>
+                    <button class="btn btn-sm btn-warning edit-btn" data-id="@item.Bus_Id">Modifier</button>
                     <form asp-action="Delete" asp-route-id="@item.Bus_Id" method="post" style="display:inline;">
                         <input type="submit" value="Supprimer" class="btn btn-sm btn-danger" onclick="return confirm('Êtes-vous sûr de vouloir supprimer ce bus ?');" />
                     </form>
@@ -84,3 +102,173 @@
 </table>
 
 <a href="/Dashboard/AdminDashboard" class="btn btn-secondary">Retour au Dashboard</a>
+
+<!-- Modal d'édition -->
+<div class="modal fade" id="editModal" tabindex="-1" aria-labelledby="editModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title" id="editModalLabel">Modifier le bus</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <form id="editForm">
+                    <input type="hidden" id="edit_Bus_Id" name="Bus_Id" />
+                    
+                    <div class="row">
+                        <div class="col-md-6 mb-2">
+                            <label>Code du bus</label>
+                            <input type="text" id="edit_Code" name="Bus_Code" class="form-control" required />
+                        </div>
+                        <div class="col-md-6 mb-2">
+                            <label>Plaque d'immatriculation</label>
+                            <input type="text" id="edit_PlateNumber" name="Bus_PlateNumber" class="form-control" required />
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6 mb-2">
+                            <label>Marque</label>
+                            <input type="text" id="edit_Brand" name="Bus_Brand" class="form-control" />
+                        </div>
+                        <div class="col-md-6 mb-2">
+                            <label>Modèle</label>
+                            <input type="text" id="edit_Model" name="Bus_Model" class="form-control" />
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-4 mb-2">
+                            <label>Année</label>
+                            <input type="number" id="edit_Year" name="Bus_Year" class="form-control" />
+                        </div>
+                        <div class="col-md-4 mb-2">
+                            <label>Capacité</label>
+                            <input type="number" id="edit_Capacity" name="Bus_Capacity" class="form-control" />
+                        </div>
+                        <div class="col-md-4 mb-2">
+                            <label>Statut</label>
+                            <select id="edit_Status" name="Bus_Status" class="form-select">
+                                <option value="In Service">En service</option>
+                                <option value="Maintenance">Maintenance</option>
+                                <option value="Out of Service">Hors service</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6 mb-2">
+                            <label>Chauffeur assigné</label>
+                            <select id="edit_DriverId" name="Bus_CurrentDriverId" class="form-select">
+                                <option value="">-- Aucun --</option>
+                                @foreach (var driver in ViewBag.Drivers)
+                                {
+                                    <option value="@driver.Driver_id">@driver.Driver_FirstName @driver.Driver_LastName</option>
+                                }
+                            </select>
+                        </div>
+                        <div class="col-md-6 mb-2">
+                            <label>Trajet assigné</label>
+                            <select id="edit_TrajectoryId" name="Bus_CurrentTrajectoryId" class="form-select">
+                                <option value="">-- Aucun --</option>
+                                @foreach (var traj in ViewBag.Trajectories)
+                                {
+                                    <option value="@traj.Trajectory_Id">@traj.Trajectory_Name</option>
+                                }
+                            </select>
+                        </div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
+                <button type="button" id="saveEditBtn" class="btn btn-primary">Enregistrer</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        $(document).ready(function() {
+        // Filtrage par recherche et statut
+        function filterTable() {
+        var searchText = $('#searchInput').val().toLowerCase();
+        var status = $('#statusFilter').val();
+
+        $('#busesTable tbody tr').each(function() {
+        var id = $(this).find('td:first').text();
+        var code = $(this).find('td:nth-child(2)').text();
+        var rowStatus = $(this).data('status');
+        var matchSearch = (id.toLowerCase().indexOf(searchText) !== -1) || (code.toLowerCase().indexOf(searchText) !== -1);
+        var matchStatus = (status === '' || rowStatus === status);
+        if (matchSearch && matchStatus) {
+        $(this).show();
+        } else {
+        $(this).hide();
+        }
+        });
+        }
+
+        $('#searchInput').on('keyup', filterTable);
+        $('#statusFilter').on('change', filterTable);
+        $('#resetFilter').click(function() {
+        $('#searchInput').val('');
+        $('#statusFilter').val('');
+        filterTable();
+        });
+
+        // Édition en ligne (modal)
+        $('.edit-btn').click(function() {
+        var id = $(this).data('id');
+        $.get('/Buses/GetBusData/' + id, function(data) {
+        $('#edit_Bus_Id').val(data.bus_Id);
+        $('#edit_Code').val(data.bus_Code);
+        $('#edit_PlateNumber').val(data.bus_PlateNumber);
+        $('#edit_Brand').val(data.bus_Brand);
+        $('#edit_Model').val(data.bus_Model);
+        $('#edit_Year').val(data.bus_Year);
+        $('#edit_Capacity').val(data.bus_Capacity);
+        $('#edit_Status').val(data.bus_Status);
+        $('#edit_DriverId').val(data.bus_CurrentDriverId);
+        $('#edit_TrajectoryId').val(data.bus_CurrentTrajectoryId);
+        $('#editModal').modal('show');
+        }).fail(function() {
+        alert('Erreur lors du chargement des données.');
+        });
+        });
+
+        $('#saveEditBtn').click(function() {
+        var formData = {
+        Bus_Id: $('#edit_Bus_Id').val(),
+        Bus_Code: $('#edit_Code').val(),
+        Bus_PlateNumber: $('#edit_PlateNumber').val(),
+        Bus_Brand: $('#edit_Brand').val(),
+        Bus_Model: $('#edit_Model').val(),
+        Bus_Year: $('#edit_Year').val() === '' ? null : parseInt($('#edit_Year').val()),
+        Bus_Capacity: $('#edit_Capacity').val() === '' ? null : parseInt($('#edit_Capacity').val()),
+        Bus_Status: $('#edit_Status').val(),
+        Bus_CurrentDriverId: $('#edit_DriverId').val() === '' ? null : parseInt($('#edit_DriverId').val()),
+        Bus_CurrentTrajectoryId: $('#edit_TrajectoryId').val() === '' ? null : parseInt($('#edit_TrajectoryId').val())
+        };
+
+        $.ajax({
+        url: '/Buses/UpdateBus',
+        type: 'POST',
+        contentType: 'application/json',
+        data: JSON.stringify(formData),
+        success: function(response) {
+        if (response.success) {
+        alert(response.message);
+        location.reload();
+        } else {
+        alert('Erreur : ' + (response.message || 'Vérifiez les données'));
+        }
+        },
+        error: function() {
+        alert('Erreur lors de l’envoi.');
+        }
+        });
+        });
+        });
+    </script>
+}

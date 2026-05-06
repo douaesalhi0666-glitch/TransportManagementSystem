@@ -23,6 +23,11 @@ namespace TransportManagementSystem.Controllers
             var drivers = await _context.Drivers
                 .Include(d => d.AssignedBus)
                 .ToListAsync();
+
+            ViewBag.Buses = await _context.Buses
+                .Where(b => b.Bus_Status == "In Service")
+                .ToListAsync();
+
             return View(drivers);
         }
 
@@ -50,6 +55,58 @@ namespace TransportManagementSystem.Controllers
                 return RedirectToAction(nameof(Index));
             }
             return View(driver);
+        }
+
+        // API: GET /Drivers/GetDriverData/{id}
+        [HttpGet]
+        public async Task<IActionResult> GetDriverData(long id)
+        {
+            var driver = await _context.Drivers
+                .Include(d => d.AssignedBus)
+                .FirstOrDefaultAsync(d => d.Driver_id == id);
+            if (driver == null) return NotFound();
+
+            return Ok(new
+            {
+                driver.Driver_id,
+                driver.Driver_FirstName,
+                driver.Driver_LastName,
+                driver.Driver_PhoneNumber,
+                driver.Driver_Email,
+                driver.Driver_LicenseNumber,
+                driver.Driver_LicenseExpiryDate,
+                driver.Driver_ExperienceYears,
+                driver.Driver_Status,
+                driver.Driver_AssignedBusId
+            });
+        }
+
+        // API: POST /Drivers/UpdateDriver
+        [HttpPost]
+        // [ValidateAntiForgeryToken] // à commenter pour l'AJAX
+        public async Task<IActionResult> UpdateDriver([FromBody] DriverUpdateModel model)
+        {
+            if (model == null || model.Driver_id == 0)
+                return BadRequest("Données invalides");
+
+            var driver = await _context.Drivers.FindAsync(model.Driver_id);
+            if (driver == null) return NotFound();
+
+            driver.Driver_FirstName = model.Driver_FirstName;
+            driver.Driver_LastName = model.Driver_LastName;
+            driver.Driver_PhoneNumber = model.Driver_PhoneNumber;
+            driver.Driver_Email = model.Driver_Email;
+            driver.Driver_LicenseNumber = model.Driver_LicenseNumber;
+            driver.Driver_LicenseExpiryDate = model.Driver_LicenseExpiryDate;
+            driver.Driver_ExperienceYears = model.Driver_ExperienceYears;
+            driver.Driver_Status = model.Driver_Status;
+            driver.Driver_AssignedBusId = model.Driver_AssignedBusId;
+            driver.Driver_UpdatedAt = DateTime.Now;
+
+            _context.Update(driver);
+            await _context.SaveChangesAsync();
+
+            return Ok(new { success = true, message = "Chauffeur mis à jour avec succès" });
         }
 
         public async Task<IActionResult> Edit(long? id)
@@ -122,46 +179,24 @@ namespace TransportManagementSystem.Controllers
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> DeleteConfirmed(long id)
         {
-            var driver = await _context.Drivers
-                .FindAsync(id);
+            var driver = await _context.Drivers.FindAsync(id);
+            if (driver == null) return NotFound();
 
-            if (driver == null)
-            {
-                return NotFound();
-            }
-
-            // 1. Libérer le bus si le chauffeur y est assigné
             if (driver.Driver_AssignedBusId != null)
             {
                 var bus = await _context.Buses.FindAsync(driver.Driver_AssignedBusId);
-                if (bus != null && bus.Bus_CurrentDriverId == driver.Driver_id)
-                {
-                    bus.Bus_CurrentDriverId = null;
-                }
+                if (bus != null && bus.Bus_CurrentDriverId == driver.Driver_id) bus.Bus_CurrentDriverId = null;
             }
 
-            // 2. Supprimer les enregistrements liés dans DriverPerformance_tbl
             var performances = _context.DriverPerformance_tbl.Where(p => p.Driver_Id == driver.Driver_id);
-            if (performances.Any())
-            {
-                _context.DriverPerformance_tbl.RemoveRange(performances);
-            }
+            if (performances.Any()) _context.DriverPerformance_tbl.RemoveRange(performances);
 
-            // 3. Supprimer les missions liées dans DriverMissions_tbl (si la table existe)
             var missions = _context.DriverMissions_tbl.Where(m => m.Driver_Id == driver.Driver_id);
-            if (missions.Any())
-            {
-                _context.DriverMissions_tbl.RemoveRange(missions);
-            }
+            if (missions.Any()) _context.DriverMissions_tbl.RemoveRange(missions);
 
-            // 4. Supprimer les logs de recommandation liés (si la table existe)
             var logs = _context.RecommendationLogs.Where(r => r.Recommended_DriverId == driver.Driver_id);
-            if (logs.Any())
-            {
-                _context.RecommendationLogs.RemoveRange(logs);
-            }
+            if (logs.Any()) _context.RecommendationLogs.RemoveRange(logs);
 
-            // 5. Enfin, supprimer le chauffeur
             _context.Drivers.Remove(driver);
             await _context.SaveChangesAsync();
 
@@ -245,7 +280,6 @@ namespace TransportManagementSystem.Controllers
 
             var now = DateTime.Now;
             var currentHour = now.Hour;
-
             var missionEnded = await _context.DriverMissions_tbl
                 .AnyAsync(m => m.Driver_Id == driverId && m.Mission_Date == now.Date && m.Status == "Completed");
 
@@ -335,5 +369,20 @@ namespace TransportManagementSystem.Controllers
 
             return Json(new { success = true, message = "Mission terminée. Bonne soirée !" });
         }
+    }
+
+    // Modèle pour la mise à jour
+    public class DriverUpdateModel
+    {
+        public long Driver_id { get; set; }
+        public string Driver_FirstName { get; set; } = string.Empty;
+        public string Driver_LastName { get; set; } = string.Empty;
+        public string Driver_PhoneNumber { get; set; } = string.Empty;
+        public string Driver_Email { get; set; } = string.Empty;
+        public string Driver_LicenseNumber { get; set; } = string.Empty;
+        public DateTime? Driver_LicenseExpiryDate { get; set; }
+        public int? Driver_ExperienceYears { get; set; }
+        public string Driver_Status { get; set; } = string.Empty;
+        public long? Driver_AssignedBusId { get; set; }
     }
 }
