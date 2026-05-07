@@ -119,6 +119,13 @@ namespace TransportManagementSystem.Controllers
         public async Task<IActionResult> FragmentMap(int fragmentId)
         {
             var fragmentData = await _fragmentService.GetFragmentMapData(fragmentId);
+
+            if (fragmentData == null)
+            {
+                TempData["Error"] = "Fragment non trouvé.";
+                return RedirectToAction("ViewFragments");
+            }
+
             ViewBag.FragmentData = fragmentData;
             return View();
         }

@@ -170,12 +170,13 @@ namespace TransportManagementSystem.Services
             return true;
         }
 
-        public async Task<object?> GetFragmentMapData(int fragmentId)
+        public async Task<object> GetFragmentMapData(int fragmentId)
         {
             var fragment = await _context.TrajectoryFragments
                 .FirstOrDefaultAsync(f => f.Fragment_Id == fragmentId);
 
-            if (fragment == null) return null;
+            if (fragment == null)
+                return new { error = true, message = "Fragment non trouvé" };
 
             var stops = await _context.FragmentStops
                 .Where(fs => fs.Fragment_Id == fragmentId)
@@ -206,7 +207,8 @@ namespace TransportManagementSystem.Services
                 fragment.Total_Workers,
                 Stops = stops,
                 AssignedBus = busAssignment?.Bus,
-                BusStatus = busAssignment?.Status
+                BusStatus = busAssignment?.Status,
+                error = false
             };
         }
     }
