@@ -21,10 +21,20 @@
         margin-right: 5px;
         vertical-align: middle;
     }
+    .alert-banner {
+        background-color: #fff3cd;
+        border-left: 5px solid #ffc107;
+        padding: 10px;
+        margin-bottom: 15px;
+        border-radius: 5px;
+    }
 </style>
 
 <h2>Bonjour, @ViewBag.UserName</h2>
 <p>Bienvenue sur votre tableau de bord chauffeur.</p>
+
+<!-- Zone d'alertes -->
+<div id="alertsContainer" class="mb-3"></div>
 
 <div class="row mb-4">
     <div class="col-md-6">
@@ -115,6 +125,41 @@
 
     <script>
         let map, busMarker, trajectoryLine;
+        const SPEED_KMH = 30;
+
+        function haversine(lat1, lon1, lat2, lon2) {
+            const R = 6371e3;
+            const φ1 = lat1 * Math.PI / 180;
+            const φ2 = lat2 * Math.PI / 180;
+            const Δφ = (lat2 - lat1) * Math.PI / 180;
+            const Δλ = (lon2 - lon1) * Math.PI / 180;
+            const a = Math.sin(Δφ/2) * Math.sin(Δφ/2) +
+                      Math.cos(φ1) * Math.cos(φ2) *
+                      Math.sin(Δλ/2) * Math.sin(Δλ/2);
+            const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+            return R * c;
+        }
+
+        async function loadAlerts() {
+            try {
+                const response = await fetch('/Drivers/GetAlertsForDriver');
+                const alerts = await response.json();
+                const container = document.getElementById('alertsContainer');
+                container.innerHTML = '';
+                if (alerts && alerts.length > 0) {
+                    alerts.forEach(alert => {
+                        const div = document.createElement('div');
+                        div.className = 'alert-banner';
+                        div.innerHTML = `<strong>🚨 Alerte</strong><br/>${alert.alert_Message}<br/><small>${new Date(alert.alert_SentAt).toLocaleString()}</small>`;
+                        container.appendChild(div);
+                    });
+                } else {
+                    container.innerHTML = '<div class="alert alert-info">Aucune alerte récente.</div>';
+                }
+            } catch (error) {
+                console.error('Erreur chargement alertes:', error);
+            }
+        }
 
         async function updateDriverStatus() {
             try {
@@ -148,16 +193,11 @@
                     const busLng = parseFloat(data.bus.currentLongitude);
                     
                     if (!map) {
-                        // Centrage sur le Maroc (Kénitra/Salé/Rabat)
                         map = L.map('map').setView([34.0, -6.8], 10);
                         L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
                             attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a> & CartoDB'
                         }).addTo(map);
-
-                        // Échelle métrique
                         L.control.scale({ metric: true, imperial: false }).addTo(map);
-
-                        // Légende
                         let legend = L.control({ position: 'bottomright' });
                         legend.onAdd = function() {
                             let div = L.DomUtil.create('div', 'legend');
@@ -175,24 +215,27 @@
                     const busIcon = L.divIcon({ html: '<div>🚌</div>', iconSize: [40, 40], className: 'bus-marker' });
                     if (busLat && busLng) {
                         busMarker = L.marker([busLat, busLng], { icon: busIcon }).bindPopup('Ma position').addTo(map);
-                        // Ne pas recentrer automatiquement sur le bus à chaque chargement (optionnel)
-                        // map.setView([busLat, busLng], 13);
                     }
                     
                     if (trajectoryLine) map.removeLayer(trajectoryLine);
                     if (data.stops && data.stops.length > 0) {
-                        // Attention: le contrôleur renvoie les stops avec des propriétés en PascalCase (Latitude, Longitude, TS_OrderIndex, TS_Name)
                         const points = data.stops.map(s => [parseFloat(s.Latitude), parseFloat(s.Longitude)]);
                         trajectoryLine = L.polyline(points, { color: '#3388ff', weight: 5, opacity: 0.8 }).addTo(map);
                         map.fitBounds(points);
                         data.stops.forEach(stop => {
+                            // Calcul de l'ETA depuis la position actuelle du bus
+                            let etaText = "";
+                            if (busLat && busLng) {
+                                const distanceToStop = haversine(busLat, busLng, stop.Latitude, stop.Longitude);
+                                const etaMin = Math.round(distanceToStop / 1000 / SPEED_KMH * 60);
+                                etaText = `<br/><small>🚏 Arrivée estimée dans ${etaMin} min</small>`;
+                            }
                             const stopIcon = L.divIcon({ html: stop.TS_OrderIndex.toString(), iconSize: [24, 24], className: 'stop-marker' });
-                            L.marker([parseFloat(stop.Latitude), parseFloat(stop.Longitude)], { icon: stopIcon })
-                                .bindPopup(`<strong>${stop.TS_Name}</strong>`)
+                            L.marker([stop.Latitude, stop.Longitude], { icon: stopIcon })
+                                .bindPopup(`<strong>${stop.TS_Name}</strong>${etaText}`)
                                 .addTo(map);
                         });
                     } else if (busLat && busLng) {
-                        // Si pas de stops, centrer sur le bus
                         map.setView([busLat, busLng], 13);
                     }
                 }
@@ -235,6 +278,7 @@
                     if (response.ok) {
                         alert("Position mise à jour !");
                         loadDriverData();
+                        loadAlerts();
                     }
                 } catch (err) {
                     alert("Erreur réseau.");
@@ -244,7 +288,9 @@
 
         updateDriverStatus();
         loadDriverData();
+        loadAlerts();
         setInterval(updateDriverStatus, 60000);
         setInterval(loadDriverData, 30000);
+        setInterval(loadAlerts, 60000);
     </script>
 }

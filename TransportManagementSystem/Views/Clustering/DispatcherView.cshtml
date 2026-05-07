@@ -191,7 +191,6 @@
         .stop-marker:hover { transform: scale(1.1); transition: transform 0.2s; }
         .sews-marker { background-color: #2ecc71; color: white; border-radius: 50%; text-align: center; font-size: 14px; font-weight: bold; width: 30px; height: 30px; display: flex; align-items: center; justify-content: center; border: 2px solid white; box-shadow: 0 2px 6px rgba(0,0,0,0.3); cursor: pointer; }
         .worker-list-item { border-left: 3px solid #28a745; margin-bottom: 8px; padding-left: 10px; }
-        .line-sews { stroke-dasharray: 5, 5; }
     </style>
 
     <script>
@@ -200,13 +199,41 @@
         let currentPolylines = [];
         let currentTrajectoryId = null;
         let allStopsData = [];
+        let allBusesData = [];
         const colorPalette = ['#3388ff', '#ff3333', '#33ff33', '#ff33cc', '#ff9933', '#33cccc', '#9966ff', '#66ff99'];
+        const SPEED_KMH = 30; // vitesse moyenne pour le calcul ETA
         
-        // SEWS Maroc coordinates
         const SEWS_LAT = 34.2900;
         const SEWS_LNG = -6.5700;
 
+        // Fonction Haversine (distance en mètres)
+        function haversine(lat1, lon1, lat2, lon2) {
+            const R = 6371e3;
+            const φ1 = lat1 * Math.PI / 180;
+            const φ2 = lat2 * Math.PI / 180;
+            const Δφ = (lat2 - lat1) * Math.PI / 180;
+            const Δλ = (lon2 - lon1) * Math.PI / 180;
+            const a = Math.sin(Δφ/2) * Math.sin(Δφ/2) +
+                      Math.cos(φ1) * Math.cos(φ2) *
+                      Math.sin(Δλ/2) * Math.sin(Δλ/2);
+            const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+            return R * c;
+        }
+
+        // Charger les bus (positions et trajectoire assignée)
+        async function loadBuses() {
+            try {
+                const response = await fetch('/Buses/GetBusLocations');
+                allBusesData = await response.json();
+            } catch (error) {
+                console.error('Erreur chargement bus:', error);
+                allBusesData = [];
+            }
+        }
+
         async function loadData() {
+            await loadBuses();
+
             const selectedTrajId = document.getElementById('trajectoryFilter').value;
             currentTrajectoryId = selectedTrajId === 'all' ? null : parseInt(selectedTrajId);
 
@@ -229,7 +256,7 @@
                 }).addTo(map);
             }
 
-            // Clear all layers
+            // Nettoyer les calques existants
             map.eachLayer(function(layer) {
                 if (layer instanceof L.Marker || layer instanceof L.Polyline) {
                     map.removeLayer(layer);
@@ -238,26 +265,23 @@
             currentMarkers = [];
             currentPolylines = [];
 
-            // Always add SEWS marker
+            // Marqueur SEWS
             const sewsIcon = L.divIcon({ html: '🏭', iconSize: [30, 30], className: 'sews-marker' });
             const sewsMarker = L.marker([SEWS_LAT, SEWS_LNG], { icon: sewsIcon })
                 .bindPopup('<strong>🏭 SEWS Maroc</strong><br>Point de depart (Ordre 0)');
             sewsMarker.addTo(map);
             currentMarkers.push(sewsMarker);
 
+            // Tracer les trajectoires
             const trajectoriesResponse = await fetch('/Clustering/GetTrajectoriesWithStops');
             const trajectories = await trajectoriesResponse.json();
-
-            // Process each trajectory
             trajectories.forEach(function(traj) {
                 if (!currentTrajectoryId || traj.trajectory_Id === currentTrajectoryId) {
                     if (traj.stops && traj.stops.length >= 1) {
-                        // Create points for polyline: SEWS + all stops
                         const points = [[SEWS_LAT, SEWS_LNG]];
                         traj.stops.forEach(function(s) {
                             points.push([s.tS_Latitude, s.tS_Longitude]);
                         });
-                        
                         const color = colorPalette[(traj.trajectory_Id || 0) % colorPalette.length];
                         const polyline = L.polyline(points, { color: color, weight: 4, opacity: 0.7 })
                             .bindPopup('<strong>' + traj.trajectory_Name + '</strong><br>' + traj.trajectory_Code)
@@ -267,7 +291,20 @@
                 }
             });
 
+            // Construire la liste des arrêts avec ETA
             const stopsList = allStops.map(function(stop) {
+                let nearestDistance = Infinity;
+                const sameTrajectoryBuses = allBusesData.filter(function(bus) {
+                    return bus.bus_CurrentTrajectoryId === stop.tS_TrajectoryId;
+                });
+                sameTrajectoryBuses.forEach(function(bus) {
+                    const d = haversine(stop.tS_Latitude, stop.tS_Longitude, bus.lat, bus.lng);
+                    if (d < nearestDistance) nearestDistance = d;
+                });
+                let etaMinutes = null;
+                if (nearestDistance !== Infinity) {
+                    etaMinutes = Math.round(nearestDistance / 1000 / SPEED_KMH * 60);
+                }
                 return {
                     id: stop.tS_Id,
                     name: stop.tS_Name,
@@ -277,10 +314,12 @@
                     trajectoryId: stop.tS_TrajectoryId,
                     trajectoryName: stop.trajectoryName,
                     trajectoryCode: stop.trajectoryCode,
-                    workers: stop.workers || []
+                    workers: stop.workers || [],
+                    etaMinutes: etaMinutes
                 };
             });
 
+            // Ajouter les marqueurs d'arrêts avec popup incluant l'ETA
             stopsList.forEach(function(stop) {
                 const icon = L.divIcon({
                     html: stop.orderIndex.toString(),
@@ -299,11 +338,19 @@
                     workersListHtml = '<p class="text-muted small mb-0">Aucun personnel</p>';
                 }
 
+                let etaText = '';
+                if (stop.etaMinutes !== null) {
+                    etaText = `<br/><strong>🚏 Temps estimé d’arrivée du bus le plus proche : ${stop.etaMinutes} min</strong>`;
+                } else {
+                    etaText = '<br/><span class="text-muted">Aucun bus actif sur cette trajectoire</span>';
+                }
+
                 const popupContent = '<strong>' + stop.name + '</strong><br>' +
                     'Trajectoire: ' + stop.trajectoryName + '<br>' +
                     'Ordre: ' + stop.orderIndex + '<br>' +
                     '<strong>Personnels (' + stop.workers.length + '):</strong><br>' +
                     workersListHtml +
+                    etaText +
                     '<button class="btn btn-sm btn-success mt-2" onclick="openAssignModal(' + stop.id + ', \'' + stop.name.replace(/'/g, "\\'") + '\', ' + stop.trajectoryId + ')">➕ Assigner</button>' +
                     '<button class="btn btn-sm btn-warning mt-2" onclick="editStopFromMap(' + stop.id + ', \'' + stop.name.replace(/'/g, "\\'") + '\', ' + stop.lat + ', ' + stop.lng + ', ' + stop.orderIndex + ', ' + stop.trajectoryId + ')">✏️ Modifier</button>' +
                     '<button class="btn btn-sm btn-danger mt-2" onclick="deleteStopFromMap(' + stop.id + ', \'' + stop.name.replace(/'/g, "\\'") + '\')">🗑️ Supprimer</button>';
@@ -315,6 +362,7 @@
                 currentMarkers.push(marker);
             });
 
+            // Ajuster la vue
             if (allStops.length > 0) {
                 const bounds = L.latLngBounds([[SEWS_LAT, SEWS_LNG]]);
                 allStops.forEach(function(s) {
@@ -326,11 +374,12 @@
             updateTable(allStops);
         }
 
+        // ========== Fonctions existantes (modales, etc.) ==========
         function updateTable(stops) {
             const tbody = document.getElementById('stopsTableBody');
             tbody.innerHTML = '';
 
-            const filteredStops = currentTrajectoryId ? stops.filter(function(s) { return s.tS_TrajectoryId === currentTrajectoryId; }) : stops;
+            const filteredStops = currentTrajectoryId ? stops.filter(s => s.tS_TrajectoryId === currentTrajectoryId) : stops;
 
             filteredStops.forEach(function(stop) {
                 const row = tbody.insertRow();
@@ -370,11 +419,9 @@
             try {
                 const response = await fetch('/Clustering/GetWorkersByStop?stopId=' + stopId);
                 const data = await response.json();
-
                 const workersListDiv = document.getElementById('workersList');
                 if (data.workers && data.workers.length > 0) {
-                    let html = '<h5>Arrêt: ' + data.stopName + '</h5><hr>';
-                    html += '<div class="list-group">';
+                    let html = '<h5>Arrêt: ' + data.stopName + '</h5><hr><div class="list-group">';
                     data.workers.forEach(function(worker) {
                         html += '<div class="list-group-item worker-list-item">' +
                             '<strong>' + worker.personnel_FirstName + ' ' + worker.personnel_LastName + '</strong><br>' +
@@ -386,17 +433,14 @@
                     });
                     html += '</div>';
                     workersListDiv.innerHTML = html;
-
-                    document.querySelectorAll('.remove-worker').forEach(function(btn) {
+                    document.querySelectorAll('.remove-worker').forEach(btn => {
                         btn.removeEventListener('click', removeWorkerHandler);
                         btn.addEventListener('click', removeWorkerHandler);
                     });
                 } else {
                     workersListDiv.innerHTML = '<div class="alert alert-info">Aucun personnel assigné à cet arrêt.</div>';
                 }
-
-                const modal = new bootstrap.Modal(document.getElementById('viewWorkersModal'));
-                modal.show();
+                new bootstrap.Modal(document.getElementById('viewWorkersModal')).show();
             } catch (error) {
                 console.error(error);
                 alert('Erreur lors du chargement des personnels.');
@@ -407,7 +451,6 @@
             const btn = e.currentTarget;
             const workerId = btn.dataset.id;
             const workerName = btn.dataset.name;
-
             if (confirm('Retirer ' + workerName + ' de cet arrêt ?')) {
                 try {
                     const response = await fetch('/Clustering/RemoveWorkerFromStop', {
@@ -432,17 +475,14 @@
             document.getElementById('assignStopId').value = stopId;
             document.getElementById('assignStopName').value = stopName;
             document.getElementById('assignTrajectoryId').value = trajectoryId;
-
             const workerSelect = document.getElementById('workerSelect');
             workerSelect.innerHTML = '<option value="">-- Chargement... --</option>';
-
             try {
                 const response = await fetch('/Clustering/GetUnassignedWorkersForTrajectory?trajectoryId=' + trajectoryId);
                 const workers = await response.json();
-
                 if (workers.length > 0) {
                     workerSelect.innerHTML = '<option value="">-- Sélectionner un personnel --</option>';
-                    workers.forEach(function(w) {
+                    workers.forEach(w => {
                         workerSelect.innerHTML += '<option value="' + w.personnel_Id + '">' + w.personnel_FirstName + ' ' + w.personnel_LastName + ' - ' + (w.homeAddress || 'Adresse inconnue') + '</option>';
                     });
                 } else {
@@ -451,20 +491,16 @@
             } catch (err) {
                 workerSelect.innerHTML = '<option value="">Erreur de chargement</option>';
             }
-
-            const modal = new bootstrap.Modal(document.getElementById('assignWorkerModal'));
-            modal.show();
+            new bootstrap.Modal(document.getElementById('assignWorkerModal')).show();
         }
 
         async function confirmAssign() {
             const stopId = document.getElementById('assignStopId').value;
             const workerId = document.getElementById('workerSelect').value;
-
             if (!workerId) {
                 alert('Veuillez sélectionner un personnel.');
                 return;
             }
-
             try {
                 const response = await fetch('/Clustering/AssignWorkerToStop', {
                     method: 'POST',
@@ -487,13 +523,9 @@
         async function autoAssignToStop() {
             const stopId = document.getElementById('assignStopId').value;
             const stopName = document.getElementById('assignStopName').value;
-
             if (confirm('Assigner automatiquement les personnels proches à l\'arrêt ' + stopName + ' ?')) {
                 try {
-                    const response = await fetch('/Clustering/AutoAssignWorkersToStop?stopId=' + stopId, {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' }
-                    });
+                    const response = await fetch('/Clustering/AutoAssignWorkersToStop?stopId=' + stopId, { method: 'POST', headers: { 'Content-Type': 'application/json' } });
                     const result = await response.json();
                     if (result.success) {
                         alert(result.message);
@@ -513,13 +545,9 @@
                 alert('Veuillez d\'abord sélectionner une trajectoire dans le filtre.');
                 return;
             }
-
             if (confirm('Assigner automatiquement TOUS les personnels non assignés à l\'arrêt le plus proche ?')) {
                 try {
-                    const response = await fetch('/Clustering/AutoAssignAllWorkersToNearestStop?trajectoryId=' + currentTrajectoryId, {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' }
-                    });
+                    const response = await fetch('/Clustering/AutoAssignAllWorkersToNearestStop?trajectoryId=' + currentTrajectoryId, { method: 'POST', headers: { 'Content-Type': 'application/json' } });
                     const result = await response.json();
                     if (result.success) {
                         alert(result.message);
@@ -534,64 +562,19 @@
         }
 
         function attachTableButtonEvents() {
-            document.querySelectorAll('.view-workers').forEach(function(btn) {
-                btn.removeEventListener('click', viewWorkersHandler);
-                btn.addEventListener('click', viewWorkersHandler);
-            });
-            document.querySelectorAll('.assign-worker').forEach(function(btn) {
-                btn.removeEventListener('click', assignWorkerHandler);
-                btn.addEventListener('click', assignWorkerHandler);
-            });
-            document.querySelectorAll('.edit-stop').forEach(function(btn) {
-                btn.removeEventListener('click', editStopHandler);
-                btn.addEventListener('click', editStopHandler);
-            });
-            document.querySelectorAll('.delete-stop').forEach(function(btn) {
-                btn.removeEventListener('click', deleteStopHandler);
-                btn.addEventListener('click', deleteStopHandler);
-            });
+            document.querySelectorAll('.view-workers').forEach(btn => { btn.removeEventListener('click', viewWorkersHandler); btn.addEventListener('click', viewWorkersHandler); });
+            document.querySelectorAll('.assign-worker').forEach(btn => { btn.removeEventListener('click', assignWorkerHandler); btn.addEventListener('click', assignWorkerHandler); });
+            document.querySelectorAll('.edit-stop').forEach(btn => { btn.removeEventListener('click', editStopHandler); btn.addEventListener('click', editStopHandler); });
+            document.querySelectorAll('.delete-stop').forEach(btn => { btn.removeEventListener('click', deleteStopHandler); btn.addEventListener('click', deleteStopHandler); });
         }
 
-        function viewWorkersHandler(e) {
-            const btn = e.currentTarget;
-            const id = btn.dataset.id;
-            const name = btn.dataset.name;
-            showWorkersModal(id, name);
-        }
+        function viewWorkersHandler(e) { const btn = e.currentTarget; showWorkersModal(btn.dataset.id, btn.dataset.name); }
+        function assignWorkerHandler(e) { const btn = e.currentTarget; openAssignModal(btn.dataset.id, btn.dataset.name, btn.dataset.trajectory); }
+        function editStopHandler(e) { const btn = e.currentTarget; openEditModal(btn.dataset.id, btn.dataset.name, btn.dataset.lat, btn.dataset.lng, btn.dataset.order, btn.dataset.trajectory); }
+        function deleteStopHandler(e) { const btn = e.currentTarget; deleteStop(btn.dataset.id, btn.dataset.name); }
 
-        function assignWorkerHandler(e) {
-            const btn = e.currentTarget;
-            const id = btn.dataset.id;
-            const name = btn.dataset.name;
-            const trajectory = btn.dataset.trajectory;
-            openAssignModal(id, name, trajectory);
-        }
-
-        function editStopHandler(e) {
-            const btn = e.currentTarget;
-            const id = btn.dataset.id;
-            const name = btn.dataset.name;
-            const lat = btn.dataset.lat;
-            const lng = btn.dataset.lng;
-            const order = btn.dataset.order;
-            const trajectory = btn.dataset.trajectory;
-            openEditModal(id, name, lat, lng, order, trajectory);
-        }
-
-        function deleteStopHandler(e) {
-            const btn = e.currentTarget;
-            const id = btn.dataset.id;
-            const name = btn.dataset.name;
-            deleteStop(id, name);
-        }
-
-        window.editStopFromMap = function(id, name, lat, lng, order, trajectory) {
-            openEditModal(id, name, lat, lng, order, trajectory);
-        };
-
-        window.deleteStopFromMap = function(id, name) {
-            deleteStop(id, name);
-        };
+        window.editStopFromMap = function(id, name, lat, lng, order, trajectory) { openEditModal(id, name, lat, lng, order, trajectory); };
+        window.deleteStopFromMap = function(id, name) { deleteStop(id, name); };
 
         function openEditModal(id, name, lat, lng, order, trajectory) {
             document.getElementById('editStopId').value = id;
@@ -599,17 +582,13 @@
             document.getElementById('editStopLat').value = lat;
             document.getElementById('editStopLng').value = lng;
             document.getElementById('editStopOrder').value = order;
-            const editModal = new bootstrap.Modal(document.getElementById('editStopModal'));
-            editModal.show();
+            new bootstrap.Modal(document.getElementById('editStopModal')).show();
         }
 
         async function deleteStop(id, name) {
             if (confirm('Êtes-vous sûr de vouloir supprimer l\'arrêt "' + name + '" ?')) {
                 try {
-                    const response = await fetch('/Clustering/DeleteStop?id=' + id, {
-                        method: 'DELETE',
-                        headers: { 'Content-Type': 'application/json' }
-                    });
+                    const response = await fetch('/Clustering/DeleteStop?id=' + id, { method: 'DELETE', headers: { 'Content-Type': 'application/json' } });
                     if (response.ok) {
                         alert('Arrêt supprimé avec succès !');
                         loadData();
@@ -628,12 +607,10 @@
             const lat = parseFloat(document.getElementById('editStopLat').value);
             const lng = parseFloat(document.getElementById('editStopLng').value);
             const order = parseInt(document.getElementById('editStopOrder').value);
-
             if (!name || isNaN(lat) || isNaN(lng) || isNaN(order)) {
                 alert('Veuillez remplir tous les champs correctement.');
                 return;
             }
-
             try {
                 const response = await fetch('/Clustering/UpdateStop', {
                     method: 'POST',
@@ -652,11 +629,11 @@
             }
         }
 
-        document.getElementById('trajectoryFilter').addEventListener('change', function() { loadData(); });
-        document.getElementById('saveStopChanges').addEventListener('click', function() { saveStopChanges(); });
-        document.getElementById('confirmAssignBtn').addEventListener('click', function() { confirmAssign(); });
-        document.getElementById('autoAssignToStopBtn').addEventListener('click', function() { autoAssignToStop(); });
-        document.getElementById('autoAssignAllBtn').addEventListener('click', function() { autoAssignAll(); });
+        document.getElementById('trajectoryFilter').addEventListener('change', loadData);
+        document.getElementById('saveStopChanges').addEventListener('click', saveStopChanges);
+        document.getElementById('confirmAssignBtn').addEventListener('click', confirmAssign);
+        document.getElementById('autoAssignToStopBtn').addEventListener('click', autoAssignToStop);
+        document.getElementById('autoAssignAllBtn').addEventListener('click', autoAssignAll);
 
         loadData();
     </script>

@@ -172,6 +172,8 @@ namespace TransportManagementSystem.Controllers
         // API POUR LES CARTES (à conserver)
         // ========================================================
         [HttpGet]
+        [HttpGet]
+        [HttpGet]
         public async Task<IActionResult> GetBusLocations()
         {
             var buses = await _context.Buses
@@ -184,7 +186,8 @@ namespace TransportManagementSystem.Controllers
                     b.Bus_Status,
                     lat = b.Bus_CurrentLatitude,
                     lng = b.Bus_CurrentLongitude,
-                    lastUpdate = b.Bus_LastLocationUpdateTime
+                    lastUpdate = b.Bus_LastLocationUpdateTime,
+                    bus_CurrentTrajectoryId = b.Bus_CurrentTrajectoryId   // ← AJOUTER CETTE LIGNE
                 }).ToListAsync();
             return Ok(buses);
         }
@@ -309,21 +312,24 @@ namespace TransportManagementSystem.Controllers
                     .ThenInclude(b => b.CurrentDriver)
                 .FirstOrDefaultAsync(p => p.Personnel_Id == personnelId);
 
+            if (personnel == null)
+                return NotFound("Personnel non trouvé");
+
             Trajectory? trajectory = null;
             TrajectoryStop? stop = null;
             Bus? assignedBus = null;
             Driver? assignedDriver = null;
             string stopName = "Non défini";
 
-            if (personnel?.AssignedTrajectory != null)
+            // 1. Récupérer la trajectoire assignée (via Personnel ou via PersonnelTrajectoryAssignments)
+            if (personnel.AssignedTrajectory != null)
             {
                 trajectory = personnel.AssignedTrajectory;
                 assignedBus = personnel.AssignedBus;
                 if (assignedBus != null)
-                {
                     assignedDriver = assignedBus.CurrentDriver;
-                }
-                // Chercher l'arrêt via PersonnelTrajectoryAssignments
+
+                // Récupérer l'arrêt personnel depuis la table d'assignation
                 var assignment = await _context.PersonnelTrajectoryAssignments
                     .Include(a => a.Stop)
                     .FirstOrDefaultAsync(a => a.PTA_PersonnelId == personnelId
@@ -337,6 +343,7 @@ namespace TransportManagementSystem.Controllers
             }
             else
             {
+                // Chercher une assignation active dans PersonnelTrajectoryAssignments
                 var assignment = await _context.PersonnelTrajectoryAssignments
                     .Include(a => a.Trajectory)
                     .Include(a => a.Stop)
@@ -349,12 +356,16 @@ namespace TransportManagementSystem.Controllers
 
                 trajectory = assignment.Trajectory;
                 stop = assignment.Stop;
-                if (stop != null) stopName = stop.TS_Name;
+                if (stop != null)
+                    stopName = stop.TS_Name;
+                // Dans ce cas, on n'a pas d'information sur le bus assigné directement
+                // On pourrait laisser assignedBus = null
             }
 
             if (trajectory == null)
                 return NotFound("Trajectoire introuvable.");
 
+            // Point de référence pour le calcul de distance (arrêt personnel ou début de trajectoire)
             double? refLat = null;
             double? refLng = null;
             if (stop != null)
@@ -368,11 +379,15 @@ namespace TransportManagementSystem.Controllers
                 refLng = (double)trajectory.Trajectory_StartLongitude.Value;
             }
 
+            // Récupérer les bus actifs sur cette trajectoire
             var buses = await _context.Buses
-                .Where(b => b.Bus_CurrentTrajectoryId == trajectory.Trajectory_Id && b.Bus_CurrentLatitude != null && b.Bus_CurrentLongitude != null)
+                .Where(b => b.Bus_CurrentTrajectoryId == trajectory.Trajectory_Id
+                            && b.Bus_CurrentLatitude != null
+                            && b.Bus_CurrentLongitude != null)
                 .Select(b => new { b.Bus_Id, b.Bus_Code, b.Bus_PlateNumber, b.Bus_Status, lat = b.Bus_CurrentLatitude, lng = b.Bus_CurrentLongitude, b.Bus_LastLocationUpdateTime })
                 .ToListAsync();
 
+            // Tous les arrêts de la trajectoire
             var stopsList = await _context.TrajectoryStops
                 .Where(s => s.TS_TrajectoryId == trajectory.Trajectory_Id)
                 .OrderBy(s => s.TS_OrderIndex)
@@ -381,7 +396,8 @@ namespace TransportManagementSystem.Controllers
 
             var personnelStop = stop != null ? new { stop.TS_Id, stop.TS_Name, stop.TS_Latitude, stop.TS_Longitude } : null;
 
-            var busesWithETA = new System.Collections.Generic.List<object>();
+            // Calcul de l'ETA pour chaque bus (vers l'arrêt personnel ou le début de la trajectoire)
+            var busesWithETA = new List<object>();
             if (refLat.HasValue && refLng.HasValue)
             {
                 foreach (var bus in buses)
@@ -420,7 +436,7 @@ namespace TransportManagementSystem.Controllers
                 }
             }
 
-            // Construction de l'objet réponse complet (ajout des champs manquants)
+            // Construction de l'objet réponse complet
             var result = new
             {
                 PersonnelId = personnelId,

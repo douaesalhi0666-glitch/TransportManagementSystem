@@ -2,16 +2,19 @@
 using Microsoft.EntityFrameworkCore;
 using TransportManagementSystem.Data;
 using TransportManagementSystem.Models;
+using TransportManagementSystem.Services;
 
 namespace TransportManagementSystem.Controllers
 {
     public class DriversController : Controller
     {
         private readonly ApplicationDbContext _context;
+        private readonly ETAPredictionService _etaService;
 
-        public DriversController(ApplicationDbContext context)
+        public DriversController(ApplicationDbContext context, ETAPredictionService etaService)
         {
             _context = context;
+            _etaService = etaService;
         }
 
         // ==============================
@@ -83,7 +86,6 @@ namespace TransportManagementSystem.Controllers
 
         // API: POST /Drivers/UpdateDriver
         [HttpPost]
-        // [ValidateAntiForgeryToken] // à commenter pour l'AJAX
         public async Task<IActionResult> UpdateDriver([FromBody] DriverUpdateModel model)
         {
             if (model == null || model.Driver_id == 0)
@@ -206,7 +208,7 @@ namespace TransportManagementSystem.Controllers
         private bool DriverExists(long id) => _context.Drivers.Any(e => e.Driver_id == id);
 
         // ========================================================
-        // API POUR LE TABLEAU DE BORD DU CHAUFFEUR
+        // API POUR LE TABLEAU DE BORD DU CHAUFFEUR (AVEC ETA IA)
         // ========================================================
 
         [HttpGet]
@@ -230,7 +232,8 @@ namespace TransportManagementSystem.Controllers
             var stops = new List<object>();
             if (trajectory != null)
             {
-                stops = await _context.TrajectoryStops
+                // Récupérer les arrêts de la trajectoire
+                var stopsRaw = await _context.TrajectoryStops
                     .Where(s => s.TS_TrajectoryId == trajectory.Trajectory_Id)
                     .OrderBy(s => s.TS_OrderIndex)
                     .Select(s => new
@@ -240,7 +243,24 @@ namespace TransportManagementSystem.Controllers
                         Latitude = s.TS_Latitude,
                         Longitude = s.TS_Longitude
                     })
-                    .ToListAsync<object>();
+                    .ToListAsync();
+
+                // Calculer l'ETA pour chaque arrêt (distance à vol d'oiseau + IA)
+                var currentLat = bus.Bus_CurrentLatitude ?? trajectory.Trajectory_StartLatitude ?? 0;
+                var currentLng = bus.Bus_CurrentLongitude ?? trajectory.Trajectory_StartLongitude ?? 0;
+                foreach (var stop in stopsRaw)
+                {
+                    double distance = CalculateDistance((double)currentLat, (double)currentLng, (double)stop.Latitude, (double)stop.Longitude);
+                    float eta = _etaService.PredictETA((float)(distance / 1000.0), DateTime.Now);
+                    stops.Add(new
+                    {
+                        stop.TS_OrderIndex,
+                        stop.TS_Name,
+                        stop.Latitude,
+                        stop.Longitude,
+                        EtaMinutes = Math.Round(eta)
+                    });
+                }
             }
 
             return Ok(new
@@ -369,9 +389,20 @@ namespace TransportManagementSystem.Controllers
 
             return Json(new { success = true, message = "Mission terminée. Bonne soirée !" });
         }
+
+        private double CalculateDistance(double lat1, double lon1, double lat2, double lon2)
+        {
+            const double R = 6371e3;
+            var φ1 = lat1 * Math.PI / 180;
+            var φ2 = lat2 * Math.PI / 180;
+            var Δφ = (lat2 - lat1) * Math.PI / 180;
+            var Δλ = (lon2 - lon1) * Math.PI / 180;
+            var a = Math.Sin(Δφ / 2) * Math.Sin(Δφ / 2) + Math.Cos(φ1) * Math.Cos(φ2) * Math.Sin(Δλ / 2) * Math.Sin(Δλ / 2);
+            var c = 2 * Math.Atan2(Math.Sqrt(a), Math.Sqrt(1 - a));
+            return R * c;
+        }
     }
 
-    // Modèle pour la mise à jour
     public class DriverUpdateModel
     {
         public long Driver_id { get; set; }
