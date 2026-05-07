@@ -292,6 +292,10 @@ namespace TransportManagementSystem.Controllers
         // API POUR LE TABLEAU DE BORD DU PERSONNEL (avec ETA IA)
         // ========================================================
         [HttpGet]
+        // ========================================================
+        // API POUR LE TABLEAU DE BORD DU PERSONNEL (avec ETA IA)
+        // ========================================================
+        [HttpGet]
         public async Task<IActionResult> GetPersonnelDashboardData()
         {
             var personnelIdStr = HttpContext.Session.GetString("PersonnelId");
@@ -302,14 +306,34 @@ namespace TransportManagementSystem.Controllers
             var personnel = await _context.Personnel
                 .Include(p => p.AssignedTrajectory)
                 .Include(p => p.AssignedBus)
+                    .ThenInclude(b => b.CurrentDriver)
                 .FirstOrDefaultAsync(p => p.Personnel_Id == personnelId);
 
             Trajectory? trajectory = null;
             TrajectoryStop? stop = null;
+            Bus? assignedBus = null;
+            Driver? assignedDriver = null;
+            string stopName = "Non défini";
 
-            if (personnel?.AssignedTrajectory != null && personnel.AssignedBus != null)
+            if (personnel?.AssignedTrajectory != null)
             {
                 trajectory = personnel.AssignedTrajectory;
+                assignedBus = personnel.AssignedBus;
+                if (assignedBus != null)
+                {
+                    assignedDriver = assignedBus.CurrentDriver;
+                }
+                // Chercher l'arrêt via PersonnelTrajectoryAssignments
+                var assignment = await _context.PersonnelTrajectoryAssignments
+                    .Include(a => a.Stop)
+                    .FirstOrDefaultAsync(a => a.PTA_PersonnelId == personnelId
+                                              && a.PTA_TrajectoryId == trajectory.Trajectory_Id
+                                              && a.PTA_Status == "Active");
+                if (assignment?.Stop != null)
+                {
+                    stop = assignment.Stop;
+                    stopName = stop.TS_Name;
+                }
             }
             else
             {
@@ -325,6 +349,7 @@ namespace TransportManagementSystem.Controllers
 
                 trajectory = assignment.Trajectory;
                 stop = assignment.Stop;
+                if (stop != null) stopName = stop.TS_Name;
             }
 
             if (trajectory == null)
@@ -395,7 +420,8 @@ namespace TransportManagementSystem.Controllers
                 }
             }
 
-            return Ok(new
+            // Construction de l'objet réponse complet (ajout des champs manquants)
+            var result = new
             {
                 PersonnelId = personnelId,
                 Trajectory = new
@@ -406,12 +432,25 @@ namespace TransportManagementSystem.Controllers
                     StartLat = trajectory.Trajectory_StartLatitude,
                     StartLng = trajectory.Trajectory_StartLongitude,
                     EndLat = trajectory.Trajectory_EndLatitude,
-                    EndLng = trajectory.Trajectory_EndLongitude
+                    EndLng = trajectory.Trajectory_EndLongitude,
+                    Distance = trajectory.Trajectory_DistanceKm ?? 0,
+                    EstimatedDuration = trajectory.Trajectory_EstimatedDurationMinutes ?? 0
                 },
                 PersonnelStop = personnelStop,
                 Stops = stopsList,
-                Buses = busesWithETA
-            });
+                Buses = busesWithETA,
+                AssignedBus = assignedBus != null ? new
+                {
+                    assignedBus.Bus_Code,
+                    assignedBus.Bus_PlateNumber,
+                    assignedBus.Bus_Brand,
+                    assignedBus.Bus_Model,
+                    assignedBus.Bus_Capacity
+                } : null,
+                AssignedDriver = assignedDriver != null ? $"{assignedDriver.Driver_FirstName} {assignedDriver.Driver_LastName}" : "Non assigné",
+                StopName = stopName
+            };
+            return Ok(result);
         }
 
         [HttpPost]
