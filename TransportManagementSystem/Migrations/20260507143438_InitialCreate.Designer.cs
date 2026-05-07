@@ -12,8 +12,8 @@ using TransportManagementSystem.Data;
 namespace TransportManagementSystem.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    [Migration("20260430074747_AddSuggestedStopsTable")]
-    partial class AddSuggestedStopsTable
+    [Migration("20260507143438_InitialCreate")]
+    partial class InitialCreate
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -127,14 +127,14 @@ namespace TransportManagementSystem.Migrations
                     b.Property<long?>("Bus_CurrentDriverId")
                         .HasColumnType("bigint");
 
+                    b.Property<int?>("Bus_CurrentFragmentId")
+                        .HasColumnType("int");
+
                     b.Property<decimal?>("Bus_CurrentLatitude")
                         .HasColumnType("decimal(10,8)");
 
                     b.Property<decimal?>("Bus_CurrentLongitude")
                         .HasColumnType("decimal(11,8)");
-
-                    b.Property<int?>("Bus_CurrentTrajectoryId")
-                        .HasColumnType("int");
 
                     b.Property<DateTime?>("Bus_LastLocationUpdateTime")
                         .HasColumnType("datetime2");
@@ -159,13 +159,83 @@ namespace TransportManagementSystem.Migrations
                     b.Property<int?>("Bus_Year")
                         .HasColumnType("int");
 
+                    b.Property<int?>("Trajectory_Id")
+                        .HasColumnType("int");
+
                     b.HasKey("Bus_Id");
 
                     b.HasIndex("Bus_CurrentDriverId");
 
-                    b.HasIndex("Bus_CurrentTrajectoryId");
+                    b.HasIndex("Bus_CurrentFragmentId");
+
+                    b.HasIndex("Trajectory_Id");
 
                     b.ToTable("Bus_tbl", "Transport");
+                });
+
+            modelBuilder.Entity("TransportManagementSystem.Models.BusFragmentAssignment", b =>
+                {
+                    b.Property<int>("Assignment_Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Assignment_Id"));
+
+                    b.Property<long>("Bus_Id")
+                        .HasColumnType("bigint");
+
+                    b.Property<DateTime?>("End_DateTime")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int>("Fragment_Id")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime>("Start_DateTime")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)")
+                        .HasDefaultValue("Active");
+
+                    b.HasKey("Assignment_Id");
+
+                    b.HasIndex("Bus_Id");
+
+                    b.HasIndex("Fragment_Id");
+
+                    b.ToTable("BusFragmentAssignment_tbl", "Assignment");
+                });
+
+            modelBuilder.Entity("TransportManagementSystem.Models.BusTrajectoryAssignment", b =>
+                {
+                    b.Property<int>("BTA_Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("BTA_Id"));
+
+                    b.Property<long>("BTA_BusId")
+                        .HasColumnType("bigint");
+
+                    b.Property<DateTime?>("BTA_EndDateTime")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime>("BTA_StartDateTime")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("BTA_Status")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<int>("BTA_TrajectoryId")
+                        .HasColumnType("int");
+
+                    b.HasKey("BTA_Id");
+
+                    b.ToTable("BusTrajectoryAssignment_tbl", "Assignment");
                 });
 
             modelBuilder.Entity("TransportManagementSystem.Models.Driver", b =>
@@ -223,6 +293,144 @@ namespace TransportManagementSystem.Migrations
                     b.ToTable("Driver_tbl", "Security");
                 });
 
+            modelBuilder.Entity("TransportManagementSystem.Models.DriverFragmentAssignment", b =>
+                {
+                    b.Property<int>("Assignment_Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Assignment_Id"));
+
+                    b.Property<long>("Driver_Id")
+                        .HasColumnType("bigint");
+
+                    b.Property<DateTime?>("End_DateTime")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int>("Fragment_Id")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime>("Start_DateTime")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)")
+                        .HasDefaultValue("Active");
+
+                    b.HasKey("Assignment_Id");
+
+                    b.HasIndex("Driver_Id");
+
+                    b.HasIndex("Fragment_Id");
+
+                    b.ToTable("DriverFragmentAssignment_tbl", "Assignment");
+                });
+
+            modelBuilder.Entity("TransportManagementSystem.Models.DriverMission", b =>
+                {
+                    b.Property<int>("Mission_Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Mission_Id"));
+
+                    b.Property<long>("Bus_Id")
+                        .HasColumnType("bigint");
+
+                    b.Property<long>("Driver_Id")
+                        .HasColumnType("bigint");
+
+                    b.Property<DateTime?>("EndTime")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime>("Mission_Date")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime>("StartTime")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<int>("TotalWorkers")
+                        .HasColumnType("int");
+
+                    b.Property<int>("WorkersDropped")
+                        .HasColumnType("int");
+
+                    b.HasKey("Mission_Id");
+
+                    b.ToTable("DriverMissions_tbl", "Service");
+                });
+
+            modelBuilder.Entity("TransportManagementSystem.Models.DriverPerformance", b =>
+                {
+                    b.Property<int>("Performance_Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Performance_Id"));
+
+                    b.Property<decimal?>("AverageDelayMinutes")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<long>("Driver_Id")
+                        .HasColumnType("bigint");
+
+                    b.Property<DateTime?>("LastTripDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int>("OnTimeTrips")
+                        .HasColumnType("int");
+
+                    b.Property<int>("TotalTrips")
+                        .HasColumnType("int");
+
+                    b.Property<int>("Trajectory_Id")
+                        .HasColumnType("int");
+
+                    b.HasKey("Performance_Id");
+
+                    b.HasIndex("Driver_Id");
+
+                    b.HasIndex("Trajectory_Id");
+
+                    b.ToTable("DriverPerformance_tbl", "Service");
+                });
+
+            modelBuilder.Entity("TransportManagementSystem.Models.FragmentStop", b =>
+                {
+                    b.Property<int>("Stop_Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Stop_Id"));
+
+                    b.Property<int>("Fragment_Id")
+                        .HasColumnType("int");
+
+                    b.Property<int>("Stop_Order")
+                        .HasColumnType("int");
+
+                    b.Property<int>("TS_Id")
+                        .HasColumnType("int");
+
+                    b.Property<int>("Workers_At_Stop")
+                        .HasColumnType("int");
+
+                    b.HasKey("Stop_Id");
+
+                    b.HasIndex("Fragment_Id");
+
+                    b.HasIndex("TS_Id");
+
+                    b.ToTable("FragmentStop_tbl", "Transport");
+                });
+
             modelBuilder.Entity("TransportManagementSystem.Models.Personnel", b =>
                 {
                     b.Property<long>("Personnel_Id")
@@ -231,11 +439,20 @@ namespace TransportManagementSystem.Migrations
                     b.Property<long?>("AssignedBusId")
                         .HasColumnType("bigint");
 
+                    b.Property<int?>("AssignedFragmentId")
+                        .HasColumnType("int");
+
+                    b.Property<int?>("AssignedStopId")
+                        .HasColumnType("int");
+
                     b.Property<int?>("AssignedTrajectoryId")
                         .HasColumnType("int");
 
                     b.Property<string>("HomeAddress")
                         .HasColumnType("nvarchar(max)");
+
+                    b.Property<bool>("IsAssigned")
+                        .HasColumnType("bit");
 
                     b.Property<string>("Personnel_Address")
                         .HasMaxLength(500)
@@ -300,6 +517,10 @@ namespace TransportManagementSystem.Migrations
 
                     b.HasIndex("AssignedBusId");
 
+                    b.HasIndex("AssignedFragmentId");
+
+                    b.HasIndex("AssignedStopId");
+
                     b.HasIndex("AssignedTrajectoryId");
 
                     b.ToTable("Personnel_tbl", "Security");
@@ -342,6 +563,37 @@ namespace TransportManagementSystem.Migrations
                     b.HasIndex("PTA_TrajectoryId");
 
                     b.ToTable("PersonnelTrajectoryAssignments_tbl", "Assignment");
+                });
+
+            modelBuilder.Entity("TransportManagementSystem.Models.RecommendationLog", b =>
+                {
+                    b.Property<int>("Recommendation_Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Recommendation_Id"));
+
+                    b.Property<DateTime>("Recommendation_Date")
+                        .HasColumnType("datetime2");
+
+                    b.Property<long>("Recommended_BusId")
+                        .HasColumnType("bigint");
+
+                    b.Property<long>("Recommended_DriverId")
+                        .HasColumnType("bigint");
+
+                    b.Property<int>("Recommended_TrajectoryId")
+                        .HasColumnType("int");
+
+                    b.Property<decimal>("Score")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<bool>("Was_Accepted")
+                        .HasColumnType("bit");
+
+                    b.HasKey("Recommendation_Id");
+
+                    b.ToTable("RecommendationLog_tbl", "Service");
                 });
 
             modelBuilder.Entity("TransportManagementSystem.Models.SuggestedStop", b =>
@@ -430,6 +682,75 @@ namespace TransportManagementSystem.Migrations
                     b.ToTable("Trajectory_tbl", "Transport");
                 });
 
+            modelBuilder.Entity("TransportManagementSystem.Models.TrajectoryFragment", b =>
+                {
+                    b.Property<int>("Fragment_Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Fragment_Id"));
+
+                    b.Property<DateTime?>("Created_At")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("datetime2")
+                        .HasDefaultValueSql("GETDATE()");
+
+                    b.Property<string>("Fragment_Code")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<string>("Fragment_Name")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)")
+                        .HasDefaultValue("Active");
+
+                    b.Property<int>("Total_Workers")
+                        .HasColumnType("int");
+
+                    b.Property<int>("Trajectory_Id")
+                        .HasColumnType("int");
+
+                    b.HasKey("Fragment_Id");
+
+                    b.HasIndex("Trajectory_Id");
+
+                    b.ToTable("TrajectoryFragment_tbl", "Transport");
+                });
+
+            modelBuilder.Entity("TransportManagementSystem.Models.TrajectorySchedule", b =>
+                {
+                    b.Property<int>("TSched_Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("TSched_Id"));
+
+                    b.Property<string>("TSched_DayOfWeek")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<TimeSpan>("TSched_DepartureTime")
+                        .HasColumnType("time");
+
+                    b.Property<TimeSpan?>("TSched_ReturnTime")
+                        .HasColumnType("time");
+
+                    b.Property<int>("TSched_TrajectoryId")
+                        .HasColumnType("int");
+
+                    b.HasKey("TSched_Id");
+
+                    b.ToTable("TrajectoryShedule_tbl", "Transport");
+                });
+
             modelBuilder.Entity("TransportManagementSystem.Models.TrajectoryStop", b =>
                 {
                     b.Property<int>("TS_Id")
@@ -439,10 +760,10 @@ namespace TransportManagementSystem.Migrations
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("TS_Id"));
 
                     b.Property<decimal>("TS_Latitude")
-                        .HasColumnType("decimal(18,2)");
+                        .HasColumnType("decimal(10,8)");
 
                     b.Property<decimal>("TS_Longitude")
-                        .HasColumnType("decimal(18,2)");
+                        .HasColumnType("decimal(11,8)");
 
                     b.Property<string>("TS_Name")
                         .IsRequired()
@@ -501,36 +822,128 @@ namespace TransportManagementSystem.Migrations
                         .WithMany()
                         .HasForeignKey("Bus_CurrentDriverId");
 
-                    b.HasOne("TransportManagementSystem.Models.Trajectory", "CurrentTrajectory")
+                    b.HasOne("TransportManagementSystem.Models.TrajectoryFragment", "AssignedFragment")
                         .WithMany()
-                        .HasForeignKey("Bus_CurrentTrajectoryId");
+                        .HasForeignKey("Bus_CurrentFragmentId");
+
+                    b.HasOne("TransportManagementSystem.Models.Trajectory", null)
+                        .WithMany("AssignedBuses")
+                        .HasForeignKey("Trajectory_Id");
+
+                    b.Navigation("AssignedFragment");
 
                     b.Navigation("CurrentDriver");
+                });
 
-                    b.Navigation("CurrentTrajectory");
+            modelBuilder.Entity("TransportManagementSystem.Models.BusFragmentAssignment", b =>
+                {
+                    b.HasOne("TransportManagementSystem.Models.Bus", "Bus")
+                        .WithMany()
+                        .HasForeignKey("Bus_Id")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("TransportManagementSystem.Models.TrajectoryFragment", "Fragment")
+                        .WithMany()
+                        .HasForeignKey("Fragment_Id")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Bus");
+
+                    b.Navigation("Fragment");
                 });
 
             modelBuilder.Entity("TransportManagementSystem.Models.Driver", b =>
                 {
-                    b.HasOne("TransportManagementSystem.Models.Bus", "Driver_AssignedBus")
+                    b.HasOne("TransportManagementSystem.Models.Bus", "AssignedBus")
                         .WithMany()
                         .HasForeignKey("Driver_AssignedBusId")
                         .OnDelete(DeleteBehavior.SetNull);
 
-                    b.Navigation("Driver_AssignedBus");
+                    b.Navigation("AssignedBus");
+                });
+
+            modelBuilder.Entity("TransportManagementSystem.Models.DriverFragmentAssignment", b =>
+                {
+                    b.HasOne("TransportManagementSystem.Models.Driver", "Driver")
+                        .WithMany()
+                        .HasForeignKey("Driver_Id")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("TransportManagementSystem.Models.TrajectoryFragment", "Fragment")
+                        .WithMany()
+                        .HasForeignKey("Fragment_Id")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Driver");
+
+                    b.Navigation("Fragment");
+                });
+
+            modelBuilder.Entity("TransportManagementSystem.Models.DriverPerformance", b =>
+                {
+                    b.HasOne("TransportManagementSystem.Models.Driver", "Driver")
+                        .WithMany()
+                        .HasForeignKey("Driver_Id")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("TransportManagementSystem.Models.Trajectory", "Trajectory")
+                        .WithMany()
+                        .HasForeignKey("Trajectory_Id")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Driver");
+
+                    b.Navigation("Trajectory");
+                });
+
+            modelBuilder.Entity("TransportManagementSystem.Models.FragmentStop", b =>
+                {
+                    b.HasOne("TransportManagementSystem.Models.TrajectoryFragment", "Fragment")
+                        .WithMany("FragmentStops")
+                        .HasForeignKey("Fragment_Id")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("TransportManagementSystem.Models.TrajectoryStop", "TrajectoryStop")
+                        .WithMany()
+                        .HasForeignKey("TS_Id")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Fragment");
+
+                    b.Navigation("TrajectoryStop");
                 });
 
             modelBuilder.Entity("TransportManagementSystem.Models.Personnel", b =>
                 {
                     b.HasOne("TransportManagementSystem.Models.Bus", "AssignedBus")
-                        .WithMany()
+                        .WithMany("AssignedPersonnel")
                         .HasForeignKey("AssignedBusId");
+
+                    b.HasOne("TransportManagementSystem.Models.TrajectoryFragment", "AssignedFragment")
+                        .WithMany()
+                        .HasForeignKey("AssignedFragmentId");
+
+                    b.HasOne("TransportManagementSystem.Models.TrajectoryStop", "AssignedStop")
+                        .WithMany()
+                        .HasForeignKey("AssignedStopId");
 
                     b.HasOne("TransportManagementSystem.Models.Trajectory", "AssignedTrajectory")
                         .WithMany()
                         .HasForeignKey("AssignedTrajectoryId");
 
                     b.Navigation("AssignedBus");
+
+                    b.Navigation("AssignedFragment");
+
+                    b.Navigation("AssignedStop");
 
                     b.Navigation("AssignedTrajectory");
                 });
@@ -561,15 +974,43 @@ namespace TransportManagementSystem.Migrations
                     b.Navigation("Trajectory");
                 });
 
-            modelBuilder.Entity("TransportManagementSystem.Models.TrajectoryStop", b =>
+            modelBuilder.Entity("TransportManagementSystem.Models.TrajectoryFragment", b =>
                 {
                     b.HasOne("TransportManagementSystem.Models.Trajectory", "Trajectory")
                         .WithMany()
+                        .HasForeignKey("Trajectory_Id")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Trajectory");
+                });
+
+            modelBuilder.Entity("TransportManagementSystem.Models.TrajectoryStop", b =>
+                {
+                    b.HasOne("TransportManagementSystem.Models.Trajectory", "Trajectory")
+                        .WithMany("Stops")
                         .HasForeignKey("TS_TrajectoryId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
                     b.Navigation("Trajectory");
+                });
+
+            modelBuilder.Entity("TransportManagementSystem.Models.Bus", b =>
+                {
+                    b.Navigation("AssignedPersonnel");
+                });
+
+            modelBuilder.Entity("TransportManagementSystem.Models.Trajectory", b =>
+                {
+                    b.Navigation("AssignedBuses");
+
+                    b.Navigation("Stops");
+                });
+
+            modelBuilder.Entity("TransportManagementSystem.Models.TrajectoryFragment", b =>
+                {
+                    b.Navigation("FragmentStops");
                 });
 #pragma warning restore 612, 618
         }

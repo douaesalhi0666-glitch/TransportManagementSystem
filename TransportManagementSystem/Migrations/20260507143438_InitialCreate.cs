@@ -40,6 +40,82 @@ namespace TransportManagementSystem.Migrations
                 });
 
             migrationBuilder.CreateTable(
+                name: "BusTrajectoryAssignment_tbl",
+                schema: "Assignment",
+                columns: table => new
+                {
+                    BTA_Id = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    BTA_BusId = table.Column<long>(type: "bigint", nullable: false),
+                    BTA_TrajectoryId = table.Column<int>(type: "int", nullable: false),
+                    BTA_StartDateTime = table.Column<DateTime>(type: "datetime2", nullable: false),
+                    BTA_EndDateTime = table.Column<DateTime>(type: "datetime2", nullable: true),
+                    BTA_Status = table.Column<string>(type: "nvarchar(max)", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_BusTrajectoryAssignment_tbl", x => x.BTA_Id);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "DriverMissions_tbl",
+                schema: "Service",
+                columns: table => new
+                {
+                    Mission_Id = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    Driver_Id = table.Column<long>(type: "bigint", nullable: false),
+                    Bus_Id = table.Column<long>(type: "bigint", nullable: false),
+                    Mission_Date = table.Column<DateTime>(type: "datetime2", nullable: false),
+                    StartTime = table.Column<DateTime>(type: "datetime2", nullable: false),
+                    EndTime = table.Column<DateTime>(type: "datetime2", nullable: true),
+                    Status = table.Column<string>(type: "nvarchar(max)", nullable: false),
+                    TotalWorkers = table.Column<int>(type: "int", nullable: false),
+                    WorkersDropped = table.Column<int>(type: "int", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_DriverMissions_tbl", x => x.Mission_Id);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "RecommendationLog_tbl",
+                schema: "Service",
+                columns: table => new
+                {
+                    Recommendation_Id = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    Recommendation_Date = table.Column<DateTime>(type: "datetime2", nullable: false),
+                    Recommended_DriverId = table.Column<long>(type: "bigint", nullable: false),
+                    Recommended_BusId = table.Column<long>(type: "bigint", nullable: false),
+                    Recommended_TrajectoryId = table.Column<int>(type: "int", nullable: false),
+                    Score = table.Column<decimal>(type: "decimal(18,2)", nullable: false),
+                    Was_Accepted = table.Column<bool>(type: "bit", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_RecommendationLog_tbl", x => x.Recommendation_Id);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "SuggestedStops_tbl",
+                schema: "Transport",
+                columns: table => new
+                {
+                    Id = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    Name = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: false),
+                    Latitude = table.Column<decimal>(type: "decimal(10,8)", nullable: false),
+                    Longitude = table.Column<decimal>(type: "decimal(11,8)", nullable: false),
+                    CreatedAt = table.Column<DateTime>(type: "datetime2", nullable: false),
+                    IsActive = table.Column<bool>(type: "bit", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_SuggestedStops_tbl", x => x.Id);
+                });
+
+            migrationBuilder.CreateTable(
                 name: "Trajectory_tbl",
                 schema: "Transport",
                 columns: table => new
@@ -65,6 +141,49 @@ namespace TransportManagementSystem.Migrations
                 });
 
             migrationBuilder.CreateTable(
+                name: "TrajectoryShedule_tbl",
+                schema: "Transport",
+                columns: table => new
+                {
+                    TSched_Id = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    TSched_TrajectoryId = table.Column<int>(type: "int", nullable: false),
+                    TSched_DayOfWeek = table.Column<string>(type: "nvarchar(max)", nullable: false),
+                    TSched_DepartureTime = table.Column<TimeSpan>(type: "time", nullable: false),
+                    TSched_ReturnTime = table.Column<TimeSpan>(type: "time", nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_TrajectoryShedule_tbl", x => x.TSched_Id);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "TrajectoryFragment_tbl",
+                schema: "Transport",
+                columns: table => new
+                {
+                    Fragment_Id = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    Trajectory_Id = table.Column<int>(type: "int", nullable: false),
+                    Fragment_Code = table.Column<string>(type: "nvarchar(50)", maxLength: 50, nullable: false),
+                    Fragment_Name = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: false),
+                    Total_Workers = table.Column<int>(type: "int", nullable: false),
+                    Status = table.Column<string>(type: "nvarchar(20)", maxLength: 20, nullable: false, defaultValue: "Active"),
+                    Created_At = table.Column<DateTime>(type: "datetime2", nullable: true, defaultValueSql: "GETDATE()")
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_TrajectoryFragment_tbl", x => x.Fragment_Id);
+                    table.ForeignKey(
+                        name: "FK_TrajectoryFragment_tbl_Trajectory_tbl_Trajectory_Id",
+                        column: x => x.Trajectory_Id,
+                        principalSchema: "Transport",
+                        principalTable: "Trajectory_tbl",
+                        principalColumn: "Trajectory_Id",
+                        onDelete: ReferentialAction.Cascade);
+                });
+
+            migrationBuilder.CreateTable(
                 name: "TrajectoryStop_tbl",
                 schema: "Transport",
                 columns: table => new
@@ -74,8 +193,8 @@ namespace TransportManagementSystem.Migrations
                     TS_TrajectoryId = table.Column<int>(type: "int", nullable: false),
                     TS_Name = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: false),
                     TS_OrderIndex = table.Column<int>(type: "int", nullable: false),
-                    TS_Latitude = table.Column<decimal>(type: "decimal(18,2)", nullable: false),
-                    TS_Longitude = table.Column<decimal>(type: "decimal(18,2)", nullable: false),
+                    TS_Latitude = table.Column<decimal>(type: "decimal(10,8)", nullable: false),
+                    TS_Longitude = table.Column<decimal>(type: "decimal(11,8)", nullable: false),
                     TS_PlannedArrivalTime = table.Column<TimeSpan>(type: "time", nullable: true),
                     TS_PlannedDepartureTime = table.Column<TimeSpan>(type: "time", nullable: true)
                 },
@@ -89,6 +208,37 @@ namespace TransportManagementSystem.Migrations
                         principalTable: "Trajectory_tbl",
                         principalColumn: "Trajectory_Id",
                         onDelete: ReferentialAction.Cascade);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "FragmentStop_tbl",
+                schema: "Transport",
+                columns: table => new
+                {
+                    Stop_Id = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    Fragment_Id = table.Column<int>(type: "int", nullable: false),
+                    TS_Id = table.Column<int>(type: "int", nullable: false),
+                    Stop_Order = table.Column<int>(type: "int", nullable: false),
+                    Workers_At_Stop = table.Column<int>(type: "int", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_FragmentStop_tbl", x => x.Stop_Id);
+                    table.ForeignKey(
+                        name: "FK_FragmentStop_tbl_TrajectoryFragment_tbl_Fragment_Id",
+                        column: x => x.Fragment_Id,
+                        principalSchema: "Transport",
+                        principalTable: "TrajectoryFragment_tbl",
+                        principalColumn: "Fragment_Id",
+                        onDelete: ReferentialAction.Cascade);
+                    table.ForeignKey(
+                        name: "FK_FragmentStop_tbl_TrajectoryStop_tbl_TS_Id",
+                        column: x => x.TS_Id,
+                        principalSchema: "Transport",
+                        principalTable: "TrajectoryStop_tbl",
+                        principalColumn: "TS_Id",
+                        onDelete: ReferentialAction.Restrict);
                 });
 
             migrationBuilder.CreateTable(
@@ -134,22 +284,61 @@ namespace TransportManagementSystem.Migrations
                     Bus_Year = table.Column<int>(type: "int", nullable: true),
                     Bus_Status = table.Column<string>(type: "nvarchar(50)", maxLength: 50, nullable: false),
                     Bus_CurrentDriverId = table.Column<long>(type: "bigint", nullable: true),
-                    Bus_CurrentTrajectoryId = table.Column<int>(type: "int", nullable: true),
+                    Bus_CurrentFragmentId = table.Column<int>(type: "int", nullable: true),
                     Bus_CurrentLatitude = table.Column<decimal>(type: "decimal(10,8)", nullable: true),
                     Bus_CurrentLongitude = table.Column<decimal>(type: "decimal(11,8)", nullable: true),
                     Bus_LastLocationUpdateTime = table.Column<DateTime>(type: "datetime2", nullable: true),
                     Bus_CreatedAt = table.Column<DateTime>(type: "datetime2", nullable: true),
-                    Bus_UpdatedAt = table.Column<DateTime>(type: "datetime2", nullable: true)
+                    Bus_UpdatedAt = table.Column<DateTime>(type: "datetime2", nullable: true),
+                    Trajectory_Id = table.Column<int>(type: "int", nullable: true)
                 },
                 constraints: table =>
                 {
                     table.PrimaryKey("PK_Bus_tbl", x => x.Bus_Id);
                     table.ForeignKey(
-                        name: "FK_Bus_tbl_Trajectory_tbl_Bus_CurrentTrajectoryId",
-                        column: x => x.Bus_CurrentTrajectoryId,
+                        name: "FK_Bus_tbl_TrajectoryFragment_tbl_Bus_CurrentFragmentId",
+                        column: x => x.Bus_CurrentFragmentId,
+                        principalSchema: "Transport",
+                        principalTable: "TrajectoryFragment_tbl",
+                        principalColumn: "Fragment_Id");
+                    table.ForeignKey(
+                        name: "FK_Bus_tbl_Trajectory_tbl_Trajectory_Id",
+                        column: x => x.Trajectory_Id,
                         principalSchema: "Transport",
                         principalTable: "Trajectory_tbl",
                         principalColumn: "Trajectory_Id");
+                });
+
+            migrationBuilder.CreateTable(
+                name: "BusFragmentAssignment_tbl",
+                schema: "Assignment",
+                columns: table => new
+                {
+                    Assignment_Id = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    Bus_Id = table.Column<long>(type: "bigint", nullable: false),
+                    Fragment_Id = table.Column<int>(type: "int", nullable: false),
+                    Start_DateTime = table.Column<DateTime>(type: "datetime2", nullable: false),
+                    End_DateTime = table.Column<DateTime>(type: "datetime2", nullable: true),
+                    Status = table.Column<string>(type: "nvarchar(20)", maxLength: 20, nullable: false, defaultValue: "Active")
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_BusFragmentAssignment_tbl", x => x.Assignment_Id);
+                    table.ForeignKey(
+                        name: "FK_BusFragmentAssignment_tbl_Bus_tbl_Bus_Id",
+                        column: x => x.Bus_Id,
+                        principalSchema: "Transport",
+                        principalTable: "Bus_tbl",
+                        principalColumn: "Bus_Id",
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "FK_BusFragmentAssignment_tbl_TrajectoryFragment_tbl_Fragment_Id",
+                        column: x => x.Fragment_Id,
+                        principalSchema: "Transport",
+                        principalTable: "TrajectoryFragment_tbl",
+                        principalColumn: "Fragment_Id",
+                        onDelete: ReferentialAction.Cascade);
                 });
 
             migrationBuilder.CreateTable(
@@ -205,7 +394,10 @@ namespace TransportManagementSystem.Migrations
                     Personnel_UpdatedAt = table.Column<DateTime>(type: "datetime2", nullable: true),
                     HomeAddress = table.Column<string>(type: "nvarchar(max)", nullable: true),
                     AssignedTrajectoryId = table.Column<int>(type: "int", nullable: true),
-                    AssignedBusId = table.Column<long>(type: "bigint", nullable: true)
+                    AssignedFragmentId = table.Column<int>(type: "int", nullable: true),
+                    AssignedBusId = table.Column<long>(type: "bigint", nullable: true),
+                    AssignedStopId = table.Column<int>(type: "int", nullable: true),
+                    IsAssigned = table.Column<bool>(type: "bit", nullable: false)
                 },
                 constraints: table =>
                 {
@@ -217,11 +409,88 @@ namespace TransportManagementSystem.Migrations
                         principalTable: "Bus_tbl",
                         principalColumn: "Bus_Id");
                     table.ForeignKey(
+                        name: "FK_Personnel_tbl_TrajectoryFragment_tbl_AssignedFragmentId",
+                        column: x => x.AssignedFragmentId,
+                        principalSchema: "Transport",
+                        principalTable: "TrajectoryFragment_tbl",
+                        principalColumn: "Fragment_Id");
+                    table.ForeignKey(
+                        name: "FK_Personnel_tbl_TrajectoryStop_tbl_AssignedStopId",
+                        column: x => x.AssignedStopId,
+                        principalSchema: "Transport",
+                        principalTable: "TrajectoryStop_tbl",
+                        principalColumn: "TS_Id");
+                    table.ForeignKey(
                         name: "FK_Personnel_tbl_Trajectory_tbl_AssignedTrajectoryId",
                         column: x => x.AssignedTrajectoryId,
                         principalSchema: "Transport",
                         principalTable: "Trajectory_tbl",
                         principalColumn: "Trajectory_Id");
+                });
+
+            migrationBuilder.CreateTable(
+                name: "DriverFragmentAssignment_tbl",
+                schema: "Assignment",
+                columns: table => new
+                {
+                    Assignment_Id = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    Driver_Id = table.Column<long>(type: "bigint", nullable: false),
+                    Fragment_Id = table.Column<int>(type: "int", nullable: false),
+                    Start_DateTime = table.Column<DateTime>(type: "datetime2", nullable: false),
+                    End_DateTime = table.Column<DateTime>(type: "datetime2", nullable: true),
+                    Status = table.Column<string>(type: "nvarchar(20)", maxLength: 20, nullable: false, defaultValue: "Active")
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_DriverFragmentAssignment_tbl", x => x.Assignment_Id);
+                    table.ForeignKey(
+                        name: "FK_DriverFragmentAssignment_tbl_Driver_tbl_Driver_Id",
+                        column: x => x.Driver_Id,
+                        principalSchema: "Security",
+                        principalTable: "Driver_tbl",
+                        principalColumn: "Driver_id",
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "FK_DriverFragmentAssignment_tbl_TrajectoryFragment_tbl_Fragment_Id",
+                        column: x => x.Fragment_Id,
+                        principalSchema: "Transport",
+                        principalTable: "TrajectoryFragment_tbl",
+                        principalColumn: "Fragment_Id",
+                        onDelete: ReferentialAction.Cascade);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "DriverPerformance_tbl",
+                schema: "Service",
+                columns: table => new
+                {
+                    Performance_Id = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    Driver_Id = table.Column<long>(type: "bigint", nullable: false),
+                    Trajectory_Id = table.Column<int>(type: "int", nullable: false),
+                    TotalTrips = table.Column<int>(type: "int", nullable: false),
+                    OnTimeTrips = table.Column<int>(type: "int", nullable: false),
+                    AverageDelayMinutes = table.Column<decimal>(type: "decimal(18,2)", nullable: true),
+                    LastTripDate = table.Column<DateTime>(type: "datetime2", nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_DriverPerformance_tbl", x => x.Performance_Id);
+                    table.ForeignKey(
+                        name: "FK_DriverPerformance_tbl_Driver_tbl_Driver_Id",
+                        column: x => x.Driver_Id,
+                        principalSchema: "Security",
+                        principalTable: "Driver_tbl",
+                        principalColumn: "Driver_id",
+                        onDelete: ReferentialAction.Cascade);
+                    table.ForeignKey(
+                        name: "FK_DriverPerformance_tbl_Trajectory_tbl_Trajectory_Id",
+                        column: x => x.Trajectory_Id,
+                        principalSchema: "Transport",
+                        principalTable: "Trajectory_tbl",
+                        principalColumn: "Trajectory_Id",
+                        onDelete: ReferentialAction.Cascade);
                 });
 
             migrationBuilder.CreateTable(
@@ -289,10 +558,28 @@ namespace TransportManagementSystem.Migrations
                 column: "Bus_CurrentDriverId");
 
             migrationBuilder.CreateIndex(
-                name: "IX_Bus_tbl_Bus_CurrentTrajectoryId",
+                name: "IX_Bus_tbl_Bus_CurrentFragmentId",
                 schema: "Transport",
                 table: "Bus_tbl",
-                column: "Bus_CurrentTrajectoryId");
+                column: "Bus_CurrentFragmentId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Bus_tbl_Trajectory_Id",
+                schema: "Transport",
+                table: "Bus_tbl",
+                column: "Trajectory_Id");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_BusFragmentAssignment_tbl_Bus_Id",
+                schema: "Assignment",
+                table: "BusFragmentAssignment_tbl",
+                column: "Bus_Id");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_BusFragmentAssignment_tbl_Fragment_Id",
+                schema: "Assignment",
+                table: "BusFragmentAssignment_tbl",
+                column: "Fragment_Id");
 
             migrationBuilder.CreateIndex(
                 name: "IX_Driver_tbl_Driver_AssignedBusId",
@@ -301,10 +588,58 @@ namespace TransportManagementSystem.Migrations
                 column: "Driver_AssignedBusId");
 
             migrationBuilder.CreateIndex(
+                name: "IX_DriverFragmentAssignment_tbl_Driver_Id",
+                schema: "Assignment",
+                table: "DriverFragmentAssignment_tbl",
+                column: "Driver_Id");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_DriverFragmentAssignment_tbl_Fragment_Id",
+                schema: "Assignment",
+                table: "DriverFragmentAssignment_tbl",
+                column: "Fragment_Id");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_DriverPerformance_tbl_Driver_Id",
+                schema: "Service",
+                table: "DriverPerformance_tbl",
+                column: "Driver_Id");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_DriverPerformance_tbl_Trajectory_Id",
+                schema: "Service",
+                table: "DriverPerformance_tbl",
+                column: "Trajectory_Id");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_FragmentStop_tbl_Fragment_Id",
+                schema: "Transport",
+                table: "FragmentStop_tbl",
+                column: "Fragment_Id");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_FragmentStop_tbl_TS_Id",
+                schema: "Transport",
+                table: "FragmentStop_tbl",
+                column: "TS_Id");
+
+            migrationBuilder.CreateIndex(
                 name: "IX_Personnel_tbl_AssignedBusId",
                 schema: "Security",
                 table: "Personnel_tbl",
                 column: "AssignedBusId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Personnel_tbl_AssignedFragmentId",
+                schema: "Security",
+                table: "Personnel_tbl",
+                column: "AssignedFragmentId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Personnel_tbl_AssignedStopId",
+                schema: "Security",
+                table: "Personnel_tbl",
+                column: "AssignedStopId");
 
             migrationBuilder.CreateIndex(
                 name: "IX_Personnel_tbl_AssignedTrajectoryId",
@@ -329,6 +664,12 @@ namespace TransportManagementSystem.Migrations
                 schema: "Assignment",
                 table: "PersonnelTrajectoryAssignments_tbl",
                 column: "PTA_TrajectoryId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_TrajectoryFragment_tbl_Trajectory_Id",
+                schema: "Transport",
+                table: "TrajectoryFragment_tbl",
+                column: "Trajectory_Id");
 
             migrationBuilder.CreateIndex(
                 name: "IX_TrajectoryStop_tbl_TS_TrajectoryId",
@@ -383,8 +724,44 @@ namespace TransportManagementSystem.Migrations
                 schema: "Service");
 
             migrationBuilder.DropTable(
+                name: "BusFragmentAssignment_tbl",
+                schema: "Assignment");
+
+            migrationBuilder.DropTable(
+                name: "BusTrajectoryAssignment_tbl",
+                schema: "Assignment");
+
+            migrationBuilder.DropTable(
+                name: "DriverFragmentAssignment_tbl",
+                schema: "Assignment");
+
+            migrationBuilder.DropTable(
+                name: "DriverMissions_tbl",
+                schema: "Service");
+
+            migrationBuilder.DropTable(
+                name: "DriverPerformance_tbl",
+                schema: "Service");
+
+            migrationBuilder.DropTable(
+                name: "FragmentStop_tbl",
+                schema: "Transport");
+
+            migrationBuilder.DropTable(
                 name: "PersonnelTrajectoryAssignments_tbl",
                 schema: "Assignment");
+
+            migrationBuilder.DropTable(
+                name: "RecommendationLog_tbl",
+                schema: "Service");
+
+            migrationBuilder.DropTable(
+                name: "SuggestedStops_tbl",
+                schema: "Transport");
+
+            migrationBuilder.DropTable(
+                name: "TrajectoryShedule_tbl",
+                schema: "Transport");
 
             migrationBuilder.DropTable(
                 name: "Personnel_tbl",
@@ -401,6 +778,10 @@ namespace TransportManagementSystem.Migrations
             migrationBuilder.DropTable(
                 name: "Driver_tbl",
                 schema: "Security");
+
+            migrationBuilder.DropTable(
+                name: "TrajectoryFragment_tbl",
+                schema: "Transport");
 
             migrationBuilder.DropTable(
                 name: "Trajectory_tbl",
