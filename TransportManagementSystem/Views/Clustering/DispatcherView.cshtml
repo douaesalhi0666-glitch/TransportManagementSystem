@@ -36,6 +36,16 @@
     <div class="col-md-4">
         <div class="card">
             <div class="card-body">
+                <label>Filtrer par fragment</label>
+                <select id="fragmentFilter" class="form-control" disabled>
+                    <option value="all">-- Tous les fragments --</option>
+                </select>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card">
+            <div class="card-body">
                 <label>Assignation automatique IA</label>
                 <button id="autoAssignAllBtn" class="btn btn-primary w-100">
                     🤖 IA: Assigner tous au plus proche
@@ -86,7 +96,7 @@
                                 <button class="btn btn-sm btn-warning edit-stop" data-id="@stop.TS_Id" data-name="@stop.TS_Name" data-lat="@stop.TS_Latitude" data-lng="@stop.TS_Longitude" data-order="@stop.TS_OrderIndex" data-trajectory="@stop.TS_TrajectoryId">✏️ Modifier</button>
                                 <button class="btn btn-sm btn-danger delete-stop" data-id="@stop.TS_Id" data-name="@stop.TS_Name">🗑️ Supprimer</button>
                             </td>
-                        </tr>
+                         </tr>
                     }
                 </tbody>
             </table>
@@ -94,7 +104,7 @@
     </div>
 </div>
 
-<!-- Modal Voir Personnels -->
+<!-- Modals (inchangés) -->
 <div class="modal fade" id="viewWorkersModal" tabindex="-1">
     <div class="modal-dialog modal-lg">
         <div class="modal-content">
@@ -112,7 +122,6 @@
     </div>
 </div>
 
-<!-- Modal Assigner Personnel -->
 <div class="modal fade" id="assignWorkerModal" tabindex="-1">
     <div class="modal-dialog modal-lg">
         <div class="modal-content">
@@ -143,7 +152,6 @@
     </div>
 </div>
 
-<!-- Modal Modifier Arrêt -->
 <div class="modal fade" id="editStopModal" tabindex="-1">
     <div class="modal-dialog">
         <div class="modal-content">
@@ -198,15 +206,15 @@
         let currentMarkers = [];
         let currentPolylines = [];
         let currentTrajectoryId = null;
+        let currentFragmentId = "all";
         let allStopsData = [];
         let allBusesData = [];
-        const colorPalette = ['#3388ff', '#ff3333', '#33ff33', '#ff33cc', '#ff9933', '#33cccc', '#9966ff', '#66ff99'];
-        const SPEED_KMH = 30; // vitesse moyenne pour le calcul ETA
-        
+        let fragmentsData = [];
+        const fragmentColors = ['#FF5733', '#33FF57', '#3357FF', '#F333FF', '#FFD733', '#33FFF5', '#F5A623', '#8E44AD', '#3498DB', '#E67E22', '#2ECC71', '#E74C3C', '#1ABC9C', '#F39C12', '#9B59B6', '#D35400', '#C0392B', '#16A085'];
+        const SPEED_KMH = 30;
         const SEWS_LAT = 34.2900;
         const SEWS_LNG = -6.5700;
 
-        // Fonction Haversine (distance en mètres)
         function haversine(lat1, lon1, lat2, lon2) {
             const R = 6371e3;
             const φ1 = lat1 * Math.PI / 180;
@@ -220,7 +228,6 @@
             return R * c;
         }
 
-        // Charger les bus (positions et trajectoire assignée)
         async function loadBuses() {
             try {
                 const response = await fetch('/Buses/GetBusLocations');
@@ -231,11 +238,63 @@
             }
         }
 
+        async function loadFragments(trajectoryId) {
+            const fragmentSelect = document.getElementById('fragmentFilter');
+            fragmentSelect.innerHTML = '<option value="all">-- Tous les fragments --</option>';
+            fragmentSelect.disabled = true;
+            fragmentsData = [];
+            if (!trajectoryId || trajectoryId === 'all') return;
+            try {
+                const response = await fetch(`/Fragment/GetFragmentsForTrajectory?trajectoryId=${trajectoryId}`);
+                if (!response.ok) return;
+                const fragments = await response.json();
+                fragmentsData = fragments;
+                if (fragments.length > 0) {
+                    fragmentSelect.disabled = false;
+                    fragments.forEach(frag => {
+                        const option = document.createElement('option');
+                        option.value = frag.fragment_Id;
+                        option.textContent = `${frag.fragment_Name} (${frag.fragment_Code}) - ${frag.total_Workers} pers.`;
+                        fragmentSelect.appendChild(option);
+                    });
+                }
+            } catch (err) { console.error(err); }
+        }
+
+        function drawFragments() {
+            fragmentsData.forEach((frag, idx) => {
+                if (!frag.stops || frag.stops.length === 0) return;
+                const points = [[SEWS_LAT, SEWS_LNG]];
+                frag.stops.forEach(stop => points.push([stop.tS_Latitude, stop.tS_Longitude]));
+                const color = fragmentColors[idx % fragmentColors.length];
+                const polyline = L.polyline(points, {
+                    color: color,
+                    weight: 4,
+                    opacity: 0.7,
+                    fragmentId: frag.fragment_Id
+                }).bindPopup(`<b>${frag.fragment_Name}</b><br>${frag.total_Workers} pers.<br>${frag.stops.length} arrêts<br>Départ SEWS`);
+                polyline.addTo(map);
+                currentPolylines.push(polyline);
+            });
+        }
+
+        function highlightSelectedFragment() {
+            currentPolylines.forEach(poly => poly.setStyle({ weight: 4, opacity: 0.7 }));
+            if (!currentFragmentId || currentFragmentId === 'all') return;
+            const target = currentPolylines.find(poly => poly.options.fragmentId == currentFragmentId);
+            if (target) {
+                target.setStyle({ weight: 6, opacity: 1, color: '#FF0000' });
+                const bounds = target.getBounds();
+                if (bounds.isValid()) map.fitBounds(bounds);
+            }
+        }
+
         async function loadData() {
             await loadBuses();
-
             const selectedTrajId = document.getElementById('trajectoryFilter').value;
             currentTrajectoryId = selectedTrajId === 'all' ? null : parseInt(selectedTrajId);
+            currentFragmentId = document.getElementById('fragmentFilter').value;
+            if (currentFragmentId === 'all') currentFragmentId = null;
 
             let url = '/Clustering/GetAllStops';
             if (currentTrajectoryId) {
@@ -249,6 +308,8 @@
             const allStops = await stopsResponse.json();
             allStopsData = allStops;
 
+            await loadFragments(selectedTrajId);
+
             if (!map) {
                 map = L.map('map').setView([SEWS_LAT, SEWS_LNG], 12);
                 L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
@@ -256,55 +317,45 @@
                 }).addTo(map);
             }
 
-            // Nettoyer les calques existants
-            map.eachLayer(function(layer) {
-                if (layer instanceof L.Marker || layer instanceof L.Polyline) {
-                    map.removeLayer(layer);
-                }
+            map.eachLayer(layer => {
+                if (layer instanceof L.Marker || layer instanceof L.Polyline) map.removeLayer(layer);
             });
             currentMarkers = [];
             currentPolylines = [];
 
-            // Marqueur SEWS
             const sewsIcon = L.divIcon({ html: '🏭', iconSize: [30, 30], className: 'sews-marker' });
             const sewsMarker = L.marker([SEWS_LAT, SEWS_LNG], { icon: sewsIcon })
-                .bindPopup('<strong>🏭 SEWS Maroc</strong><br>Point de depart (Ordre 0)');
+                .bindPopup('<strong>🏭 SEWS Maroc</strong><br>Point de départ (Ordre 0)');
             sewsMarker.addTo(map);
             currentMarkers.push(sewsMarker);
 
-            // Tracer les trajectoires
+            drawFragments();
+
+            // Tracer les trajectoires complètes (en gris clair, en arrière-plan)
             const trajectoriesResponse = await fetch('/Clustering/GetTrajectoriesWithStops');
             const trajectories = await trajectoriesResponse.json();
-            trajectories.forEach(function(traj) {
+            trajectories.forEach(traj => {
                 if (!currentTrajectoryId || traj.trajectory_Id === currentTrajectoryId) {
                     if (traj.stops && traj.stops.length >= 1) {
                         const points = [[SEWS_LAT, SEWS_LNG]];
-                        traj.stops.forEach(function(s) {
-                            points.push([s.tS_Latitude, s.tS_Longitude]);
-                        });
-                        const color = colorPalette[(traj.trajectory_Id || 0) % colorPalette.length];
-                        const polyline = L.polyline(points, { color: color, weight: 4, opacity: 0.7 })
-                            .bindPopup('<strong>' + traj.trajectory_Name + '</strong><br>' + traj.trajectory_Code)
-                            .addTo(map);
+                        traj.stops.forEach(s => points.push([s.tS_Latitude, s.tS_Longitude]));
+                        const color = '#cccccc';
+                        const polyline = L.polyline(points, { color: color, weight: 2, opacity: 0.4 })
+                            .bindPopup('<strong>' + traj.trajectory_Name + '</strong><br>' + traj.trajectory_Code);
+                        polyline.addTo(map);
                         currentPolylines.push(polyline);
                     }
                 }
             });
 
-            // Construire la liste des arrêts avec ETA
-            const stopsList = allStops.map(function(stop) {
+            let stopsList = allStops.map(stop => {
                 let nearestDistance = Infinity;
-                const sameTrajectoryBuses = allBusesData.filter(function(bus) {
-                    return bus.bus_CurrentTrajectoryId === stop.tS_TrajectoryId;
-                });
-                sameTrajectoryBuses.forEach(function(bus) {
+                const sameTrajectoryBuses = allBusesData.filter(bus => bus.bus_CurrentTrajectoryId === stop.tS_TrajectoryId);
+                sameTrajectoryBuses.forEach(bus => {
                     const d = haversine(stop.tS_Latitude, stop.tS_Longitude, bus.lat, bus.lng);
                     if (d < nearestDistance) nearestDistance = d;
                 });
-                let etaMinutes = null;
-                if (nearestDistance !== Infinity) {
-                    etaMinutes = Math.round(nearestDistance / 1000 / SPEED_KMH * 60);
-                }
+                let etaMinutes = nearestDistance !== Infinity ? Math.round(nearestDistance / 1000 / SPEED_KMH * 60) : null;
                 return {
                     id: stop.tS_Id,
                     name: stop.tS_Name,
@@ -319,69 +370,54 @@
                 };
             });
 
-            // Ajouter les marqueurs d'arrêts avec popup incluant l'ETA
-            stopsList.forEach(function(stop) {
-                const icon = L.divIcon({
-                    html: stop.orderIndex.toString(),
-                    iconSize: [24, 24],
-                    className: 'stop-marker'
-                });
+            if (currentFragmentId) {
+                const selectedFragment = fragmentsData.find(f => f.fragment_Id == currentFragmentId);
+                if (selectedFragment && selectedFragment.stops) {
+                    const stopIds = selectedFragment.stops.map(s => s.tS_Id);
+                    stopsList = stopsList.filter(s => stopIds.includes(s.id));
+                }
+            } else if (currentTrajectoryId) {
+                stopsList = stopsList.filter(s => s.trajectoryId === currentTrajectoryId);
+            }
 
+            stopsList.forEach(stop => {
+                const icon = L.divIcon({ html: stop.orderIndex.toString(), iconSize: [24, 24], className: 'stop-marker' });
                 let workersListHtml = '';
                 if (stop.workers && stop.workers.length > 0) {
-                    workersListHtml = '<ul style="margin-top:5px; margin-bottom:0; padding-left:15px;">';
-                    stop.workers.forEach(function(w) {
-                        workersListHtml += '<li>' + w.personnel_FirstName + ' ' + w.personnel_LastName + '</li>';
-                    });
-                    workersListHtml += '</ul>';
+                    workersListHtml = '<ul style="margin-top:5px; margin-bottom:0; padding-left:15px;">' + stop.workers.map(w => `<li>${w.personnel_FirstName} ${w.personnel_LastName}</li>`).join('') + '</ul>';
                 } else {
                     workersListHtml = '<p class="text-muted small mb-0">Aucun personnel</p>';
                 }
-
-                let etaText = '';
-                if (stop.etaMinutes !== null) {
-                    etaText = `<br/><strong>🚏 Temps estimé d’arrivée du bus le plus proche : ${stop.etaMinutes} min</strong>`;
-                } else {
-                    etaText = '<br/><span class="text-muted">Aucun bus actif sur cette trajectoire</span>';
-                }
-
-                const popupContent = '<strong>' + stop.name + '</strong><br>' +
-                    'Trajectoire: ' + stop.trajectoryName + '<br>' +
-                    'Ordre: ' + stop.orderIndex + '<br>' +
-                    '<strong>Personnels (' + stop.workers.length + '):</strong><br>' +
-                    workersListHtml +
-                    etaText +
-                    '<button class="btn btn-sm btn-success mt-2" onclick="openAssignModal(' + stop.id + ', \'' + stop.name.replace(/'/g, "\\'") + '\', ' + stop.trajectoryId + ')">➕ Assigner</button>' +
-                    '<button class="btn btn-sm btn-warning mt-2" onclick="editStopFromMap(' + stop.id + ', \'' + stop.name.replace(/'/g, "\\'") + '\', ' + stop.lat + ', ' + stop.lng + ', ' + stop.orderIndex + ', ' + stop.trajectoryId + ')">✏️ Modifier</button>' +
-                    '<button class="btn btn-sm btn-danger mt-2" onclick="deleteStopFromMap(' + stop.id + ', \'' + stop.name.replace(/'/g, "\\'") + '\')">🗑️ Supprimer</button>';
-
-                const marker = L.marker([stop.lat, stop.lng], { icon: icon })
-                    .bindPopup(popupContent)
-                    .addTo(map);
+                let etaText = stop.etaMinutes !== null ? `<br/><strong>🚏 Temps estimé d’arrivée du bus le plus proche : ${stop.etaMinutes} min</strong>` : '<br/><span class="text-muted">Aucun bus actif sur cette trajectoire</span>';
+                const popupContent = `<strong>${stop.name}</strong><br>Trajectoire: ${stop.trajectoryName}<br>Ordre: ${stop.orderIndex}<br><strong>Personnels (${stop.workers.length}):</strong><br>${workersListHtml}${etaText}<button class="btn btn-sm btn-success mt-2" onclick="openAssignModal(${stop.id}, '${stop.name.replace(/'/g, "\\'")}', ${stop.trajectoryId})">➕ Assigner</button><button class="btn btn-sm btn-warning mt-2" onclick="editStopFromMap(${stop.id}, '${stop.name.replace(/'/g, "\\'")}', ${stop.lat}, ${stop.lng}, ${stop.orderIndex}, ${stop.trajectoryId})">✏️ Modifier</button><button class="btn btn-sm btn-danger mt-2" onclick="deleteStopFromMap(${stop.id}, '${stop.name.replace(/'/g, "\\'")}')">🗑️ Supprimer</button>`;
+                const marker = L.marker([stop.lat, stop.lng], { icon }).bindPopup(popupContent).addTo(map);
                 marker.on('click', function() { this.openPopup(); });
                 currentMarkers.push(marker);
             });
 
-            // Ajuster la vue
-            if (allStops.length > 0) {
+            if (stopsList.length > 0) {
                 const bounds = L.latLngBounds([[SEWS_LAT, SEWS_LNG]]);
-                allStops.forEach(function(s) {
-                    bounds.extend([s.tS_Latitude, s.tS_Longitude]);
-                });
+                stopsList.forEach(s => bounds.extend([s.lat, s.lng]));
                 map.fitBounds(bounds);
             }
 
+            highlightSelectedFragment();
             updateTable(allStops);
         }
 
-        // ========== Fonctions existantes (modales, etc.) ==========
         function updateTable(stops) {
             const tbody = document.getElementById('stopsTableBody');
             tbody.innerHTML = '';
-
-            const filteredStops = currentTrajectoryId ? stops.filter(s => s.tS_TrajectoryId === currentTrajectoryId) : stops;
-
-            filteredStops.forEach(function(stop) {
+            let filteredStops = stops;
+            if (currentTrajectoryId) filteredStops = filteredStops.filter(s => s.tS_TrajectoryId === currentTrajectoryId);
+            if (currentFragmentId) {
+                const selectedFragment = fragmentsData.find(f => f.fragment_Id == currentFragmentId);
+                if (selectedFragment && selectedFragment.stops) {
+                    const stopIds = selectedFragment.stops.map(s => s.tS_Id);
+                    filteredStops = filteredStops.filter(s => stopIds.includes(s.tS_Id));
+                }
+            }
+            filteredStops.forEach(stop => {
                 const row = tbody.insertRow();
                 row.setAttribute('data-id', stop.tS_Id);
                 row.setAttribute('data-trajectory', stop.tS_TrajectoryId);
@@ -389,7 +425,6 @@
                 row.setAttribute('data-lng', stop.tS_Longitude);
                 row.setAttribute('data-name', stop.tS_Name);
                 row.setAttribute('data-order', stop.tS_OrderIndex);
-
                 row.insertCell(0).innerHTML = stop.tS_TrajectoryId;
                 row.insertCell(1).innerHTML = stop.trajectoryName || '-';
                 row.insertCell(2).innerHTML = stop.trajectoryCode || '-';
@@ -398,7 +433,6 @@
                 row.insertCell(5).innerHTML = stop.tS_Latitude;
                 row.insertCell(6).innerHTML = stop.tS_Longitude;
                 row.insertCell(7).innerHTML = '<span class="workers-count-badge badge bg-info">' + (stop.workers ? stop.workers.length : 0) + '</span>';
-                
                 const actionsCell = row.insertCell(8);
                 actionsCell.innerHTML = 
                     '<button class="btn btn-sm btn-info view-workers" data-id="' + stop.tS_Id + '" data-name="' + escapeHtml(stop.tS_Name) + '">👥 Voir (' + (stop.workers ? stop.workers.length : 0) + ')</button> ' +
@@ -406,7 +440,6 @@
                     '<button class="btn btn-sm btn-warning edit-stop" data-id="' + stop.tS_Id + '" data-name="' + escapeHtml(stop.tS_Name) + '" data-lat="' + stop.tS_Latitude + '" data-lng="' + stop.tS_Longitude + '" data-order="' + stop.tS_OrderIndex + '" data-trajectory="' + stop.tS_TrajectoryId + '">✏️ Modifier</button> ' +
                     '<button class="btn btn-sm btn-danger delete-stop" data-id="' + stop.tS_Id + '" data-name="' + escapeHtml(stop.tS_Name) + '">🗑️ Supprimer</button>';
             });
-
             attachTableButtonEvents();
         }
 
@@ -422,14 +455,14 @@
                 const workersListDiv = document.getElementById('workersList');
                 if (data.workers && data.workers.length > 0) {
                     let html = '<h5>Arrêt: ' + data.stopName + '</h5><hr><div class="list-group">';
-                    data.workers.forEach(function(worker) {
-                        html += '<div class="list-group-item worker-list-item">' +
-                            '<strong>' + worker.personnel_FirstName + ' ' + worker.personnel_LastName + '</strong><br>' +
-                            '<small>📞 ' + (worker.personnel_phoneNumber || 'Non renseigné') + '</small><br>' +
-                            '<small>📧 ' + (worker.personnel_email || 'Non renseigné') + '</small><br>' +
-                            '<small>🏠 ' + (worker.homeAddress || 'Adresse non renseignée') + '</small>' +
-                            '<button class="btn btn-sm btn-danger mt-2 remove-worker" data-id="' + worker.personnel_Id + '" data-name="' + worker.personnel_FirstName + ' ' + worker.personnel_LastName + '">🗑️ Retirer</button>' +
-                            '</div>';
+                    data.workers.forEach(worker => {
+                        html += `<div class="list-group-item worker-list-item">` +
+                                `<strong>${worker.personnel_FirstName} ${worker.personnel_LastName}</strong><br>` +
+                                `<small>📞 ${worker.personnel_PhoneNumber || 'Non renseigné'}</small><br>` +
+                                `<small>📧 ${worker.personnel_Email || 'Non renseigné'}</small><br>` +
+                                `<small>🏠 ${worker.homeAddress || 'Adresse non renseignée'}</small>` +
+                                `<button class="btn btn-sm btn-danger mt-2 remove-worker" data-id="${worker.personnel_Id}" data-name="${worker.personnel_FirstName} ${worker.personnel_LastName}">🗑️ Retirer</button>` +
+                                `</div>`;
                     });
                     html += '</div>';
                     workersListDiv.innerHTML = html;
@@ -451,7 +484,7 @@
             const btn = e.currentTarget;
             const workerId = btn.dataset.id;
             const workerName = btn.dataset.name;
-            if (confirm('Retirer ' + workerName + ' de cet arrêt ?')) {
+            if (confirm(`Retirer ${workerName} de cet arrêt ?`)) {
                 try {
                     const response = await fetch('/Clustering/RemoveWorkerFromStop', {
                         method: 'POST',
@@ -478,12 +511,12 @@
             const workerSelect = document.getElementById('workerSelect');
             workerSelect.innerHTML = '<option value="">-- Chargement... --</option>';
             try {
-                const response = await fetch('/Clustering/GetUnassignedWorkersForTrajectory?trajectoryId=' + trajectoryId);
+                const response = await fetch(`/Clustering/GetUnassignedWorkersForTrajectory?trajectoryId=${trajectoryId}`);
                 const workers = await response.json();
                 if (workers.length > 0) {
                     workerSelect.innerHTML = '<option value="">-- Sélectionner un personnel --</option>';
                     workers.forEach(w => {
-                        workerSelect.innerHTML += '<option value="' + w.personnel_Id + '">' + w.personnel_FirstName + ' ' + w.personnel_LastName + ' - ' + (w.homeAddress || 'Adresse inconnue') + '</option>';
+                        workerSelect.innerHTML += `<option value="${w.personnel_Id}">${w.personnel_FirstName} ${w.personnel_LastName} - ${w.homeAddress || 'Adresse inconnue'}</option>`;
                     });
                 } else {
                     workerSelect.innerHTML = '<option value="">Aucun personnel non assigné</option>';
@@ -523,9 +556,9 @@
         async function autoAssignToStop() {
             const stopId = document.getElementById('assignStopId').value;
             const stopName = document.getElementById('assignStopName').value;
-            if (confirm('Assigner automatiquement les personnels proches à l\'arrêt ' + stopName + ' ?')) {
+            if (confirm(`Assigner automatiquement les personnels proches à l'arrêt ${stopName} ?`)) {
                 try {
-                    const response = await fetch('/Clustering/AutoAssignWorkersToStop?stopId=' + stopId, { method: 'POST', headers: { 'Content-Type': 'application/json' } });
+                    const response = await fetch(`/Clustering/AutoAssignWorkersToStop?stopId=${stopId}`, { method: 'POST', headers: { 'Content-Type': 'application/json' } });
                     const result = await response.json();
                     if (result.success) {
                         alert(result.message);
@@ -547,7 +580,7 @@
             }
             if (confirm('Assigner automatiquement TOUS les personnels non assignés à l\'arrêt le plus proche ?')) {
                 try {
-                    const response = await fetch('/Clustering/AutoAssignAllWorkersToNearestStop?trajectoryId=' + currentTrajectoryId, { method: 'POST', headers: { 'Content-Type': 'application/json' } });
+                    const response = await fetch(`/Clustering/AutoAssignAllWorkersToNearestStop?trajectoryId=${currentTrajectoryId}`, { method: 'POST', headers: { 'Content-Type': 'application/json' } });
                     const result = await response.json();
                     if (result.success) {
                         alert(result.message);
@@ -568,10 +601,10 @@
             document.querySelectorAll('.delete-stop').forEach(btn => { btn.removeEventListener('click', deleteStopHandler); btn.addEventListener('click', deleteStopHandler); });
         }
 
-        function viewWorkersHandler(e) { const btn = e.currentTarget; showWorkersModal(btn.dataset.id, btn.dataset.name); }
-        function assignWorkerHandler(e) { const btn = e.currentTarget; openAssignModal(btn.dataset.id, btn.dataset.name, btn.dataset.trajectory); }
+        function viewWorkersHandler(e) { showWorkersModal(e.currentTarget.dataset.id, e.currentTarget.dataset.name); }
+        function assignWorkerHandler(e) { openAssignModal(e.currentTarget.dataset.id, e.currentTarget.dataset.name, e.currentTarget.dataset.trajectory); }
         function editStopHandler(e) { const btn = e.currentTarget; openEditModal(btn.dataset.id, btn.dataset.name, btn.dataset.lat, btn.dataset.lng, btn.dataset.order, btn.dataset.trajectory); }
-        function deleteStopHandler(e) { const btn = e.currentTarget; deleteStop(btn.dataset.id, btn.dataset.name); }
+        function deleteStopHandler(e) { deleteStop(e.currentTarget.dataset.id, e.currentTarget.dataset.name); }
 
         window.editStopFromMap = function(id, name, lat, lng, order, trajectory) { openEditModal(id, name, lat, lng, order, trajectory); };
         window.deleteStopFromMap = function(id, name) { deleteStop(id, name); };
@@ -586,9 +619,9 @@
         }
 
         async function deleteStop(id, name) {
-            if (confirm('Êtes-vous sûr de vouloir supprimer l\'arrêt "' + name + '" ?')) {
+            if (confirm(`Êtes-vous sûr de vouloir supprimer l'arrêt "${name}" ?`)) {
                 try {
-                    const response = await fetch('/Clustering/DeleteStop?id=' + id, { method: 'DELETE', headers: { 'Content-Type': 'application/json' } });
+                    const response = await fetch(`/Clustering/DeleteStop?id=${id}`, { method: 'DELETE', headers: { 'Content-Type': 'application/json' } });
                     if (response.ok) {
                         alert('Arrêt supprimé avec succès !');
                         loadData();
@@ -629,7 +662,15 @@
             }
         }
 
-        document.getElementById('trajectoryFilter').addEventListener('change', loadData);
+        document.getElementById('trajectoryFilter').addEventListener('change', function() {
+            const trajId = this.value;
+            loadFragments(trajId);
+            loadData();
+        });
+        document.getElementById('fragmentFilter').addEventListener('change', function() {
+            currentFragmentId = this.value;
+            loadData();
+        });
         document.getElementById('saveStopChanges').addEventListener('click', saveStopChanges);
         document.getElementById('confirmAssignBtn').addEventListener('click', confirmAssign);
         document.getElementById('autoAssignToStopBtn').addEventListener('click', autoAssignToStop);

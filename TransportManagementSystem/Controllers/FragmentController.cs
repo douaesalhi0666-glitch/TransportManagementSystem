@@ -129,5 +129,35 @@ namespace TransportManagementSystem.Controllers
             ViewBag.FragmentData = fragmentData;
             return View();
         }
+        [HttpGet]
+        public async Task<IActionResult> GetFragmentsForTrajectory(int trajectoryId)
+        {
+            var fragments = await _context.TrajectoryFragments
+                .Where(f => f.Trajectory_Id == trajectoryId)
+                .Include(f => f.FragmentStops)
+                    .ThenInclude(fs => fs.TrajectoryStop)
+                .ToListAsync();
+
+            var result = fragments.Select(f => new
+            {
+                f.Fragment_Id,
+                f.Fragment_Name,
+                f.Fragment_Code,
+                f.Total_Workers,
+                Stops = f.FragmentStops
+                    .OrderBy(fs => fs.Stop_Order)
+                    .Select(fs => new
+                    {
+                        fs.TrajectoryStop.TS_Id,
+                        fs.TrajectoryStop.TS_Name,
+                        fs.TrajectoryStop.TS_Latitude,
+                        fs.TrajectoryStop.TS_Longitude,
+                        fs.TrajectoryStop.TS_OrderIndex,
+                        fs.Workers_At_Stop
+                    })
+            });
+            return Ok(result);
+        }
     }
+
 }
