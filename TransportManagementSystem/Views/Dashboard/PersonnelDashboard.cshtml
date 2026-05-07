@@ -9,11 +9,26 @@
     .toast.warning { border-left-color: #ffc107; }
     .toast.danger { border-left-color: #dc3545; }
     .toast-header { background-color: #f8f9fa; border-bottom: none; }
-    .bus-marker { background-color: #007bff; color: white; border-radius: 50%; text-align: center; font-size: 16px; padding: 6px; width: 30px; height: 30px; display: flex; align-items: center; justify-content: center; border: 2px solid white; box-shadow: 0 2px 6px rgba(0,0,0,0.3); }
+    .bus-marker { background-color: #007bff; color: white; border-radius: 50%; text-align: center; font-size: 18px; padding: 6px; width: 36px; height: 36px; display: flex; align-items: center; justify-content: center; border: 2px solid white; box-shadow: 0 2px 6px rgba(0,0,0,0.3); }
     .stop-marker { background-color: #28a745; color: white; border-radius: 50%; text-align: center; font-size: 12px; padding: 4px; width: 24px; height: 24px; display: flex; align-items: center; justify-content: center; border: 1px solid white; }
     .person-marker { background-color: #ffc107; color: black; border-radius: 50%; text-align: center; font-size: 14px; padding: 4px; width: 28px; height: 28px; display: flex; align-items: center; justify-content: center; border: 2px solid white; }
     .info-card { margin-bottom: 20px; transition: transform 0.2s; }
     .info-card:hover { transform: translateY(-5px); }
+    .legend {
+        background: white;
+        padding: 10px;
+        border-radius: 5px;
+        box-shadow: 0 0 10px rgba(0,0,0,0.2);
+        font-size: 12px;
+        line-height: 1.5;
+    }
+    .legend i {
+        display: inline-block;
+        width: 20px;
+        height: 20px;
+        margin-right: 5px;
+        vertical-align: middle;
+    }
 </style>
 
 <h2>Bienvenue, @ViewBag.UserName</h2>
@@ -55,7 +70,7 @@
     Chargement de votre trajet...
 </div>
 
-<div id="map" style="height: 500px; width: 100%; border-radius: 10px; margin-bottom: 20px;"></div>
+<div id="map" style="height: 600px; width: 100%; border-radius: 10px; margin-bottom: 20px;"></div>
 
 <div class="toast-container position-fixed top-0 end-0 p-3" id="toastContainer"></div>
 
@@ -131,7 +146,7 @@
                 }
                 const data = await response.json();
 
-                // Update trajectory info
+                // Mise à jour des cartes d'information
                 document.getElementById('trajectoryInfo').innerHTML = `
                     <strong>${data.trajectory.trajectory_Name}</strong><br/>
                     Code: ${data.trajectory.trajectory_Code}<br/>
@@ -139,22 +154,18 @@
                     Durée estimée: ${data.trajectory.EstimatedDuration} min
                 `;
 
-                // Update bus info
                 if (data.assignedBus) {
                     document.getElementById('busInfo').innerHTML = `
                         <strong>${data.assignedBus.bus_Code}</strong><br/>
                         Plaque: ${data.assignedBus.bus_PlateNumber}<br/>
                         Modèle: ${data.assignedBus.bus_Brand} ${data.assignedBus.bus_Model}<br/>
-                        Capacité: ${data.assignedBus.Capacity} places
+                        Capacité: ${data.assignedBus.bus_Capacity} places
                     `;
                 } else {
                     document.getElementById('busInfo').innerHTML = 'Aucun bus assigné';
                 }
 
-                // Update driver info
-                document.getElementById('driverInfo').innerHTML = `
-                    <strong>${data.assignedDriver}</strong>
-                `;
+                document.getElementById('driverInfo').innerHTML = `<strong>${data.assignedDriver}</strong>`;
 
                 if (data.personnelStop) {
                     currentRefLat = data.personnelStop.tS_Latitude;
@@ -173,39 +184,65 @@
                 `;
                 currentTrajectoryId = data.trajectory.trajectory_Id;
 
+                // Initialisation de la carte centrée sur le Maroc (Kénitra/Salé/Rabat)
                 if (!map) {
-                    map = L.map('map').setView([46.603354, 1.888334], 15);
+                    map = L.map('map').setView([34.0, -6.8], 10); // Centre Maroc
                     L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
                         attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a> & CartoDB'
                     }).addTo(map);
+
+                    // Échelle métrique
+                    L.control.scale({ metric: true, imperial: false }).addTo(map);
+
+                    // Légende des couches
+                    let legend = L.control({ position: 'bottomright' });
+                    legend.onAdd = function() {
+                        let div = L.DomUtil.create('div', 'legend');
+                        div.innerHTML = `
+                            <div><i style="background:#3388ff; width:20px; height:4px;"></i> Trajectoire</div>
+                            <div><i style="background:#28a745; border-radius:50%;"></i> Arrêts</div>
+                            <div><i style="background:#ffc107; border-radius:50%;"></i> Mon arrêt</div>
+                            <div><i style="background:#007bff; border-radius:50%;"></i> Bus</div>
+                            <div><i style="background:#dc3545; border-radius:50%;"></i> Ma position</div>
+                        `;
+                        return div;
+                    };
+                    legend.addTo(map);
                 }
 
+                // Nettoyer les anciennes couches
                 if (trajectoryLine) map.removeLayer(trajectoryLine);
+                if (window.busLayer) map.removeLayer(window.busLayer);
+                if (personStopMarker) map.removeLayer(personStopMarker);
+                if (personLocationMarker) map.removeLayer(personLocationMarker);
+
+                // Tracé de la trajectoire
                 const points = data.stops.map(s => [s.tS_Latitude, s.tS_Longitude]);
                 if (points.length > 1) {
-                    trajectoryLine = L.polyline(points, { color: 'blue', weight: 4, opacity: 0.6 }).addTo(map);
+                    trajectoryLine = L.polyline(points, { color: '#3388ff', weight: 5, opacity: 0.8 }).addTo(map);
                 }
 
+                // Marqueurs des arrêts
                 data.stops.forEach(stop => {
                     const icon = L.divIcon({ html: stop.tS_OrderIndex, iconSize: [24, 24], className: 'stop-marker' });
                     L.marker([stop.tS_Latitude, stop.tS_Longitude], { icon })
-                        .bindPopup(`<b>${stop.tS_Name}</b><br/>Ordre ${stop.tS_OrderIndex}`)
+                        .bindPopup(`<b>${stop.tS_Name}</b><br/>Arrêt n°${stop.tS_OrderIndex}`)
                         .addTo(map);
                 });
 
+                // Marqueur de l'arrêt personnel
                 if (data.personnelStop) {
-                    if (personStopMarker) map.removeLayer(personStopMarker);
                     const icon = L.divIcon({ html: '📍', iconSize: [28, 28], className: 'stop-marker' });
                     personStopMarker = L.marker([data.personnelStop.tS_Latitude, data.personnelStop.tS_Longitude], { icon })
                         .bindPopup(`<b>Votre arrêt : ${data.personnelStop.tS_Name}</b>`)
                         .addTo(map);
                 }
 
-                if (window.busLayer) map.removeLayer(window.busLayer);
+                // Marqueurs des bus
                 window.busLayer = L.layerGroup().addTo(map);
                 busMarkers = {};
                 data.buses.forEach(bus => {
-                    const busIcon = L.divIcon({ html: '🚌', iconSize: [30, 30], className: 'bus-marker' });
+                    const busIcon = L.divIcon({ html: '🚌', iconSize: [32, 32], className: 'bus-marker' });
                     let etaText = "";
                     if (bus.etaMinutes !== undefined && bus.etaMinutes !== null) {
                         etaText = `<br/>🚏 Arrive dans : ${bus.etaMinutes} min`;
@@ -217,12 +254,13 @@
                     busMarkers[bus.bus_Id] = marker;
                 });
 
+                // Centrage automatique sur l'arrêt personnel ou le premier bus
                 if (data.personnelStop) {
-                    map.setView([data.personnelStop.tS_Latitude, data.personnelStop.tS_Longitude], 15);
+                    map.setView([data.personnelStop.tS_Latitude, data.personnelStop.tS_Longitude], 14);
                 } else if (data.buses.length > 0) {
-                    map.setView([data.buses[0].lat, data.buses[0].lng], 15);
+                    map.setView([data.buses[0].lat, data.buses[0].lng], 13);
                 } else if (data.trajectory.StartLat && data.trajectory.StartLng) {
-                    map.setView([data.trajectory.StartLat, data.trajectory.StartLng], 15);
+                    map.setView([data.trajectory.StartLat, data.trajectory.StartLng], 12);
                 }
 
                 if (checkInterval) clearInterval(checkInterval);
@@ -286,17 +324,19 @@
             }
         }
 
+        // Géolocalisation (position du personnel)
         if (navigator.geolocation) {
             navigator.geolocation.getCurrentPosition(pos => {
                 if (!map) return;
                 if (personLocationMarker) map.removeLayer(personLocationMarker);
-                const icon = L.divIcon({ html: '👤', iconSize: [28, 28], className: 'person-marker' });
+                const icon = L.divIcon({ html: '👤', iconSize: [32, 32], className: 'person-marker' });
                 personLocationMarker = L.marker([pos.coords.latitude, pos.coords.longitude], { icon })
                     .bindPopup('Votre position actuelle')
                     .addTo(map);
             });
         }
 
+        // Demander la permission pour les notifications
         if ("Notification" in window && Notification.permission !== "denied") {
             Notification.requestPermission();
         }
