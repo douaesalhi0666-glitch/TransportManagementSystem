@@ -19,14 +19,14 @@ namespace TransportManagementSystem.Controllers
         {
             var trajectories = await _context.Trajectories.ToListAsync();
 
-            // Récupérer les bus et les trajectoires assignées
+            // Get fragments assigned to buses instead of trajectories
             var buses = await _context.Buses.ToListAsync();
-            var assignedTrajectoryIds = buses
-                .Where(b => b.Bus_CurrentTrajectoryId.HasValue)
-                .Select(b => b.Bus_CurrentTrajectoryId.Value)
+            var assignedFragmentIds = buses
+                .Where(b => b.Bus_CurrentFragmentId.HasValue)
+                .Select(b => b.Bus_CurrentFragmentId.Value)
                 .ToHashSet();
 
-            ViewBag.AssignedTrajectoryIds = assignedTrajectoryIds;
+            ViewBag.AssignedFragmentIds = assignedFragmentIds;
 
             return View(trajectories);
         }
@@ -165,14 +165,15 @@ namespace TransportManagementSystem.Controllers
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> DeleteConfirmed(int id)
         {
-            // 1. Remove trajectory reference from all buses
-            var busesWithThisTrajectory = await _context.Buses
-                .Where(b => b.Bus_CurrentTrajectoryId == id)
+            // 1. Remove fragment references from all buses (not trajectory references anymore)
+            var busesWithThisTrajectoryFragments = await _context.Buses
+                .Where(b => b.Bus_CurrentFragmentId.HasValue &&
+                            _context.TrajectoryFragments.Any(f => f.Fragment_Id == b.Bus_CurrentFragmentId && f.Trajectory_Id == id))
                 .ToListAsync();
 
-            foreach (var bus in busesWithThisTrajectory)
+            foreach (var bus in busesWithThisTrajectoryFragments)
             {
-                bus.Bus_CurrentTrajectoryId = null;
+                bus.Bus_CurrentFragmentId = null;
             }
 
             // 2. Delete BusTrajectoryAssignment records
@@ -223,6 +224,7 @@ namespace TransportManagementSystem.Controllers
             foreach (var person in personnelWithThisTrajectory)
             {
                 person.AssignedTrajectoryId = null;
+                person.AssignedFragmentId = null;
                 person.AssignedBusId = null;
                 person.IsAssigned = false;
             }

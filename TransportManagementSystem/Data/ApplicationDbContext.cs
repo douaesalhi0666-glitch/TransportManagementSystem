@@ -199,7 +199,7 @@ namespace TransportManagementSystem.Data
                 .WithMany()
                 .HasForeignKey(pt => pt.PTA_StopId)
                 .OnDelete(DeleteBehavior.Restrict);
-
+              
             modelBuilder.Entity<Alert>()
                 .HasOne(a => a.Bus)
                 .WithMany()

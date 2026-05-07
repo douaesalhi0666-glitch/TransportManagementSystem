@@ -18,7 +18,7 @@ namespace TransportManagementSystem.Controllers
             _context = context;
         }
 
-        // GET: Assign Personnel page (avec liste des assignations actuelles)
+        // GET: Assign Personnel page
         public async Task<IActionResult> AssignPersonnel()
         {
             ViewBag.Personnel = await _context.Personnel
@@ -37,7 +37,6 @@ namespace TransportManagementSystem.Controllers
             return View(assignments);
         }
 
-        // POST: AI-based assignment (sans bus)
         [HttpPost]
         public async Task<IActionResult> AssignPersonnelAI(long personnelId)
         {
@@ -60,14 +59,13 @@ namespace TransportManagementSystem.Controllers
 
             if (personnel.Personnel_Latitude == null || personnel.Personnel_Longitude == null)
             {
-                TempData["Error"] = "Les coordonnées GPS de ce personnel ne sont pas définies. Veuillez les renseigner avant d'utiliser l'IA.";
+                TempData["Error"] = "Les coordonnées GPS de ce personnel ne sont pas définies.";
                 return RedirectToAction("AssignPersonnel");
             }
 
             Trajectory? bestTrajectory = null;
             double bestDistance = double.MaxValue;
 
-            // Calcul de la distance entre le personnel et le POINT D'ARRIVÉE de chaque trajectoire
             foreach (var traj in trajectories)
             {
                 if (traj.Trajectory_EndLatitude != null && traj.Trajectory_EndLongitude != null)
@@ -93,9 +91,7 @@ namespace TransportManagementSystem.Controllers
                 return RedirectToAction("AssignPersonnel");
             }
 
-            // Assignation : seulement la trajectoire, pas de bus
             personnel.AssignedTrajectoryId = bestTrajectory.Trajectory_Id;
-            personnel.AssignedBusId = null;
             personnel.IsAssigned = true;
 
             await _context.SaveChangesAsync();
@@ -104,7 +100,6 @@ namespace TransportManagementSystem.Controllers
             return RedirectToAction("AssignPersonnel");
         }
 
-        // POST: Manual assignment (sans bus)
         [HttpPost]
         public async Task<IActionResult> AssignPersonnelManual(long personnelId, int trajectoryId)
         {
@@ -117,7 +112,6 @@ namespace TransportManagementSystem.Controllers
             }
 
             personnel.AssignedTrajectoryId = trajectoryId;
-            personnel.AssignedBusId = null;
             personnel.IsAssigned = true;
 
             await _context.SaveChangesAsync();
@@ -126,7 +120,6 @@ namespace TransportManagementSystem.Controllers
             return RedirectToAction("AssignPersonnel");
         }
 
-        // Désassignation
         [HttpPost]
         public async Task<IActionResult> UnassignPersonnel(long personnelId)
         {
@@ -134,6 +127,7 @@ namespace TransportManagementSystem.Controllers
             if (personnel != null)
             {
                 personnel.AssignedTrajectoryId = null;
+                personnel.AssignedFragmentId = null;
                 personnel.AssignedBusId = null;
                 personnel.IsAssigned = false;
                 await _context.SaveChangesAsync();
@@ -142,28 +136,32 @@ namespace TransportManagementSystem.Controllers
             return RedirectToAction("AssignPersonnel");
         }
 
-        // ========== Autres actions (non modifiées) ==========
         public async Task<IActionResult> ViewAssignments()
         {
             var assignments = await _context.Personnel
                 .Include(p => p.AssignedTrajectory)
+                .Include(p => p.AssignedFragment)
+                .Include(p => p.AssignedBus)
                 .Where(p => p.IsAssigned == true)
                 .ToListAsync();
             return View(assignments);
         }
 
+        // ========== BUS OCCUPANCY WITH FRAGMENTS ==========
         public async Task<IActionResult> BusOccupancy()
         {
             var buses = await _context.Buses
                 .Include(b => b.CurrentDriver)
-                .Include(b => b.CurrentTrajectory)
+                .Include(b => b.AssignedFragment)
+                    .ThenInclude(f => f.Trajectory)
                 .ToListAsync();
 
             var busOccupancy = new List<BusOccupancyViewModel>();
+
             foreach (var bus in buses)
             {
                 var personnel = await _context.Personnel
-                    .Include(p => p.AssignedTrajectory)
+                    .Include(p => p.AssignedFragment)
                     .Where(p => p.AssignedBusId == bus.Bus_Id && p.IsAssigned == true)
                     .ToListAsync();
 
@@ -175,6 +173,7 @@ namespace TransportManagementSystem.Controllers
                     Personnel = personnel
                 });
             }
+
             ViewBag.BusOccupancy = busOccupancy;
             return View();
         }
@@ -185,7 +184,7 @@ namespace TransportManagementSystem.Controllers
             var personnel = await _context.Personnel.FindAsync(personnelId);
             if (personnel != null && personnel.AssignedBusId == busId)
             {
-                personnel.AssignedTrajectoryId = null;
+                personnel.AssignedFragmentId = null;
                 personnel.AssignedBusId = null;
                 personnel.IsAssigned = false;
                 await _context.SaveChangesAsync();

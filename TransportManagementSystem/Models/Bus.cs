@@ -34,7 +34,8 @@ namespace TransportManagementSystem.Models
 
         public long? Bus_CurrentDriverId { get; set; }
 
-        public int? Bus_CurrentTrajectoryId { get; set; }
+        // Change: Now assigned to FRAGMENT instead of TRAJECTORY
+        public int? Bus_CurrentFragmentId { get; set; }
 
         [Column(TypeName = "decimal(10,8)")]
         public decimal? Bus_CurrentLatitude { get; set; }
@@ -52,10 +53,10 @@ namespace TransportManagementSystem.Models
         [ForeignKey("Bus_CurrentDriverId")]
         public virtual Driver? CurrentDriver { get; set; }
 
-        [ForeignKey("Bus_CurrentTrajectoryId")]
-        public virtual Trajectory? CurrentTrajectory { get; set; }
+        [ForeignKey("Bus_CurrentFragmentId")]
+        public virtual TrajectoryFragment? AssignedFragment { get; set; }
 
-        // Collection navigation - personnel assigned to this bus
+        // Collection navigation
         public virtual ICollection<Personnel>? AssignedPersonnel { get; set; }
     }
 }

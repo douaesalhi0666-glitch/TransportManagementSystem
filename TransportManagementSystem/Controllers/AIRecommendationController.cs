@@ -17,7 +17,7 @@ namespace TransportManagementSystem.Controllers
             _optimizer = new AssignmentOptimizer(context);
         }
 
-        // GET: AIRecommendation (this handles both /AIRecommendation and /AIRecommendation/Index)
+        // GET: AIRecommendation
         public async Task<IActionResult> Index()
         {
             var recommendations = await _optimizer.GetBestAssignments();
@@ -26,13 +26,13 @@ namespace TransportManagementSystem.Controllers
 
         // POST: Apply recommendation
         [HttpPost]
-        public async Task<IActionResult> ApplyRecommendation(long driverId, long busId, int trajectoryId)
+        public async Task<IActionResult> ApplyRecommendation(long driverId, long busId, int fragmentId)
         {
             var driver = await _context.Drivers.FindAsync(driverId);
             var bus = await _context.Buses.FindAsync(busId);
-            var trajectory = await _context.Trajectories.FindAsync(trajectoryId);
+            var fragment = await _context.TrajectoryFragments.FindAsync(fragmentId);
 
-            if (driver == null || bus == null || trajectory == null)
+            if (driver == null || bus == null || fragment == null)
             {
                 TempData["Error"] = "Erreur lors de l'application de la recommandation.";
                 return RedirectToAction(nameof(Index));
@@ -41,14 +41,14 @@ namespace TransportManagementSystem.Controllers
             driver.Driver_AssignedBusId = busId;
             driver.Driver_Status = "On Route";
             bus.Bus_CurrentDriverId = driverId;
-            bus.Bus_CurrentTrajectoryId = trajectoryId;
+            bus.Bus_CurrentFragmentId = fragmentId;  // Changed from Bus_CurrentTrajectoryId
 
             var log = new RecommendationLog
             {
                 Recommendation_Date = DateTime.Now,
                 Recommended_DriverId = driverId,
                 Recommended_BusId = busId,
-                Recommended_TrajectoryId = trajectoryId,
+                Recommended_TrajectoryId = fragmentId,  // This column stores fragment ID now
                 Score = 100,
                 Was_Accepted = true
             };
@@ -56,23 +56,23 @@ namespace TransportManagementSystem.Controllers
 
             await _context.SaveChangesAsync();
 
-            TempData["Success"] = $"Recommandation appliquée : {driver.Driver_FirstName} {driver.Driver_LastName} → Bus {bus.Bus_Code} → Trajet {trajectory.Trajectory_Name}";
+            TempData["Success"] = $"Recommandation appliquée : {driver.Driver_FirstName} {driver.Driver_LastName} → Bus {bus.Bus_Code} → Fragment {fragment.Fragment_Name}";
             return RedirectToAction(nameof(Index));
         }
 
         // POST: Update driver performance after trip
         [HttpPost]
-        public async Task<IActionResult> UpdatePerformance(long driverId, int trajectoryId, bool wasOnTime, int delayMinutes)
+        public async Task<IActionResult> UpdatePerformance(long driverId, int fragmentId, bool wasOnTime, int delayMinutes)
         {
             var performance = await _context.DriverPerformance_tbl
-                .FirstOrDefaultAsync(p => p.Driver_Id == driverId && p.Trajectory_Id == trajectoryId);
+                .FirstOrDefaultAsync(p => p.Driver_Id == driverId && p.Trajectory_Id == fragmentId);
 
             if (performance == null)
             {
                 performance = new DriverPerformance
                 {
                     Driver_Id = driverId,
-                    Trajectory_Id = trajectoryId,
+                    Trajectory_Id = fragmentId,  // This stores fragment ID
                     TotalTrips = 0,
                     OnTimeTrips = 0,
                     AverageDelayMinutes = 0

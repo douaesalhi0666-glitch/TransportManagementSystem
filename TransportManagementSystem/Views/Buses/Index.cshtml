@@ -40,7 +40,7 @@
             <th>Année</th>
             <th>Capacité</th>
             <th>Chauffeur assigné</th>
-            <th>Trajet assigné</th>
+            <th>Fragment assigné</th>
             <th>Statut</th>
             <th>Actions</th>
         </tr>
@@ -67,9 +67,13 @@
                     }
                 </td>
                 <td>
-                    @if (item.CurrentTrajectory != null)
+                    @if (item.AssignedFragment != null)
                     {
-                        @item.CurrentTrajectory.Trajectory_Name
+                        @item.AssignedFragment.Fragment_Name
+                        if (item.AssignedFragment.Trajectory != null)
+                        {
+                            <br /><small class="text-muted">(@item.AssignedFragment.Trajectory.Trajectory_Name)</small>
+                        }
                     }
                     else
                     {
@@ -165,12 +169,12 @@
                             </select>
                         </div>
                         <div class="col-md-6 mb-2">
-                            <label>Trajet assigné</label>
-                            <select id="edit_TrajectoryId" name="Bus_CurrentTrajectoryId" class="form-select">
+                            <label>Fragment assigné</label>
+                            <select id="edit_FragmentId" name="Bus_CurrentFragmentId" class="form-select">
                                 <option value="">-- Aucun --</option>
-                                @foreach (var traj in ViewBag.Trajectories)
+                                @foreach (var fragment in ViewBag.Fragments)
                                 {
-                                    <option value="@traj.Trajectory_Id">@traj.Trajectory_Name</option>
+                                    <option value="@fragment.Fragment_Id">@fragment.Fragment_Name (@fragment.Fragment_Code)</option>
                                 }
                             </select>
                         </div>
@@ -190,7 +194,6 @@
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script>
         $(document).ready(function() {
-        // Filtrage par recherche et statut
         function filterTable() {
         var searchText = $('#searchInput').val().toLowerCase();
         var status = $('#statusFilter').val();
@@ -217,7 +220,6 @@
         filterTable();
         });
 
-        // Édition en ligne (modal)
         $('.edit-btn').click(function() {
         var id = $(this).data('id');
         $.get('/Buses/GetBusData/' + id, function(data) {
@@ -230,7 +232,7 @@
         $('#edit_Capacity').val(data.bus_Capacity);
         $('#edit_Status').val(data.bus_Status);
         $('#edit_DriverId').val(data.bus_CurrentDriverId);
-        $('#edit_TrajectoryId').val(data.bus_CurrentTrajectoryId);
+        $('#edit_FragmentId').val(data.bus_CurrentFragmentId);
         $('#editModal').modal('show');
         }).fail(function() {
         alert('Erreur lors du chargement des données.');
@@ -248,7 +250,7 @@
         Bus_Capacity: $('#edit_Capacity').val() === '' ? null : parseInt($('#edit_Capacity').val()),
         Bus_Status: $('#edit_Status').val(),
         Bus_CurrentDriverId: $('#edit_DriverId').val() === '' ? null : parseInt($('#edit_DriverId').val()),
-        Bus_CurrentTrajectoryId: $('#edit_TrajectoryId').val() === '' ? null : parseInt($('#edit_TrajectoryId').val())
+        Bus_CurrentFragmentId: $('#edit_FragmentId').val() === '' ? null : parseInt($('#edit_FragmentId').val())
         };
 
         $.ajax({
@@ -265,7 +267,7 @@
         }
         },
         error: function() {
-        alert('Erreur lors de l’envoi.');
+        alert('Erreur lors de l\'envoi.');
         }
         });
         });
