@@ -104,6 +104,44 @@ namespace TransportManagementSystem.Controllers
             return View(trajectory);
         }
 
+        // GET: Trajectories/GetPersonnelByTrajectory/{id}
+        [HttpGet]
+        public async Task<IActionResult> GetPersonnelByTrajectory(int id)
+        {
+            var personnel = await _context.Personnel
+                .Include(p => p.AssignedBus)
+                .Where(p => p.AssignedTrajectoryId == id && p.IsAssigned == true)
+                .Select(p => new
+                {
+                    p.Personnel_Id,
+                    p.Personnel_FirstName,
+                    p.Personnel_LastName,
+                    p.Personnel_Gender,
+                    p.Personnel_PhoneNumber,
+                    p.Personnel_Email,
+                    p.Personnel_EmployeeCode,
+                    p.Personnel_Department,
+                    p.HomeAddress,
+                    AssignedBusCode = p.AssignedBus != null ? p.AssignedBus.Bus_Code : "Non assigné",
+                    p.Personnel_Status
+                })
+                .ToListAsync();
+
+            var trajectory = await _context.Trajectories
+                .Where(t => t.Trajectory_Id == id)
+                .Select(t => new { t.Trajectory_Name, t.Trajectory_Code })
+                .FirstOrDefaultAsync();
+
+            return Ok(new
+            {
+                trajectoryId = id,
+                trajectoryName = trajectory?.Trajectory_Name ?? "Inconnu",
+                trajectoryCode = trajectory?.Trajectory_Code ?? "",
+                personnelCount = personnel.Count,
+                personnel = personnel
+            });
+        }
+
         // GET: Trajectories/Delete/5
         public async Task<IActionResult> Delete(int? id)
         {

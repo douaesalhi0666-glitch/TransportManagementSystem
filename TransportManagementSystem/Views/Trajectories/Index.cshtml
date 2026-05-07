@@ -45,6 +45,7 @@
             <th>Durée (min)</th>
             <th>Statut</th>
             <th>Assigné à un bus ?</th>
+            <th>Personnels</th>
             <th>Actions</th>
         </tr>
     </thead>
@@ -86,6 +87,11 @@
                     }
                 </td>
                 <td>
+                    <button type="button" class="btn btn-sm btn-info" onclick="showPersonnel(@item.Trajectory_Id, '@item.Trajectory_Name')">
+                        👥 Voir personnels
+                    </button>
+                </td>
+                <td>
                     <a href="/Trajectories/Edit/@item.Trajectory_Id" class="btn btn-sm btn-warning">Modifier</a>
                     <form asp-action="Delete" asp-route-id="@item.Trajectory_Id" method="post" style="display:inline;">
                         <input type="submit" value="Supprimer" class="btn btn-sm btn-danger" onclick="return confirm('Êtes-vous sûr de vouloir supprimer ce trajet ?');" />
@@ -97,6 +103,26 @@
 </table>
 
 <a href="/Dashboard/AdminDashboard" class="btn btn-secondary">Retour au Dashboard</a>
+
+<!-- Modal Personnels -->
+<div class="modal fade" id="personnelModal" tabindex="-1">
+    <div class="modal-dialog modal-xl">
+        <div class="modal-content">
+            <div class="modal-header bg-info text-white">
+                <h5 class="modal-title">👥 Personnels du trajet</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div id="personnelModalContent">
+                    <p class="text-center">Chargement...</p>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fermer</button>
+            </div>
+        </div>
+    </div>
+</div>
 
 @section Scripts {
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
@@ -113,20 +139,13 @@
         var name = $row.data('name').toString().toLowerCase();
         var code = $row.data('code').toString().toLowerCase();
         var rowStatus = $row.data('status');
-                    
-        // Récupérer le texte de la colonne "Assigné à un bus ?" (le badge)
-        var assignedText = $row.find('td:nth-child(8)').text().trim(); // "Oui" ou "Non"
-                    
-        // Filtre recherche
+        var assignedText = $row.find('td:nth-child(8)').text().trim();
+
         var matchSearch = (searchText === '' ||
         id.indexOf(searchText) !== -1 ||
         name.indexOf(searchText) !== -1 ||
         code.indexOf(searchText) !== -1);
-                    
-        // Filtre statut
         var matchStatus = (status === '' || rowStatus === status);
-                    
-        // Filtre assignation : on compare le texte "Oui" ou "Non"
         var matchAssigned = true;
         if (assignedFilter === 'assigned') {
         matchAssigned = (assignedText === 'Oui');
@@ -154,5 +173,83 @@
 
         filterTable();
         });
+
+        // Fonction pour afficher les personnels d'un trajet
+        function showPersonnel(trajectoryId, trajectoryName) {
+        const modalContent = document.getElementById('personnelModalContent');
+        modalContent.innerHTML = '<div class="text-center"><div class="spinner-border text-primary" role="status"></div><br>Chargement des personnels...</div>';
+            
+        fetch(`/Trajectories/GetPersonnelByTrajectory/${trajectoryId}`)
+        .then(response => response.json())
+        .then(data => {
+        if (data.personnel && data.personnel.length > 0) {
+        let html = `
+        <div class="alert alert-info">
+        <strong>Trajet:</strong> ${data.trajectoryName} (${data.trajectoryCode})<br>
+        <strong>Nombre de personnels:</strong> ${data.personnelCount}
+        </div>
+        <div class="table-responsive">
+        <table class="table table-striped table-bordered">
+        <thead>
+        <tr>
+        <th>ID</th>
+        <th>Prénom</th>
+        <th>Nom</th>
+        <th>Genre</th>
+        <th>Téléphone</th>
+        <th>Email</th>
+        <th>Code employé</th>
+        <th>Département</th>
+        <th>Adresse domicile</th>
+        <th>Bus assigné</th>
+        <th>Statut</th>
+        </tr>
+        </thead>
+        <tbody>
+        `;
+        data.personnel.forEach(p => {
+        html += `
+        <tr>
+        <td>${p.personnel_Id}</td>
+        <td>${p.personnel_FirstName}</td>
+        <td>${p.personnel_LastName}</td>
+        <td>${p.personnel_Gender === 'Male' ? 'Homme' : (p.personnel_Gender === 'Female' ? 'Femme' : p.personnel_Gender)}</td>
+        <td>${p.personnel_PhoneNumber || '-'}</td>
+        <td>${p.personnel_Email || '-'}</td>
+        <td>${p.personnel_EmployeeCode}</td>
+        <td>${p.personnel_Department || '-'}</td>
+        <td>${p.homeAddress || '-'}</td>
+        <td>${p.assignedBusCode}</td>
+        <td>
+        ${p.personnel_Status === 'Active' ? '<span class="badge bg-success">Actif</span>' : '<span class="badge bg-danger">Inactif</span>'}
+        </td>
+        </tr>
+        `;
+        });
+        html += `
+        </tbody>
+        </table>
+        </div>
+        `;
+        modalContent.innerHTML = html;
+        } else {
+        modalContent.innerHTML = `
+        <div class="alert alert-warning">
+        <strong>Aucun personnel assigné à ce trajet.</strong><br>
+        Veuillez assigner des personnels via la page "Assigner personnel".
+        </div>
+        `;
+        }
+                    
+        const modal = new bootstrap.Modal(document.getElementById('personnelModal'));
+        modal.show();
+        })
+        .catch(error => {
+        console.error('Error:', error);
+        modalContent.innerHTML = '<div class="alert alert-danger">Erreur lors du chargement des personnels.</div>';
+        const modal = new bootstrap.Modal(document.getElementById('personnelModal'));
+        modal.show();
+        });
+        }
     </script>
 }
