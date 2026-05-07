@@ -8,16 +8,12 @@
 
 @if (TempData["Success"] != null)
 {
-    <div class="alert alert-success">
-        ✅ @TempData["Success"]
-    </div>
+    <div class="alert alert-success">✅ @TempData["Success"]</div>
 }
 
 @if (TempData["Error"] != null)
 {
-    <div class="alert alert-danger">
-        ❌ @TempData["Error"]
-    </div>
+    <div class="alert alert-danger">❌ @TempData["Error"]</div>
 }
 
 <div class="row mt-4">
@@ -59,42 +55,6 @@
             </div>
         </div>
     </div>
-
-    <div class="col-md-6">
-        <div class="card">
-            <div class="card-header bg-success text-white">
-                <h4>🗺️ Assigner un bus à un trajet</h4>
-            </div>
-            <div class="card-body">
-                <form method="post" action="/Assignments/AssignBusToTrajectory">
-                    <div class="mb-3">
-                        <label>Bus</label>
-                        <select name="busId" class="form-control" required>
-                            <option value="">-- Sélectionner un bus --</option>
-                            @foreach (var bus in ViewBag.Buses)
-                            {
-                                if (bus.CurrentTrajectory == null)
-                                {
-                                    <option value="@bus.Bus_Id">@bus.Bus_Code - @bus.Bus_PlateNumber</option>
-                                }
-                            }
-                        </select>
-                    </div>
-                    <div class="mb-3">
-                        <label>Trajet</label>
-                        <select name="trajectoryId" class="form-control" required>
-                            <option value="">-- Sélectionner un trajet --</option>
-                            @foreach (var traj in ViewBag.Trajectories)
-                            {
-                                <option value="@traj.Trajectory_Id">@traj.Trajectory_Name</option>
-                            }
-                        </select>
-                    </div>
-                    <button type="submit" class="btn btn-success w-100">Assigner</button>
-                </form>
-            </div>
-        </div>
-    </div>
 </div>
 
 <hr />
@@ -106,7 +66,7 @@
             <th>Bus</th>
             <th>Plaque</th>
             <th>Chauffeur</th>
-            <th>Trajet</th>
+            <th>Fragment assigné</th>
             <th>Actions</th>
         </tr>
     </thead>
@@ -127,13 +87,13 @@
                     }
                 </td>
                 <td>
-                    @if (bus.CurrentTrajectory != null)
+                    @if (bus.AssignedFragment != null)
                     {
-                        @bus.CurrentTrajectory.Trajectory_Name
+                        <span>@bus.AssignedFragment.Fragment_Name (code: @bus.AssignedFragment.Fragment_Code)</span>
                     }
                     else
                     {
-                        <span class="text-muted">Non assigné</span>
+                        <span class="text-muted">Aucun fragment</span>
                     }
                 </td>
                 <td>
@@ -142,13 +102,6 @@
                         <form method="post" action="/Assignments/UnassignDriver" style="display:inline;">
                             <input type="hidden" name="driverId" value="@bus.CurrentDriver.Driver_id" />
                             <button type="submit" class="btn btn-sm btn-danger">Libérer chauffeur</button>
-                        </form>
-                    }
-                    @if (bus.CurrentTrajectory != null)
-                    {
-                        <form method="post" action="/Assignments/UnassignBus" style="display:inline;">
-                            <input type="hidden" name="busId" value="@bus.Bus_Id" />
-                            <button type="submit" class="btn btn-sm btn-warning">Libérer trajet</button>
                         </form>
                     }
                 </td>
