@@ -8,6 +8,10 @@
 <h2>🗺️ Tous les points de ramassage (arrêts) par trajectoire</h2>
 <p>Liste et visualisation de tous les arrêts créés pour chaque trajectoire.</p>
 
+<div class="alert alert-info mb-3">
+    <strong>📍 Point de départ commun:</strong> SEWS Maroc (Bir Rami, Kenitra) - Ordre 0 pour toutes les trajectoires
+</div>
+
 <div class="row mb-3">
     <div class="col-md-4">
         <div class="card">
@@ -185,15 +189,22 @@
     <style>
         .stop-marker { background-color: #28a745; color: white; border-radius: 50%; text-align: center; font-size: 12px; font-weight: bold; width: 24px; height: 24px; display: flex; align-items: center; justify-content: center; border: 2px solid white; box-shadow: 0 2px 6px rgba(0,0,0,0.3); cursor: pointer; }
         .stop-marker:hover { transform: scale(1.1); transition: transform 0.2s; }
+        .sews-marker { background-color: #2ecc71; color: white; border-radius: 50%; text-align: center; font-size: 14px; font-weight: bold; width: 30px; height: 30px; display: flex; align-items: center; justify-content: center; border: 2px solid white; box-shadow: 0 2px 6px rgba(0,0,0,0.3); cursor: pointer; }
         .worker-list-item { border-left: 3px solid #28a745; margin-bottom: 8px; padding-left: 10px; }
+        .line-sews { stroke-dasharray: 5, 5; }
     </style>
 
     <script>
         let map;
         let currentMarkers = [];
+        let currentPolylines = [];
         let currentTrajectoryId = null;
         let allStopsData = [];
         const colorPalette = ['#3388ff', '#ff3333', '#33ff33', '#ff33cc', '#ff9933', '#33cccc', '#9966ff', '#66ff99'];
+        
+        // SEWS Maroc coordinates
+        const SEWS_LAT = 34.2900;
+        const SEWS_LNG = -6.5700;
 
         async function loadData() {
             const selectedTrajId = document.getElementById('trajectoryFilter').value;
@@ -212,30 +223,46 @@
             allStopsData = allStops;
 
             if (!map) {
-                map = L.map('map').setView([34.2610, -6.5800], 10);
+                map = L.map('map').setView([SEWS_LAT, SEWS_LNG], 12);
                 L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
                     attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a> & CartoDB'
                 }).addTo(map);
             }
 
+            // Clear all layers
             map.eachLayer(function(layer) {
                 if (layer instanceof L.Marker || layer instanceof L.Polyline) {
                     map.removeLayer(layer);
                 }
             });
             currentMarkers = [];
+            currentPolylines = [];
+
+            // Always add SEWS marker
+            const sewsIcon = L.divIcon({ html: '🏭', iconSize: [30, 30], className: 'sews-marker' });
+            const sewsMarker = L.marker([SEWS_LAT, SEWS_LNG], { icon: sewsIcon })
+                .bindPopup('<strong>🏭 SEWS Maroc</strong><br>Point de depart (Ordre 0)');
+            sewsMarker.addTo(map);
+            currentMarkers.push(sewsMarker);
 
             const trajectoriesResponse = await fetch('/Clustering/GetTrajectoriesWithStops');
             const trajectories = await trajectoriesResponse.json();
 
+            // Process each trajectory
             trajectories.forEach(function(traj) {
                 if (!currentTrajectoryId || traj.trajectory_Id === currentTrajectoryId) {
-                    if (traj.stops && traj.stops.length >= 2) {
-                        const points = traj.stops.map(function(s) { return [s.tS_Latitude, s.tS_Longitude]; });
+                    if (traj.stops && traj.stops.length >= 1) {
+                        // Create points for polyline: SEWS + all stops
+                        const points = [[SEWS_LAT, SEWS_LNG]];
+                        traj.stops.forEach(function(s) {
+                            points.push([s.tS_Latitude, s.tS_Longitude]);
+                        });
+                        
                         const color = colorPalette[(traj.trajectory_Id || 0) % colorPalette.length];
-                        L.polyline(points, { color: color, weight: 4, opacity: 0.7 })
+                        const polyline = L.polyline(points, { color: color, weight: 4, opacity: 0.7 })
                             .bindPopup('<strong>' + traj.trajectory_Name + '</strong><br>' + traj.trajectory_Code)
                             .addTo(map);
+                        currentPolylines.push(polyline);
                     }
                 }
             });
@@ -289,7 +316,10 @@
             });
 
             if (allStops.length > 0) {
-                const bounds = L.latLngBounds(allStops.map(function(s) { return [s.tS_Latitude, s.tS_Longitude]; }));
+                const bounds = L.latLngBounds([[SEWS_LAT, SEWS_LNG]]);
+                allStops.forEach(function(s) {
+                    bounds.extend([s.tS_Latitude, s.tS_Longitude]);
+                });
                 map.fitBounds(bounds);
             }
 
@@ -319,9 +349,12 @@
                 row.insertCell(5).innerHTML = stop.tS_Latitude;
                 row.insertCell(6).innerHTML = stop.tS_Longitude;
                 row.insertCell(7).innerHTML = '<span class="workers-count-badge badge bg-info">' + (stop.workers ? stop.workers.length : 0) + '</span>';
-                row.insertCell(8).innerHTML = '<button class="btn btn-sm btn-info view-workers" data-id="' + stop.tS_Id + '" data-name="' + escapeHtml(stop.tS_Name) + '">👥 Voir (' + (stop.workers ? stop.workers.length : 0) + ')</button>' +
-                    '<button class="btn btn-sm btn-success assign-worker" data-id="' + stop.tS_Id + '" data-name="' + escapeHtml(stop.tS_Name) + '" data-trajectory="' + stop.tS_TrajectoryId + '">➕ Assigner</button>' +
-                    '<button class="btn btn-sm btn-warning edit-stop" data-id="' + stop.tS_Id + '" data-name="' + escapeHtml(stop.tS_Name) + '" data-lat="' + stop.tS_Latitude + '" data-lng="' + stop.tS_Longitude + '" data-order="' + stop.tS_OrderIndex + '" data-trajectory="' + stop.tS_TrajectoryId + '">✏️ Modifier</button>' +
+                
+                const actionsCell = row.insertCell(8);
+                actionsCell.innerHTML = 
+                    '<button class="btn btn-sm btn-info view-workers" data-id="' + stop.tS_Id + '" data-name="' + escapeHtml(stop.tS_Name) + '">👥 Voir (' + (stop.workers ? stop.workers.length : 0) + ')</button> ' +
+                    '<button class="btn btn-sm btn-success assign-worker" data-id="' + stop.tS_Id + '" data-name="' + escapeHtml(stop.tS_Name) + '" data-trajectory="' + stop.tS_TrajectoryId + '">➕ Assigner</button> ' +
+                    '<button class="btn btn-sm btn-warning edit-stop" data-id="' + stop.tS_Id + '" data-name="' + escapeHtml(stop.tS_Name) + '" data-lat="' + stop.tS_Latitude + '" data-lng="' + stop.tS_Longitude + '" data-order="' + stop.tS_OrderIndex + '" data-trajectory="' + stop.tS_TrajectoryId + '">✏️ Modifier</button> ' +
                     '<button class="btn btn-sm btn-danger delete-stop" data-id="' + stop.tS_Id + '" data-name="' + escapeHtml(stop.tS_Name) + '">🗑️ Supprimer</button>';
             });
 

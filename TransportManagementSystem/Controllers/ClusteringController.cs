@@ -162,13 +162,15 @@ namespace TransportManagementSystem.Controllers
             });
         }
 
-        // ========== WORKER ASSIGNMENT METHODS (FIXED WITH long CONVERSION) ==========
+        // ========== WORKER ASSIGNMENT METHODS - FIXED ==========
 
         [HttpGet]
         public async Task<IActionResult> GetUnassignedWorkersForTrajectory(int trajectoryId)
         {
+            // Get workers assigned to this trajectory (either directly or via PersonnelTrajectoryAssignments)
             var workers = await _context.Personnel
-                .Where(p => p.AssignedTrajectoryId == trajectoryId
+                .Where(p => (p.AssignedTrajectoryId == trajectoryId ||
+                             _context.PersonnelTrajectoryAssignments.Any(pta => pta.PTA_PersonnelId == p.Personnel_Id && pta.PTA_TrajectoryId == trajectoryId))
                             && p.IsAssigned == true
                             && p.AssignedStopId == null)
                 .Select(p => new
@@ -193,7 +195,6 @@ namespace TransportManagementSystem.Controllers
             if (request.WorkerId <= 0 || request.StopId <= 0)
                 return BadRequest(new { success = false, message = "Données invalides" });
 
-            // Convert to long to match Personnel_Id type
             var worker = await _context.Personnel.FindAsync((long)request.WorkerId);
             if (worker == null)
                 return NotFound(new { success = false, message = "Travailleur non trouvé" });
@@ -218,7 +219,6 @@ namespace TransportManagementSystem.Controllers
             if (request.WorkerId <= 0)
                 return BadRequest(new { success = false, message = "Données invalides" });
 
-            // Convert to long to match Personnel_Id type
             var worker = await _context.Personnel.FindAsync((long)request.WorkerId);
             if (worker == null)
                 return NotFound(new { success = false, message = "Travailleur non trouvé" });
@@ -242,13 +242,20 @@ namespace TransportManagementSystem.Controllers
 
             var trajectoryId = stop.TS_TrajectoryId;
 
+            // Get workers assigned to this trajectory (either directly or via PersonnelTrajectoryAssignments)
             var unassignedWorkers = await _context.Personnel
-                .Where(p => p.AssignedTrajectoryId == trajectoryId
+                .Where(p => (p.AssignedTrajectoryId == trajectoryId ||
+                             _context.PersonnelTrajectoryAssignments.Any(pta => pta.PTA_PersonnelId == p.Personnel_Id && pta.PTA_TrajectoryId == trajectoryId))
                             && p.IsAssigned == true
                             && p.AssignedStopId == null
                             && p.Personnel_Latitude != null
                             && p.Personnel_Longitude != null)
                 .ToListAsync();
+
+            if (!unassignedWorkers.Any())
+            {
+                return Ok(new { success = true, message = "Aucun personnel non assigné trouvé pour cette trajectoire." });
+            }
 
             int assignedCount = 0;
             foreach (var worker in unassignedWorkers)
@@ -287,13 +294,20 @@ namespace TransportManagementSystem.Controllers
             if (!stops.Any())
                 return BadRequest(new { success = false, message = "Aucun arrêt trouvé pour cette trajectoire" });
 
+            // Get workers assigned to this trajectory (either directly or via PersonnelTrajectoryAssignments)
             var unassignedWorkers = await _context.Personnel
-                .Where(p => p.AssignedTrajectoryId == trajectoryId
+                .Where(p => (p.AssignedTrajectoryId == trajectoryId ||
+                             _context.PersonnelTrajectoryAssignments.Any(pta => pta.PTA_PersonnelId == p.Personnel_Id && pta.PTA_TrajectoryId == trajectoryId))
                             && p.IsAssigned == true
                             && p.AssignedStopId == null
                             && p.Personnel_Latitude != null
                             && p.Personnel_Longitude != null)
                 .ToListAsync();
+
+            if (!unassignedWorkers.Any())
+            {
+                return Ok(new { success = true, message = "Aucun personnel non assigné trouvé pour cette trajectoire." });
+            }
 
             int assignedCount = 0;
             foreach (var worker in unassignedWorkers)
@@ -397,30 +411,103 @@ namespace TransportManagementSystem.Controllers
             int k = request.NumberOfClusters;
             k = Math.Max(1, Math.Min(k, personnelPoints.Count));
 
-            var distinctPoints = personnelPoints
-                .Select(p => new { p.X, p.Y })
-                .Distinct()
-                .ToList();
-            if (distinctPoints.Count < k)
+            var clusters = KMeansDeterministic(personnelPoints, k);
+
+            var uniqueClusters = new List<object>();
+            var seenKeys = new HashSet<string>();
+
+            foreach (var cluster in clusters)
             {
-                k = distinctPoints.Count;
+                if (cluster.Points.Count > 0)
+                {
+                    decimal centerLat = Math.Round((decimal)cluster.CenterX, 6);
+                    decimal centerLng = Math.Round((decimal)cluster.CenterY, 6);
+
+                    string key = $"{centerLat},{centerLng}";
+
+                    if (!seenKeys.Contains(key))
+                    {
+                        seenKeys.Add(key);
+                        uniqueClusters.Add(new
+                        {
+                            lat = centerLat,
+                            lng = centerLng,
+                            count = cluster.Points.Count
+                        });
+                    }
+                }
             }
-
-            var pointsWithNoise = personnelPoints.Select(p => new ClusterPoint
-            {
-                X = p.X + new Random().NextDouble() * 0.000001,
-                Y = p.Y + new Random().NextDouble() * 0.000001,
-                Data = p.Data
-            }).ToList();
-
-            var clusters = KMeans(pointsWithNoise, k);
 
             var result = new
             {
-                clusters = clusters.Select(c => new { lat = c.CenterX, lng = c.CenterY, count = c.Points.Count }),
-                points = personnelPoints.Select(p => new { lat = p.X, lng = p.Y })
+                clusters = uniqueClusters,
+                points = personnelPoints.Select(p => new
+                {
+                    lat = Math.Round((decimal)p.X, 6),
+                    lng = Math.Round((decimal)p.Y, 6)
+                })
             };
             return Ok(result);
+        }
+
+        private List<Cluster> KMeansDeterministic(List<ClusterPoint> points, int k, int maxIterations = 100)
+        {
+            if (points.Count == 0) return new List<Cluster>();
+            if (k > points.Count) k = points.Count;
+
+            Random rand = new Random(42);
+
+            var distinctPoints = points
+                .Select(p => new { p.X, p.Y })
+                .Distinct()
+                .ToList();
+
+            var centers = distinctPoints
+                .OrderBy(x => rand.Next())
+                .Take(k)
+                .Select(p => new { X = p.X, Y = p.Y })
+                .ToList();
+
+            var clusters = new List<Cluster>();
+
+            for (int iter = 0; iter < maxIterations; iter++)
+            {
+                clusters = new List<Cluster>();
+                for (int i = 0; i < centers.Count; i++)
+                    clusters.Add(new Cluster { CenterX = centers[i].X, CenterY = centers[i].Y });
+
+                foreach (var point in points)
+                {
+                    double minDist = double.MaxValue;
+                    int bestCluster = 0;
+                    for (int i = 0; i < centers.Count; i++)
+                    {
+                        double dist = Distance(point.X, point.Y, centers[i].X, centers[i].Y);
+                        if (dist < minDist)
+                        {
+                            minDist = dist;
+                            bestCluster = i;
+                        }
+                    }
+                    clusters[bestCluster].Points.Add(point);
+                }
+
+                bool changed = false;
+                for (int i = 0; i < centers.Count; i++)
+                {
+                    if (clusters[i].Points.Count == 0) continue;
+                    double newX = clusters[i].Points.Average(p => p.X);
+                    double newY = clusters[i].Points.Average(p => p.Y);
+                    if (Math.Abs(newX - centers[i].X) > 0.00001 || Math.Abs(newY - centers[i].Y) > 0.00001)
+                        changed = true;
+                    centers[i] = new { X = newX, Y = newY };
+                    clusters[i].CenterX = newX;
+                    clusters[i].CenterY = newY;
+                }
+                if (!changed) break;
+            }
+
+            return clusters.Where(c => c.Points.Count > 0).ToList();
         }
 
         [HttpPost]
@@ -592,52 +679,6 @@ namespace TransportManagementSystem.Controllers
         // ================================================
         // UTILITIES
         // ================================================
-
-        private List<Cluster> KMeans(List<ClusterPoint> points, int k, int maxIterations = 100)
-        {
-            if (points.Count == 0) return new List<Cluster>();
-            Random rand = new Random();
-            var centers = points.OrderBy(x => rand.Next()).Take(k).Select(p => new { X = p.X, Y = p.Y }).ToList();
-
-            var clusters = new List<Cluster>();
-            for (int iter = 0; iter < maxIterations; iter++)
-            {
-                clusters = new List<Cluster>();
-                for (int i = 0; i < k; i++)
-                    clusters.Add(new Cluster { CenterX = centers[i].X, CenterY = centers[i].Y });
-
-                foreach (var point in points)
-                {
-                    double minDist = double.MaxValue;
-                    int bestCluster = 0;
-                    for (int i = 0; i < k; i++)
-                    {
-                        double dist = Distance(point.X, point.Y, centers[i].X, centers[i].Y);
-                        if (dist < minDist)
-                        {
-                            minDist = dist;
-                            bestCluster = i;
-                        }
-                    }
-                    clusters[bestCluster].Points.Add(point);
-                }
-
-                bool changed = false;
-                for (int i = 0; i < k; i++)
-                {
-                    if (clusters[i].Points.Count == 0) continue;
-                    double newX = clusters[i].Points.Average(p => p.X);
-                    double newY = clusters[i].Points.Average(p => p.Y);
-                    if (Math.Abs(newX - centers[i].X) > 0.00001 || Math.Abs(newY - centers[i].Y) > 0.00001)
-                        changed = true;
-                    centers[i] = new { X = newX, Y = newY };
-                    clusters[i].CenterX = newX;
-                    clusters[i].CenterY = newY;
-                }
-                if (!changed) break;
-            }
-            return clusters;
-        }
 
         private double Distance(double x1, double y1, double x2, double y2) =>
             Math.Sqrt(Math.Pow(x1 - x2, 2) + Math.Pow(y1 - y2, 2));
