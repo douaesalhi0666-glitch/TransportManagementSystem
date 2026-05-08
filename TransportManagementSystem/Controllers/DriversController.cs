@@ -19,8 +19,11 @@ namespace TransportManagementSystem.Controllers
         {
             var drivers = await _context.Drivers
                 .Include(d => d.AssignedBus)
-                    .ThenInclude(b => b.AssignedFragment)
                 .ToListAsync();
+
+            // 🔥 Important : la vue a besoin de la liste des bus pour le modal d'édition
+            ViewBag.Buses = await _context.Buses.ToListAsync();
+
             return View(drivers);
         }
 
@@ -65,7 +68,7 @@ namespace TransportManagementSystem.Controllers
 
             var driver = await _context.Drivers
                 .Include(d => d.AssignedBus)
-                    .ThenInclude(b => b.AssignedFragment)
+                    .ThenInclude(b => b != null ? b.AssignedFragment : null)
                 .FirstOrDefaultAsync(d => d.Driver_id == id);
 
             if (driver == null)
@@ -73,11 +76,14 @@ namespace TransportManagementSystem.Controllers
                 return NotFound();
             }
 
-            if (driver.Driver_AssignedBusId != null)
+            if (driver.Driver_AssignedBusId != null && driver.AssignedBus != null)
             {
-                ViewBag.Warning = $"⚠️ Ce chauffeur est actuellement assigné au bus {driver.AssignedBus?.Bus_Code}. " +
+                ViewBag.Warning = $"⚠️ Ce chauffeur est actuellement assigné au bus {driver.AssignedBus.Bus_Code}. " +
                                   "Si vous le mettez hors service, ce bus n'aura plus de chauffeur.";
             }
+
+            // Fournir la liste des bus pour la vue
+            ViewBag.Buses = await _context.Buses.ToListAsync();
 
             return View(driver);
         }
@@ -107,7 +113,7 @@ namespace TransportManagementSystem.Controllers
                             driver.Driver_Status == "Off Duty" &&
                             existingDriver.Driver_Status != "Off Duty")
                         {
-                            var bus = await _context.Buses.FindAsync(existingDriver.Driver_AssignedBusId);
+                            var bus = await _context.Buses.FindAsync(existingDriver.Driver_AssignedBusId.Value);
                             if (bus != null)
                             {
                                 bus.Bus_CurrentDriverId = null;
@@ -136,6 +142,8 @@ namespace TransportManagementSystem.Controllers
                 }
                 return RedirectToAction(nameof(Index));
             }
+
+            ViewBag.Buses = await _context.Buses.ToListAsync(); // recharger en cas d'erreur
             return View(driver);
         }
 
@@ -149,7 +157,7 @@ namespace TransportManagementSystem.Controllers
 
             var driver = await _context.Drivers
                 .Include(d => d.AssignedBus)
-                    .ThenInclude(b => b.AssignedFragment)
+                    .ThenInclude(b => b != null ? b.AssignedFragment : null)
                 .FirstOrDefaultAsync(m => m.Driver_id == id);
             if (driver == null)
             {
@@ -169,7 +177,7 @@ namespace TransportManagementSystem.Controllers
             {
                 if (driver.Driver_AssignedBusId != null)
                 {
-                    var bus = await _context.Buses.FindAsync(driver.Driver_AssignedBusId);
+                    var bus = await _context.Buses.FindAsync(driver.Driver_AssignedBusId.Value);
                     if (bus != null)
                     {
                         bus.Bus_CurrentDriverId = null;
@@ -312,5 +320,89 @@ namespace TransportManagementSystem.Controllers
                 return "Off Duty";
             }
         }
+
+        // ========== API pour l’édition (GetDriverData et UpdateDriver) ==========
+
+        [HttpGet]
+        public async Task<IActionResult> GetDriverData(long id)
+        {
+            var driver = await _context.Drivers.FindAsync(id);
+            if (driver == null) return NotFound();
+
+            return Ok(new
+            {
+                driver.Driver_id,
+                driver.Driver_FirstName,
+                driver.Driver_LastName,
+                driver.Driver_Email,
+                driver.Driver_PhoneNumber,
+                driver.Driver_LicenseNumber,
+                driver.Driver_LicenseExpiryDate,
+                driver.Driver_ExperienceYears,
+                driver.Driver_Status,
+                driver.Driver_AssignedBusId
+            });
+        }
+
+        [HttpPost]
+        public async Task<IActionResult> UpdateDriver([FromBody] DriverUpdateModel model)
+        {
+            if (model == null || model.Driver_id == 0)
+                return BadRequest(new { success = false, message = "Données invalides" });
+
+            var driver = await _context.Drivers.FindAsync(model.Driver_id);
+            if (driver == null)
+                return NotFound(new { success = false, message = "Chauffeur non trouvé" });
+
+            driver.Driver_FirstName = model.Driver_FirstName;
+            driver.Driver_LastName = model.Driver_LastName;
+            driver.Driver_Email = model.Driver_Email;
+            driver.Driver_PhoneNumber = model.Driver_PhoneNumber;
+            driver.Driver_LicenseNumber = model.Driver_LicenseNumber;
+            driver.Driver_LicenseExpiryDate = model.Driver_LicenseExpiryDate;
+            driver.Driver_ExperienceYears = model.Driver_ExperienceYears;
+            driver.Driver_Status = model.Driver_Status;
+
+            // Gestion de l’assignation du bus
+            if (driver.Driver_AssignedBusId != model.Driver_AssignedBusId)
+            {
+                // Libérer l’ancien bus si nécessaire
+                if (driver.Driver_AssignedBusId.HasValue)
+                {
+                    var oldBus = await _context.Buses.FindAsync(driver.Driver_AssignedBusId.Value);
+                    if (oldBus != null)
+                        oldBus.Bus_CurrentDriverId = null;
+                }
+                // Assigner le nouveau bus
+                if (model.Driver_AssignedBusId.HasValue)
+                {
+                    var newBus = await _context.Buses.FindAsync(model.Driver_AssignedBusId.Value);
+                    if (newBus != null && newBus.Bus_CurrentDriverId == null)
+                        newBus.Bus_CurrentDriverId = driver.Driver_id;
+                    else if (newBus != null && newBus.Bus_CurrentDriverId != null)
+                        return BadRequest(new { success = false, message = "Ce bus a déjà un chauffeur." });
+                }
+                driver.Driver_AssignedBusId = model.Driver_AssignedBusId;
+            }
+
+            driver.Driver_UpdatedAt = DateTime.Now;
+            await _context.SaveChangesAsync();
+
+            return Ok(new { success = true, message = "Chauffeur mis à jour avec succès." });
+        }
+    }
+
+    public class DriverUpdateModel
+    {
+        public long Driver_id { get; set; }
+        public string Driver_FirstName { get; set; } = string.Empty;
+        public string Driver_LastName { get; set; } = string.Empty;
+        public string? Driver_Email { get; set; }
+        public string? Driver_PhoneNumber { get; set; }
+        public string Driver_LicenseNumber { get; set; } = string.Empty;
+        public DateTime? Driver_LicenseExpiryDate { get; set; }
+        public int? Driver_ExperienceYears { get; set; }
+        public string Driver_Status { get; set; } = string.Empty;
+        public long? Driver_AssignedBusId { get; set; }
     }
 }

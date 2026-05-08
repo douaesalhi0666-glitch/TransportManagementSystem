@@ -17,29 +17,23 @@ namespace TransportManagementSystem.Controllers
         // GET: Assignments
         public async Task<IActionResult> Index()
         {
-            // Only show drivers with status "Available"
+            // Only show drivers with status "Available" (or those not assigned? On garde tous mais on filtre dans la vue)
             var drivers = await _context.Drivers
                 .Where(d => d.Driver_Status == "Available")
                 .Include(d => d.AssignedBus)
                 .ToListAsync();
 
-            // Only show buses with status "In Service"
+            // Only show buses with status "In Service" and include their assigned fragment and driver
             var buses = await _context.Buses
                 .Where(b => b.Bus_Status == "In Service")
                 .Include(b => b.CurrentDriver)
                 .Include(b => b.AssignedFragment)
-                .ToListAsync();
-
-            // Get all fragments for assignment
-            var fragments = await _context.TrajectoryFragments
-                .Where(f => f.Status == "Active")
-                .Include(f => f.Trajectory)
+                    .ThenInclude(f => f.Trajectory)  // optionnel, pour afficher le trajet du fragment
                 .ToListAsync();
 
             ViewBag.Drivers = drivers;
             ViewBag.Buses = buses;
-            ViewBag.Fragments = fragments;
-
+            // ViewBag.Fragments n'est plus utilisé dans la vue
             return View();
         }
 
@@ -90,26 +84,6 @@ namespace TransportManagementSystem.Controllers
             return RedirectToAction("Index");
         }
 
-        // POST: Assign Bus to Fragment
-        [HttpPost]
-        public async Task<IActionResult> AssignBusToFragment(long busId, int fragmentId)
-        {
-            var bus = await _context.Buses.FindAsync(busId);
-            var fragment = await _context.TrajectoryFragments.FindAsync(fragmentId);
-
-            if (bus == null || fragment == null)
-            {
-                TempData["Error"] = "Bus ou fragment non trouvé.";
-                return RedirectToAction("Index");
-            }
-
-            bus.Bus_CurrentFragmentId = fragmentId;
-            await _context.SaveChangesAsync();
-
-            TempData["Success"] = $"Bus {bus.Bus_Code} assigné au fragment {fragment.Fragment_Name}.";
-            return RedirectToAction("Index");
-        }
-
         // POST: Unassign Driver
         [HttpPost]
         public async Task<IActionResult> UnassignDriver(long driverId)
@@ -133,7 +107,27 @@ namespace TransportManagementSystem.Controllers
             return RedirectToAction("Index");
         }
 
-        // POST: Unassign Bus from Fragment
+        // Optionnel : Assigner un bus à un fragment (si vous voulez le réintroduire)
+        [HttpPost]
+        public async Task<IActionResult> AssignBusToFragment(long busId, int fragmentId)
+        {
+            var bus = await _context.Buses.FindAsync(busId);
+            var fragment = await _context.TrajectoryFragments.FindAsync(fragmentId);
+
+            if (bus == null || fragment == null)
+            {
+                TempData["Error"] = "Bus ou fragment non trouvé.";
+                return RedirectToAction("Index");
+            }
+
+            bus.Bus_CurrentFragmentId = fragmentId;
+            await _context.SaveChangesAsync();
+
+            TempData["Success"] = $"Bus {bus.Bus_Code} assigné au fragment {fragment.Fragment_Name}.";
+            return RedirectToAction("Index");
+        }
+
+        // Optionnel : Désassigner un bus d'un fragment
         [HttpPost]
         public async Task<IActionResult> UnassignBusFromFragment(long busId)
         {

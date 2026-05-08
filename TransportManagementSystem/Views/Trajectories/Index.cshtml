@@ -219,7 +219,7 @@
         function showStops(trajectoryId, trajectoryName) {
         const modalContent = document.getElementById('stopsModalContent');
         modalContent.innerHTML = '<div class="text-center"><div class="spinner-border text-primary" role="status"></div><br>Chargement des fragments...</div>';
-            
+    
         fetch(`/Trajectories/GetStopsByTrajectory/${trajectoryId}`)
         .then(response => response.json())
         .then(data => {
@@ -231,15 +231,14 @@
         <div class="table-responsive">
         <table class="table table-sm table-bordered">
         <thead class="table-light">
-        <tr><th>Ordre</th><th>Nom de l'arrêt</th><th>Adresse</th><th>Heure arrivée</th><th>Heure départ</th></tr>
+        <tr><th>Ordre</th><th>Nom du fragment</th><th>Latitude</th><th>Longitude</th></tr>
         </thead><tbody>`;
         data.stops.forEach(s => {
         html += `<tr>
-        <td>${s.ts_Order ?? '-'}</td>
-        <td>${s.ts_StopName}</td>
-        <td>${s.ts_Address || '-'}</td>
-        <td>${s.ts_ArrivalTime ? new Date(s.ts_ArrivalTime).toLocaleTimeString() : '-'}</td>
-        <td>${s.ts_DepartureTime ? new Date(s.ts_DepartureTime).toLocaleTimeString() : '-'}</td>
+        <td>${s.ts_OrderIndex}</td>
+        <td>${s.ts_Name}</td>
+        <td>${s.ts_Latitude}</td>
+        <td>${s.ts_Longitude}</td>
         </tr>`;
         });
         html += `</tbody></table></div>`;
