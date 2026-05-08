@@ -152,14 +152,29 @@ namespace TransportManagementSystem.Controllers
         {
             var buses = await _context.Buses
                 .Include(b => b.CurrentDriver)
-                .Include(b => b.AssignedFragment)
-                    .ThenInclude(f => f.Trajectory)
                 .ToListAsync();
+
+            // Load fragments separately to avoid the Trajectory_Id error
+            var fragmentIds = buses.Where(b => b.Bus_CurrentFragmentId.HasValue)
+                .Select(b => b.Bus_CurrentFragmentId.Value)
+                .Distinct()
+                .ToList();
+
+            var fragments = await _context.TrajectoryFragments
+                .Where(f => fragmentIds.Contains(f.Fragment_Id))
+                .Include(f => f.Trajectory)
+                .ToDictionaryAsync(f => f.Fragment_Id, f => f);
 
             var busOccupancy = new List<BusOccupancyViewModel>();
 
             foreach (var bus in buses)
             {
+                // Manually attach the fragment
+                if (bus.Bus_CurrentFragmentId.HasValue && fragments.ContainsKey(bus.Bus_CurrentFragmentId.Value))
+                {
+                    bus.AssignedFragment = fragments[bus.Bus_CurrentFragmentId.Value];
+                }
+
                 var personnel = await _context.Personnel
                     .Include(p => p.AssignedFragment)
                     .Where(p => p.AssignedBusId == bus.Bus_Id && p.IsAssigned == true)
@@ -175,6 +190,7 @@ namespace TransportManagementSystem.Controllers
             }
 
             ViewBag.BusOccupancy = busOccupancy;
+            ViewBag.Fragments = fragments;
             return View();
         }
 

@@ -126,6 +126,24 @@ namespace TransportManagementSystem.Services
 
         public async Task<bool> AssignBusToFragment(long busId, int fragmentId, DateTime startTime)
         {
+            // Check if this fragment already has an active bus assignment
+            var existingFragmentAssignment = await _context.BusFragmentAssignments
+                .FirstOrDefaultAsync(a => a.Fragment_Id == fragmentId && a.Status == "Active");
+
+            if (existingFragmentAssignment != null)
+            {
+                return false; // Fragment already has a bus
+            }
+
+            // Check if this bus is already assigned to another active fragment
+            var existingBusAssignment = await _context.BusFragmentAssignments
+                .FirstOrDefaultAsync(a => a.Bus_Id == busId && a.Status == "Active");
+
+            if (existingBusAssignment != null)
+            {
+                return false; // Bus already assigned to another fragment
+            }
+
             var bus = await _context.Buses.FindAsync(busId);
             var fragment = await _context.TrajectoryFragments.FindAsync(fragmentId);
 
@@ -141,7 +159,10 @@ namespace TransportManagementSystem.Services
             };
             _context.BusFragmentAssignments.Add(assignment);
 
+            // Update the bus with the fragment assignment
+            bus.Bus_CurrentFragmentId = fragmentId;
             bus.Bus_Status = "On Route";
+            bus.Bus_UpdatedAt = DateTime.Now;
 
             await _context.SaveChangesAsync();
             return true;
