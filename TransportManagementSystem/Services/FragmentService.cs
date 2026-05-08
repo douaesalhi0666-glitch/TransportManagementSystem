@@ -126,22 +126,20 @@ namespace TransportManagementSystem.Services
 
         public async Task<bool> AssignBusToFragment(long busId, int fragmentId, DateTime startTime)
         {
-            // Check if this fragment already has an active bus assignment
             var existingFragmentAssignment = await _context.BusFragmentAssignments
                 .FirstOrDefaultAsync(a => a.Fragment_Id == fragmentId && a.Status == "Active");
 
             if (existingFragmentAssignment != null)
             {
-                return false; // Fragment already has a bus
+                return false;
             }
 
-            // Check if this bus is already assigned to another active fragment
             var existingBusAssignment = await _context.BusFragmentAssignments
                 .FirstOrDefaultAsync(a => a.Bus_Id == busId && a.Status == "Active");
 
             if (existingBusAssignment != null)
             {
-                return false; // Bus already assigned to another fragment
+                return false;
             }
 
             var bus = await _context.Buses.FindAsync(busId);
@@ -159,13 +157,58 @@ namespace TransportManagementSystem.Services
             };
             _context.BusFragmentAssignments.Add(assignment);
 
-            // Update the bus with the fragment assignment
             bus.Bus_CurrentFragmentId = fragmentId;
             bus.Bus_Status = "On Route";
             bus.Bus_UpdatedAt = DateTime.Now;
 
             await _context.SaveChangesAsync();
             return true;
+        }
+
+        public async Task<int> AssignPersonnelToBusForFragment(int fragmentId, long busId)
+        {
+            try
+            {
+                var fragmentStops = await _context.FragmentStops
+                    .Where(fs => fs.Fragment_Id == fragmentId)
+                    .Select(fs => fs.TS_Id)
+                    .ToListAsync();
+
+                var personnelToAssign = await _context.Personnel
+                    .Where(p => fragmentStops.Contains(p.AssignedStopId ?? 0) &&
+                                p.IsAssigned == true &&
+                                p.AssignedBusId == null)
+                    .ToListAsync();
+
+                var bus = await _context.Buses.FindAsync(busId);
+                var capacity = bus?.Bus_Capacity ?? 50;
+                var currentOccupancy = await _context.Personnel.CountAsync(p => p.AssignedBusId == busId);
+
+                int assignedCount = 0;
+                foreach (var person in personnelToAssign)
+                {
+                    if (currentOccupancy + assignedCount >= capacity)
+                        break;
+
+                    person.AssignedBusId = busId;
+                    person.AssignedFragmentId = fragmentId;
+                    assignedCount++;
+                }
+
+                if (bus != null)
+                {
+                    bus.CurrentOccupancy = currentOccupancy + assignedCount;
+                    _context.Buses.Update(bus);
+                }
+
+                await _context.SaveChangesAsync();
+                return assignedCount;
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error assigning personnel: {ex.Message}");
+                return 0;
+            }
         }
 
         public async Task<bool> AssignDriverToFragment(long driverId, int fragmentId, DateTime startTime)
@@ -234,7 +277,6 @@ namespace TransportManagementSystem.Services
         }
     }
 
-    // Helper classes
     public class StopWorkers
     {
         public int StopId { get; set; }

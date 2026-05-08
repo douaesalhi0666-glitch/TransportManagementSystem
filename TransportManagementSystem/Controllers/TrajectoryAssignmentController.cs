@@ -18,7 +18,6 @@ namespace TransportManagementSystem.Controllers
             _context = context;
         }
 
-        // GET: Assign Personnel page
         public async Task<IActionResult> AssignPersonnel()
         {
             ViewBag.Personnel = await _context.Personnel
@@ -147,14 +146,12 @@ namespace TransportManagementSystem.Controllers
             return View(assignments);
         }
 
-        // ========== BUS OCCUPANCY WITH FRAGMENTS ==========
         public async Task<IActionResult> BusOccupancy()
         {
             var buses = await _context.Buses
                 .Include(b => b.CurrentDriver)
                 .ToListAsync();
 
-            // Load fragments separately to avoid the Trajectory_Id error
             var fragmentIds = buses.Where(b => b.Bus_CurrentFragmentId.HasValue)
                 .Select(b => b.Bus_CurrentFragmentId.Value)
                 .Distinct()
@@ -169,7 +166,6 @@ namespace TransportManagementSystem.Controllers
 
             foreach (var bus in buses)
             {
-                // Manually attach the fragment
                 if (bus.Bus_CurrentFragmentId.HasValue && fragments.ContainsKey(bus.Bus_CurrentFragmentId.Value))
                 {
                     bus.AssignedFragment = fragments[bus.Bus_CurrentFragmentId.Value];
@@ -192,6 +188,50 @@ namespace TransportManagementSystem.Controllers
             ViewBag.BusOccupancy = busOccupancy;
             ViewBag.Fragments = fragments;
             return View();
+        }
+
+        [HttpPost]
+        public async Task<IActionResult> AssignPersonnelToBus(long busId)
+        {
+            var bus = await _context.Buses.FindAsync(busId);
+            if (bus == null || bus.Bus_CurrentFragmentId == null)
+            {
+                TempData["Error"] = "Ce bus n'est assigné à aucun fragment.";
+                return RedirectToAction("BusOccupancy");
+            }
+
+            var fragmentId = bus.Bus_CurrentFragmentId.Value;
+
+            var fragmentStops = await _context.FragmentStops
+                .Where(fs => fs.Fragment_Id == fragmentId)
+                .Select(fs => fs.TS_Id)
+                .ToListAsync();
+
+            var personnelToAssign = await _context.Personnel
+                .Where(p => fragmentStops.Contains(p.AssignedStopId ?? 0) &&
+                            p.IsAssigned == true &&
+                            p.AssignedBusId == null)
+                .ToListAsync();
+
+            var capacity = bus.Bus_Capacity ?? 50;
+            var currentOccupancy = await _context.Personnel.CountAsync(p => p.AssignedBusId == busId);
+
+            int assignedCount = 0;
+            foreach (var person in personnelToAssign)
+            {
+                if (currentOccupancy + assignedCount >= capacity)
+                    break;
+
+                person.AssignedBusId = busId;
+                person.AssignedFragmentId = fragmentId;
+                assignedCount++;
+            }
+
+            bus.CurrentOccupancy = currentOccupancy + assignedCount;
+            await _context.SaveChangesAsync();
+
+            TempData["Success"] = $"{assignedCount} personnels assignés au bus (Capacité: {capacity}, Occupation: {currentOccupancy + assignedCount})";
+            return RedirectToAction("BusOccupancy");
         }
 
         [HttpPost]

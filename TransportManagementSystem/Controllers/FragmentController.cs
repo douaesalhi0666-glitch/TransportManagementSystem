@@ -81,10 +81,9 @@ namespace TransportManagementSystem.Controllers
             var fragments = await _context.TrajectoryFragments
                 .Include(f => f.Trajectory)
                 .Include(f => f.FragmentStops)
-                    .ThenInclude(fs => fs.TrajectoryStop!)
+                    .ThenInclude(fs => fs.TrajectoryStop)
                 .ToListAsync();
 
-            // Get all active bus assignments for these fragments
             var fragmentIds = fragments.Select(f => f.Fragment_Id).ToList();
             var busAssignments = await _context.BusFragmentAssignments
                 .Include(bf => bf.Bus)
@@ -101,18 +100,15 @@ namespace TransportManagementSystem.Controllers
                 .Include(f => f.Trajectory)
                 .FirstOrDefaultAsync(f => f.Fragment_Id == fragmentId);
 
-            // Find current assignment for this fragment
             var currentAssignment = await _context.BusFragmentAssignments
                 .Include(a => a.Bus)
                 .FirstOrDefaultAsync(a => a.Fragment_Id == fragmentId && a.Status == "Active");
 
-            // Get IDs of buses already assigned to other active fragments
             var assignedBusIds = await _context.BusFragmentAssignments
                 .Where(a => a.Status == "Active" && a.Fragment_Id != fragmentId)
                 .Select(a => a.Bus_Id)
                 .ToListAsync();
 
-            // Get available buses (including the one currently assigned to this fragment if any)
             var availableBuses = await _context.Buses
                 .Where(b => b.Bus_Status == "In Service" &&
                     (!assignedBusIds.Contains(b.Bus_Id) || (currentAssignment != null && b.Bus_Id == currentAssignment.Bus_Id)))
@@ -131,24 +127,21 @@ namespace TransportManagementSystem.Controllers
         {
             try
             {
-                // Find the current active assignment for this fragment
                 var currentAssignment = await _context.BusFragmentAssignments
                     .Include(a => a.Bus)
                     .FirstOrDefaultAsync(a => a.Fragment_Id == fragmentId && a.Status == "Active");
 
-                // If there is a current assignment and it's a different bus, free the old bus
                 if (currentAssignment != null && currentAssignment.Bus_Id != busId)
                 {
-                    // End the current assignment
                     currentAssignment.Status = "Ended";
                     currentAssignment.End_DateTime = DateTime.Now;
 
-                    // Free the old bus
                     var oldBus = await _context.Buses.FindAsync(currentAssignment.Bus_Id);
                     if (oldBus != null)
                     {
                         oldBus.Bus_CurrentFragmentId = null;
                         oldBus.Bus_Status = "In Service";
+                        oldBus.CurrentOccupancy = 0;
                         oldBus.Bus_UpdatedAt = DateTime.Now;
                         _context.Buses.Update(oldBus);
                     }
@@ -159,7 +152,6 @@ namespace TransportManagementSystem.Controllers
                     TempData["Info"] = $"🔄 Bus '{currentAssignment.Bus?.Bus_Code}' libéré avec succès.";
                 }
 
-                // Check if the new bus is already assigned to another active fragment (different from current)
                 var existingBusAssignment = await _context.BusFragmentAssignments
                     .FirstOrDefaultAsync(a => a.Bus_Id == busId && a.Status == "Active" && a.Fragment_Id != fragmentId);
 
@@ -170,77 +162,64 @@ namespace TransportManagementSystem.Controllers
                         .Select(f => f.Fragment_Name)
                         .FirstOrDefaultAsync();
 
-                    TempData["Error"] = $"❌ Ce bus est déjà assigné au fragment '{existingFragment}'! Veuillez choisir un autre bus.";
+                    TempData["Error"] = $"❌ Ce bus est déjà assigné au fragment '{existingFragment}'!";
                     return RedirectToAction("ViewFragments");
                 }
 
-                // Check if assignment already exists for this exact pair
-                var existingAssignment = await _context.BusFragmentAssignments
-                    .FirstOrDefaultAsync(a => a.Bus_Id == busId && a.Fragment_Id == fragmentId && a.Status == "Active");
+                var result = await _fragmentService.AssignBusToFragment(busId, fragmentId, startTime);
 
-                if (existingAssignment == null)
+                if (result)
                 {
-                    // Create the new assignment
-                    var newAssignment = new BusFragmentAssignment
-                    {
-                        Bus_Id = busId,
-                        Fragment_Id = fragmentId,
-                        Start_DateTime = startTime,
-                        Status = "Active"
-                    };
-                    _context.BusFragmentAssignments.Add(newAssignment);
+                    int personnelAssigned = await _fragmentService.AssignPersonnelToBusForFragment(fragmentId, busId);
+
+                    if (personnelAssigned > 0)
+                        TempData["Success"] = $"✅ Bus assigné et {personnelAssigned} personnels affectés avec succès!";
+                    else
+                        TempData["Success"] = "✅ Bus assigné, mais aucun personnel trouvé pour ce fragment.";
                 }
-
-                // Assign the new bus to the fragment
-                var newBus = await _context.Buses.FindAsync(busId);
-                if (newBus != null)
-                {
-                    newBus.Bus_CurrentFragmentId = fragmentId;
-                    newBus.Bus_Status = "On Route";
-                    newBus.Bus_UpdatedAt = DateTime.Now;
-                    _context.Buses.Update(newBus);
-                }
-
-                await _context.SaveChangesAsync();
-
-                if (currentAssignment != null && currentAssignment.Bus_Id != busId)
-                    TempData["Success"] = "✅ Bus réassigné avec succès! L'ancien bus a été libéré.";
-                else if (currentAssignment == null)
-                    TempData["Success"] = "✅ Bus assigné au fragment avec succès!";
                 else
-                    TempData["Success"] = "✅ Le même bus reste assigné à ce fragment.";
+                {
+                    TempData["Error"] = "❌ Erreur lors de l'assignation du bus.";
+                }
             }
             catch (Exception ex)
             {
-                TempData["Error"] = $"❌ Erreur lors de l'assignation: {ex.Message}";
+                TempData["Error"] = $"❌ Erreur: {ex.Message}";
             }
 
             return RedirectToAction("ViewFragments");
         }
 
-        // NEW METHOD: Unassign bus from fragment
         [HttpPost]
         public async Task<IActionResult> UnassignBusFromFragment(int fragmentId)
         {
             try
             {
-                // Find the active assignment for this fragment
                 var assignment = await _context.BusFragmentAssignments
                     .Include(a => a.Bus)
                     .FirstOrDefaultAsync(a => a.Fragment_Id == fragmentId && a.Status == "Active");
 
                 if (assignment != null)
                 {
-                    // End the assignment
+                    var personnelOnBus = await _context.Personnel
+                        .Where(p => p.AssignedBusId == assignment.Bus_Id)
+                        .ToListAsync();
+
+                    foreach (var person in personnelOnBus)
+                    {
+                        person.AssignedBusId = null;
+                        person.AssignedFragmentId = null;
+                    }
+
                     assignment.Status = "Ended";
                     assignment.End_DateTime = DateTime.Now;
 
-                    // Free the bus
                     var bus = await _context.Buses.FindAsync(assignment.Bus_Id);
                     if (bus != null)
                     {
                         bus.Bus_CurrentFragmentId = null;
                         bus.Bus_Status = "In Service";
+                        bus.CurrentOccupancy = 0;
                         bus.Bus_UpdatedAt = DateTime.Now;
                         _context.Buses.Update(bus);
                     }
@@ -248,7 +227,7 @@ namespace TransportManagementSystem.Controllers
                     _context.BusFragmentAssignments.Update(assignment);
                     await _context.SaveChangesAsync();
 
-                    TempData["Success"] = $"✅ Bus '{assignment.Bus?.Bus_Code}' désassigné du fragment avec succès!";
+                    TempData["Success"] = $"✅ Bus '{assignment.Bus?.Bus_Code}' désassigné et personnels retirés avec succès!";
                 }
                 else
                 {
@@ -257,7 +236,7 @@ namespace TransportManagementSystem.Controllers
             }
             catch (Exception ex)
             {
-                TempData["Error"] = $"❌ Erreur lors de la désassignation: {ex.Message}";
+                TempData["Error"] = $"❌ Erreur: {ex.Message}";
             }
 
             return RedirectToAction("ViewFragments");
