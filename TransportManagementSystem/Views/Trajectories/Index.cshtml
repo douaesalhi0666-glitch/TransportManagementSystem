@@ -5,88 +5,178 @@
     Layout = "~/Views/Shared/_Layout.cshtml";
 }
 
+<style>
+    .trajectories-table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 14px;
+    }
+    
+    .trajectories-table th,
+    .trajectories-table td {
+        padding: 12px 8px;
+        text-align: left;
+        border-bottom: 1px solid #ddd;
+        vertical-align: middle;
+    }
+    
+    .trajectories-table th {
+        background-color: #343a40;
+        color: white;
+        font-weight: 600;
+    }
+    
+    .trajectories-table tr:hover {
+        background-color: #f5f5f5;
+    }
+    
+    .badge-active {
+        background-color: #28a745;
+        color: white;
+        padding: 4px 8px;
+        border-radius: 4px;
+        font-size: 12px;
+    }
+    
+    .badge-inactive {
+        background-color: #dc3545;
+        color: white;
+        padding: 4px 8px;
+        border-radius: 4px;
+        font-size: 12px;
+    }
+    
+    .btn-sm {
+        padding: 4px 8px;
+        font-size: 12px;
+        margin: 2px;
+        border-radius: 4px;
+        text-decoration: none;
+        display: inline-block;
+    }
+    
+    .btn-info { background-color: #17a2b8; color: white; border: none; }
+    .btn-secondary { background-color: #6c757d; color: white; border: none; }
+    .btn-warning { background-color: #ffc107; color: #212529; border: none; }
+    .btn-danger { background-color: #dc3545; color: white; border: none; }
+    .btn-primary { background-color: #007bff; color: white; border: none; }
+    
+    .filter-bar {
+        margin-bottom: 20px;
+        display: flex;
+        gap: 10px;
+        align-items: center;
+        flex-wrap: wrap;
+    }
+    
+    .filter-bar input, .filter-bar select {
+        padding: 8px 12px;
+        border: 1px solid #ddd;
+        border-radius: 4px;
+    }
+    
+    .table-responsive {
+        overflow-x: auto;
+    }
+    
+    .action-buttons {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 5px;
+    }
+    
+    .modal-dialog {
+        max-width: 90%;
+        width: 90%;
+    }
+    
+    .modal-xl {
+        max-width: 95%;
+        width: 95%;
+    }
+</style>
+
 <h1>Gestion des Trajets</h1>
 
 <p>
-    <a href="/Trajectories/Create" class="btn btn-primary">Ajouter un trajet</a>
+    <a href="/Trajectories/Create" class="btn btn-primary">➕ Ajouter un trajet</a>
 </p>
 
-<div class="row mb-3">
-    <div class="col-md-4">
-        <input type="text" id="searchInput" class="form-control" placeholder="Rechercher par ID, nom ou code" />
-    </div>
-    <div class="col-md-3">
-        <select id="statusFilter" class="form-select">
-            <option value="">Tous les statuts</option>
-            <option value="Active">Actif</option>
-            <option value="Inactive">Inactif</option>
-        </select>
-    </div>
-    <div class="col-md-2">
-        <button id="resetFilter" class="btn btn-secondary">Réinitialiser</button>
-    </div>
+<div class="filter-bar">
+    <input type="text" id="searchInput" class="form-control" placeholder="Rechercher par ID, nom ou code" style="width: 300px;" />
+    <select id="statusFilter" class="form-select" style="width: 150px;">
+        <option value="">Tous les statuts</option>
+        <option value="Active">Actif</option>
+        <option value="Inactive">Inactif</option>
+    </select>
+    <button id="resetFilter" class="btn btn-secondary">⟳ Réinitialiser</button>
 </div>
 
-<table class="table table-striped" id="trajectoriesTable">
-    <thead>
-        <tr>
-            <th>ID</th>
-            <th>Nom</th>
-            <th>Code</th>
-            <th>Description</th>
-            <th>Distance (km)</th>
-            <th>Durée (min)</th>
-            <th>Statut</th>
-            <th>Personnels</th>
-            <th>Fragments</th>
-            <th>Actions</th>
-        </tr>
-    </thead>
-    <tbody>
-        @foreach (var item in Model)
-        {
-            <tr data-id="@item.Trajectory_Id"
-                data-name="@item.Trajectory_Name"
-                data-code="@item.Trajectory_Code"
-                data-status="@item.Trajectory_Status">
-                <td>@item.Trajectory_Id</td>
-                <td>@item.Trajectory_Name</td>
-                <td>@item.Trajectory_Code</td>
-                <td>@item.Trajectory_Description</td>
-                <td>@item.Trajectory_DistanceKm</td>
-                <td>@item.Trajectory_EstimatedDurationMinutes</td>
-                <td>
-                    @if (item.Trajectory_Status == "Active")
-                    {
-                        <span class="badge bg-success">Actif</span>
-                    }
-                    else
-                    {
-                        <span class="badge bg-danger">Inactif</span>
-                    }
-                </td>
-                <td>
-                    <button type="button" class="btn btn-sm btn-info" onclick="showPersonnel(@item.Trajectory_Id, '@item.Trajectory_Name')">
-                        👥 Voir personnels
-                    </button>
-                </td>
-                <td>
-                    <button type="button" class="btn btn-sm btn-secondary" onclick="showStops(@item.Trajectory_Id, '@item.Trajectory_Name')">
-                        🚏 Fragments
-                    </button>
-                </td>
-                <td>
-                    <a href="/Trajectories/Edit/@item.Trajectory_Id" class="btn btn-sm btn-warning">Modifier</a>
-                    <form asp-action="Delete" asp-route-id="@item.Trajectory_Id" method="post" style="display:inline;">
-                        <input type="submit" value="Supprimer" class="btn btn-sm btn-danger" onclick="return confirm('Êtes-vous sûr de vouloir supprimer ce trajet ?');" />
-                    </form>
-                </td>
+<div class="table-responsive">
+    <table class="trajectories-table" id="trajectoriesTable">
+        <thead>
+            <tr>
+                <th>ID</th>
+                <th>Nom</th>
+                <th>Code</th>
+                <th>Description</th>
+                <th>Distance (km)</th>
+                <th>Durée (min)</th>
+                <th>Statut</th>
+                <th>Personnels</th>
+                <th>Fragments</th>
+                <th>Actions</th>
             </tr>
-        }
-    </tbody>
-</table>
+        </thead>
+        <tbody>
+            @foreach (var item in Model)
+            {
+                <tr data-id="@item.Trajectory_Id"
+                    data-name="@item.Trajectory_Name"
+                    data-code="@item.Trajectory_Code"
+                    data-status="@item.Trajectory_Status">
+                    <td>@item.Trajectory_Id</td>
+                    <td><strong>@item.Trajectory_Name</strong></td>
+                    <td><code>@item.Trajectory_Code</code></td>
+                    <td style="max-width: 250px;">@(item.Trajectory_Description ?? "-")</td>
+                    <td>@(item.Trajectory_DistanceKm?.ToString("F2") ?? "-")</td>
+                    <td>@(item.Trajectory_EstimatedDurationMinutes ?? 0)</td>
+                    <td>
+                        @if (item.Trajectory_Status == "Active")
+                        {
+                            <span class="badge-active">✓ Actif</span>
+                        }
+                        else
+                        {
+                            <span class="badge-inactive">✗ Inactif</span>
+                        }
+                    </td>
+                    <td>
+                        <button type="button" class="btn-sm btn-info" onclick="showPersonnel(@item.Trajectory_Id, '@item.Trajectory_Name')">
+                            👥 Voir
+                        </button>
+                    </td>
+                    <td>
+                        <button type="button" class="btn-sm btn-secondary" onclick="showStops(@item.Trajectory_Id, '@item.Trajectory_Name')">
+                            🚏 Fragments
+                        </button>
+                    </td>
+                    <td class="action-buttons">
+                        <a href="/Trajectories/Edit/@item.Trajectory_Id" class="btn-sm btn-warning">✏️ Modifier</a>
+                        <form asp-action="Delete" asp-route-id="@item.Trajectory_Id" method="post" style="display:inline;" 
+                              onsubmit="return confirm('Êtes-vous sûr de vouloir supprimer ce trajet ?');">
+                            <button type="submit" class="btn-sm btn-danger">🗑️ Supprimer</button>
+                        </form>
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+</div>
 
-<a href="/Dashboard/AdminDashboard" class="btn btn-secondary">Retour au Dashboard</a>
+<p class="mt-3">
+    <a href="/Dashboard/AdminDashboard" class="btn btn-secondary">← Retour au Dashboard</a>
+</p>
 
 <!-- Modal Personnels -->
 <div class="modal fade" id="personnelModal" tabindex="-1">
@@ -108,9 +198,9 @@
     </div>
 </div>
 
-<!-- Modal Fragments (Stops) -->
+<!-- Modal Fragments -->
 <div class="modal fade" id="stopsModal" tabindex="-1">
-    <div class="modal-dialog modal-lg">
+    <div class="modal-dialog modal-lg" style="max-width: 90%; width: 90%;">
         <div class="modal-content">
             <div class="modal-header bg-secondary text-white">
                 <h5 class="modal-title">🚏 Fragments du trajet</h5>
@@ -132,127 +222,165 @@
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <script>
         $(document).ready(function() {
-        function filterTable() {
-        var searchText = $('#searchInput').val().toLowerCase().trim();
-        var status = $('#statusFilter').val();
+            function filterTable() {
+                var searchText = $('#searchInput').val().toLowerCase().trim();
+                var status = $('#statusFilter').val();
 
-        $('#trajectoriesTable tbody tr').each(function() {
-        var $row = $(this);
-        var id = $row.data('id').toString();
-        var name = $row.data('name').toString().toLowerCase();
-        var code = $row.data('code').toString().toLowerCase();
-        var rowStatus = $row.data('status');
+                $('#trajectoriesTable tbody tr').each(function() {
+                    var $row = $(this);
+                    var id = $row.data('id').toString();
+                    var name = $row.data('name').toString().toLowerCase();
+                    var code = $row.data('code').toString().toLowerCase();
+                    var rowStatus = $row.data('status');
 
-        var matchSearch = (searchText === '' ||
-        id.indexOf(searchText) !== -1 ||
-        name.indexOf(searchText) !== -1 ||
-        code.indexOf(searchText) !== -1);
-        var matchStatus = (status === '' || rowStatus === status);
+                    var matchSearch = (searchText === '' ||
+                        id.indexOf(searchText) !== -1 ||
+                        name.indexOf(searchText) !== -1 ||
+                        code.indexOf(searchText) !== -1);
+                    var matchStatus = (status === '' || rowStatus === status);
 
-        if (matchSearch && matchStatus) {
-        $row.show();
-        } else {
-        $row.hide();
-        }
+                    if (matchSearch && matchStatus) {
+                        $row.show();
+                    } else {
+                        $row.hide();
+                    }
+                });
+            }
+
+            $('#searchInput').on('keyup', filterTable);
+            $('#statusFilter').on('change', filterTable);
+            $('#resetFilter').click(function() {
+                $('#searchInput').val('');
+                $('#statusFilter').val('');
+                filterTable();
+            });
+
+            filterTable();
         });
-        }
 
-        $('#searchInput').on('keyup', filterTable);
-        $('#statusFilter').on('change', filterTable);
-        $('#resetFilter').click(function() {
-        $('#searchInput').val('');
-        $('#statusFilter').val('');
-        filterTable();
-        });
-
-        filterTable();
-        });
-
-        // Fonction pour afficher les personnels (inchangée)
         function showPersonnel(trajectoryId, trajectoryName) {
-        const modalContent = document.getElementById('personnelModalContent');
-        modalContent.innerHTML = '<div class="text-center"><div class="spinner-border text-primary" role="status"></div><br>Chargement des personnels...</div>';
+            const modalContent = document.getElementById('personnelModalContent');
+            modalContent.innerHTML = '<div class="text-center"><div class="spinner-border text-primary" role="status"></div><br>Chargement des personnels...</div>';
             
-        fetch(`/Trajectories/GetPersonnelByTrajectory/${trajectoryId}`)
-        .then(response => response.json())
-        .then(data => {
-        if (data.personnel && data.personnel.length > 0) {
-        let html = `<div class="alert alert-info">
-        <strong>Trajet:</strong> ${data.trajectoryName} (${data.trajectoryCode})<br>
-        <strong>Nombre de personnels:</strong> ${data.personnelCount}
-        </div>
-        <div class="table-responsive">
-        <table class="table table-striped table-bordered">
-        <thead>
-        <tr><th>ID</th><th>Prénom</th><th>Nom</th><th>Genre</th><th>Téléphone</th><th>Email</th><th>Code employé</th><th>Département</th><th>Adresse domicile</th><th>Bus assigné</th><th>Statut</th></tr>
-        </thead><tbody>`;
-        data.personnel.forEach(p => {
-        html += `<tr>
-        <td>${p.personnel_Id}</td>
-        <td>${p.personnel_FirstName}</td>
-        <td>${p.personnel_LastName}</td>
-        <td>${p.personnel_Gender === 'Male' ? 'Homme' : (p.personnel_Gender === 'Female' ? 'Femme' : p.personnel_Gender)}</td>
-        <td>${p.personnel_PhoneNumber || '-'}</td>
-        <td>${p.personnel_Email || '-'}</td>
-        <td>${p.personnel_EmployeeCode}</td>
-        <td>${p.personnel_Department || '-'}</td>
-        <td>${p.homeAddress || '-'}</td>
-        <td>${p.assignedBusCode}</td>
-        <td>${p.personnel_Status === 'Active' ? '<span class="badge bg-success">Actif</span>' : '<span class="badge bg-danger">Inactif</span>'}</td>
-        </tr>`;
-        });
-        html += `</tbody></table></div>`;
-        modalContent.innerHTML = html;
-        } else {
-        modalContent.innerHTML = `<div class="alert alert-warning">Aucun personnel assigné à ce trajet.</div>`;
-        }
-        new bootstrap.Modal(document.getElementById('personnelModal')).show();
-        })
-        .catch(error => {
-        console.error('Error:', error);
-        modalContent.innerHTML = '<div class="alert alert-danger">Erreur lors du chargement des personnels.</div>';
-        new bootstrap.Modal(document.getElementById('personnelModal')).show();
-        });
+            fetch(`/Trajectories/GetPersonnelByTrajectory/${trajectoryId}`)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.personnel && data.personnel.length > 0) {
+                        let html = `<div class="alert alert-info">
+                            <strong>📌 Trajet:</strong> ${data.trajectoryName} (${data.trajectoryCode})<br>
+                            <strong>👥 Nombre de personnels:</strong> ${data.personnelCount}
+                        </div>
+                        <div class="table-responsive">
+                        <table class="table table-striped table-bordered" style="font-size: 13px;">
+                        <thead>
+                            <tr>
+                                <th>ID</th><th>Prénom</th><th>Nom</th><th>Genre</th><th>Téléphone</th><th>Email</th>
+                                <th>Code employé</th><th>Département</th><th>Adresse</th><th>Bus</th><th>Statut</th>
+                            </tr>
+                        </thead>
+                        <tbody>`;
+                        data.personnel.forEach(p => {
+                            html += `<tr>
+                                <td>${p.personnel_Id}</td>
+                                <td>${p.personnel_FirstName}</td>
+                                <td>${p.personnel_LastName}</td>
+                                <td>${p.personnel_Gender === 'Male' ? 'Homme' : (p.personnel_Gender === 'Female' ? 'Femme' : p.personnel_Gender)}</td>
+                                <td>${p.personnel_PhoneNumber || '-'}</td>
+                                <td>${p.personnel_Email || '-'}</td>
+                                <td>${p.personnel_EmployeeCode}</td>
+                                <td>${p.personnel_Department || '-'}</td>
+                                <td>${p.homeAddress || '-'}</td>
+                                <td>${p.assignedBusCode}</td>
+                                <td>${p.personnel_Status === 'Active' ? '<span class="badge-active">Actif</span>' : '<span class="badge-inactive">Inactif</span>'}</td>
+                            </tr>`;
+                        });
+                        html += `</tbody></table></div>`;
+                        modalContent.innerHTML = html;
+                    } else {
+                        modalContent.innerHTML = `<div class="alert alert-warning">⚠️ Aucun personnel assigné à ce trajet.</div>`;
+                    }
+                    new bootstrap.Modal(document.getElementById('personnelModal')).show();
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    modalContent.innerHTML = '<div class="alert alert-danger">❌ Erreur lors du chargement des personnels.</div>';
+                    new bootstrap.Modal(document.getElementById('personnelModal')).show();
+                });
         }
 
-        // Nouvelle fonction pour afficher les fragments (arrêts)
         function showStops(trajectoryId, trajectoryName) {
-        const modalContent = document.getElementById('stopsModalContent');
-        modalContent.innerHTML = '<div class="text-center"><div class="spinner-border text-primary" role="status"></div><br>Chargement des fragments...</div>';
-    
-        fetch(`/Trajectories/GetStopsByTrajectory/${trajectoryId}`)
-        .then(response => response.json())
-        .then(data => {
-        if (data.stops && data.stops.length > 0) {
-        let html = `<div class="alert alert-secondary">
-        <strong>Trajet:</strong> ${data.trajectoryName} (${data.trajectoryCode})<br>
-        <strong>Nombre de fragments:</strong> ${data.stopsCount}
-        </div>
-        <div class="table-responsive">
-        <table class="table table-sm table-bordered">
-        <thead class="table-light">
-        <tr><th>Ordre</th><th>Nom du fragment</th><th>Latitude</th><th>Longitude</th></tr>
-        </thead><tbody>`;
-        data.stops.forEach(s => {
-        html += `<tr>
-        <td>${s.ts_OrderIndex}</td>
-        <td>${s.ts_Name}</td>
-        <td>${s.ts_Latitude}</td>
-        <td>${s.ts_Longitude}</td>
-        </tr>`;
-        });
-        html += `</tbody></table></div>`;
-        modalContent.innerHTML = html;
-        } else {
-        modalContent.innerHTML = `<div class="alert alert-warning">Aucun fragment (arrêt) n'est défini pour ce trajet.</div>`;
-        }
-        new bootstrap.Modal(document.getElementById('stopsModal')).show();
-        })
-        .catch(error => {
-        console.error('Error:', error);
-        modalContent.innerHTML = '<div class="alert alert-danger">Erreur lors du chargement des fragments.</div>';
-        new bootstrap.Modal(document.getElementById('stopsModal')).show();
-        });
+            const modalContent = document.getElementById('stopsModalContent');
+            modalContent.innerHTML = '<div class="text-center"><div class="spinner-border text-primary" role="status"></div><br>Chargement des fragments...</div>';
+            
+            fetch(`/Trajectories/GetStopsByTrajectory/${trajectoryId}`)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.stops && data.stops.length > 0) {
+                        let html = `<div class="alert alert-secondary">
+                            <strong>📌 Trajet:</strong> ${data.trajectoryName} (${data.trajectoryCode})<br>
+                            <strong>📊 Nombre de points d'arrêt:</strong> ${data.stopsCount}
+                        </div>`;
+                        
+                        var fragmentsMap = new Map();
+                        data.stops.forEach(s => {
+                            if (!fragmentsMap.has(s.fragment_Id)) {
+                                fragmentsMap.set(s.fragment_Id, {
+                                    fragment_Id: s.fragment_Id,
+                                    fragment_Code: s.fragment_Code,
+                                    fragment_Name: s.fragment_Name,
+                                    total_Workers: s.total_Workers,
+                                    stops: []
+                                });
+                            }
+                            fragmentsMap.get(s.fragment_Id).stops.push(s);
+                        });
+                        
+                        fragmentsMap.forEach(fragment => {
+                            html += `<div class="card mb-3">
+                                <div class="card-header bg-info text-white">
+                                    <strong>📦 ${fragment.fragment_Code} - ${fragment.fragment_Name}</strong>
+                                    <span class="badge bg-light text-dark float-end">👥 ${fragment.total_Workers} personnels</span>
+                                </div>
+                                <div class="card-body">
+                                    <div class="table-responsive">
+                                        <table class="table table-sm table-bordered">
+                                            <thead class="table-light">
+                                                <tr>
+                                                    <th>Ordre</th>
+                                                    <th>Nom de l'arrêt</th>
+                                                    <th>Latitude</th>
+                                                    <th>Longitude</th>
+                                                    <th>Personnels à l'arrêt</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>`;
+                            fragment.stops.forEach(s => {
+                                html += `<tr>
+                                    <td>${s.ts_OrderIndex}</td>
+                                    <td><strong>${s.ts_Name}</strong></td>
+                                    <td>${s.ts_Latitude}</td>
+                                    <td>${s.ts_Longitude}</td>
+                                    <td><span class="badge bg-primary">${s.workers_At_Stop}</span></td>
+                                </tr>`;
+                            });
+                            html += `</tbody>
+                                        </table>
+                                    </div>
+                                </div>
+                            </div>`;
+                        });
+                        
+                        modalContent.innerHTML = html;
+                    } else {
+                        modalContent.innerHTML = `<div class="alert alert-warning">⚠️ Aucun fragment n'est défini pour ce trajet.</div>`;
+                    }
+                    new bootstrap.Modal(document.getElementById('stopsModal')).show();
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    modalContent.innerHTML = '<div class="alert alert-danger">❌ Erreur lors du chargement des fragments.</div>';
+                    new bootstrap.Modal(document.getElementById('stopsModal')).show();
+                });
         }
     </script>
 }
