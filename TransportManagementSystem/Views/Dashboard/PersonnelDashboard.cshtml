@@ -4,7 +4,95 @@
 }
 
 <style>
-    /* ... vos styles existants ... */
+    .stop-marker {
+        background-color: #28a745;
+        color: white;
+        border-radius: 50%;
+        text-align: center;
+        font-size: 12px;
+        font-weight: bold;
+        width: 24px;
+        height: 24px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border: 2px solid white;
+        box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+        cursor: pointer;
+    }
+
+    .bus-marker {
+        background-color: #007bff;
+        color: white;
+        border-radius: 50%;
+        text-align: center;
+        font-size: 16px;
+        width: 32px;
+        height: 32px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border: 2px solid white;
+        box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+        cursor: pointer;
+    }
+
+    .person-marker {
+        background-color: #dc3545;
+        color: white;
+        border-radius: 50%;
+        text-align: center;
+        font-size: 14px;
+        width: 28px;
+        height: 28px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border: 2px solid white;
+        box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+        cursor: pointer;
+    }
+
+    .fragment-marker {
+        background-color: #ff9800;
+        color: white;
+        border-radius: 50%;
+        text-align: center;
+        font-size: 12px;
+        font-weight: bold;
+        width: 24px;
+        height: 24px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border: 2px solid white;
+        box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+        cursor: pointer;
+    }
+
+    .info-card {
+        transition: transform 0.2s;
+    }
+
+        .info-card:hover {
+            transform: translateY(-5px);
+        }
+
+    .legend {
+        background: white;
+        padding: 8px 12px;
+        border-radius: 8px;
+        box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+        font-size: 12px;
+    }
+
+        .legend i {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            margin-right: 5px;
+            vertical-align: middle;
+        }
 </style>
 
 <h2>Bienvenue, @ViewBag.UserName</h2>
@@ -57,7 +145,8 @@
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 
     <script>
-        let map, busMarkers = {}, trajectoryLine, personStopMarker, personLocationMarker;
+        let map, busMarkers = {}, personStopMarker, personLocationMarker;
+        let fragmentLine, fragmentMarkers = [];
         let lastAlertTypes = {};
         let currentTrajectoryId = null;
         let checkInterval;
@@ -125,8 +214,8 @@
         document.getElementById('trajectoryInfo').innerHTML = `
         <strong>${data.trajectory.trajectory_Name}</strong><br/>
         Code: ${data.trajectory.trajectory_Code}<br/>
-        Distance: ${data.trajectory.Distance} km<br/>
-        Durée estimée: ${data.trajectory.EstimatedDuration} min
+        Distance: ${data.trajectory.distance} km<br/>
+        Durée estimée: ${data.trajectory.estimatedDuration} min
         `;
 
         if (data.assignedBus) {
@@ -142,21 +231,27 @@
 
         document.getElementById('driverInfo').innerHTML = `<strong>${data.assignedDriver}</strong>`;
 
+        // Point de référence pour alertes (arrêt personnel ou début trajectoire)
         if (data.personnelStop) {
-        currentRefLat = data.personnelStop.TS_Latitude;
-        currentRefLng = data.personnelStop.TS_Longitude;
-        } else if (data.trajectory.StartLat && data.trajectory.StartLng) {
-        currentRefLat = data.trajectory.StartLat;
-        currentRefLng = data.trajectory.StartLng;
+        currentRefLat = data.personnelStop.tS_Latitude;
+        currentRefLng = data.personnelStop.tS_Longitude;
+        } else if (data.trajectory.startLat && data.trajectory.startLng) {
+        currentRefLat = data.trajectory.startLat;
+        currentRefLng = data.trajectory.startLng;
         }
 
-        document.getElementById('assignmentInfo').innerHTML = `
+        // Construction de l'affichage des informations
+        let assignmentHtml = `
         <strong>Trajectoire :</strong> ${data.trajectory.trajectory_Name} (${data.trajectory.trajectory_Code})<br/>
-        <strong>Arrêt personnel :</strong> ${data.stopName}<br/>
         <strong>Chauffeur :</strong> ${data.assignedDriver}<br/>
         <strong>Bus :</strong> ${data.assignedBus ? data.assignedBus.bus_Code : 'Non assigné'}<br/>
         <strong>Bus sur cette trajectoire :</strong> ${data.buses.length}
         `;
+        if (data.stopName && data.stopName !== "Non défini") {
+        assignmentHtml += `<br/><strong>Arrêt personnel :</strong> ${data.stopName}`;
+        }
+        document.getElementById('assignmentInfo').innerHTML = assignmentHtml;
+
         currentTrajectoryId = data.trajectory.trajectory_Id;
 
         if (!map) {
@@ -169,43 +264,53 @@
         legend.onAdd = function() {
         let div = L.DomUtil.create('div', 'legend');
         div.innerHTML = `
-        <div><i style="background:#3388ff; width:20px; height:4px;"></i> Trajectoire</div>
-        <div><i style="background:#28a745; border-radius:50%;"></i> Arrêts</div>
+        <div><i style="background:#ff9800; border-radius:50%;"></i> Arrêts du fragment</div>
         <div><i style="background:#ffc107; border-radius:50%;"></i> Mon arrêt</div>
         <div><i style="background:#007bff; border-radius:50%;"></i> Bus</div>
         <div><i style="background:#dc3545; border-radius:50%;"></i> Ma position</div>
+        <div><i style="background:#ff9800; width:20px; height:4px;"></i> Trajet du fragment</div>
         `;
         return div;
         };
         legend.addTo(map);
         }
 
-        if (trajectoryLine) map.removeLayer(trajectoryLine);
+        // Nettoyer les calques existants
         if (window.busLayer) map.removeLayer(window.busLayer);
         if (personStopMarker) map.removeLayer(personStopMarker);
         if (personLocationMarker) map.removeLayer(personLocationMarker);
+        if (fragmentLine) map.removeLayer(fragmentLine);
+        fragmentMarkers.forEach(m => map.removeLayer(m));
+        fragmentMarkers = [];
 
-        // Tracé de la trajectoire
-        const points = data.stops.map(s => [s.TS_Latitude, s.TS_Longitude]);
-        if (points.length > 1) {
-        trajectoryLine = L.polyline(points, { color: '#3388ff', weight: 5, opacity: 0.8 }).addTo(map);
+        // NE PAS AFFICHER LES AUTRES ARRÊTS (verts)
+
+        // ** Tracer le fragment personnel (orange) **
+        if (data.fragmentStops && data.fragmentStops.length > 0) {
+        // Points du fragment (départ SEWS + arrêts du fragment)
+        const fragmentPoints = [[34.2900, -6.5700]]; // SEWS
+        data.fragmentStops.forEach(s => fragmentPoints.push([s.lat, s.lng]));
+        fragmentLine = L.polyline(fragmentPoints, { color: '#ff9800', weight: 6, opacity: 0.9 }).addTo(map);
+                    
+        // Marqueurs pour chaque arrêt du fragment
+        data.fragmentStops.forEach((s, idx) => {
+        const icon = L.divIcon({ html: (idx+1).toString(), iconSize: [24, 24], className: 'fragment-marker' });
+        const marker = L.marker([s.lat, s.lng], { icon })
+        .bindPopup(`<b>Fragment : ${s.name}</b><br/>Ordre dans le fragment : ${s.order}<br/>Personnels à cet arrêt : ${s.workersAtStop}`);
+        marker.addTo(map);
+        fragmentMarkers.push(marker);
+        });
+        } else if (data.personnelFragment) {
+        console.log("Aucun arrêt trouvé pour le fragment personnel");
         }
 
-        // Arrêts
-        data.stops.forEach(stop => {
-        const icon = L.divIcon({ html: stop.TS_OrderIndex, iconSize: [24, 24], className: 'stop-marker' });
-        L.marker([stop.TS_Latitude, stop.TS_Longitude], { icon })
-        .bindPopup(`<b>${stop.TS_Name}</b><br/>Arrêt n°${stop.TS_OrderIndex}`)
-        .addTo(map);
-        });
-
-        // Arrêt personnel avec ETA du bus le plus proche
+        // Arrêt personnel (point jaune) – s'il existe
         if (data.personnelStop) {
         let nearestBus = null;
         let minDistance = Infinity;
         data.buses.forEach(bus => {
         if (bus.lat && bus.lng) {
-        const d = haversine(data.personnelStop.TS_Latitude, data.personnelStop.TS_Longitude, bus.lat, bus.lng);
+        const d = haversine(data.personnelStop.tS_Latitude, data.personnelStop.tS_Longitude, bus.lat, bus.lng);
         if (d < minDistance) {
         minDistance = d;
         nearestBus = bus;
@@ -220,8 +325,8 @@
         etaText = `<br/>🚏 Le prochain bus arrive dans environ <strong>${etaMin} minutes</strong> (estimation).`;
         }
         const icon = L.divIcon({ html: '📍', iconSize: [28, 28], className: 'stop-marker' });
-        personStopMarker = L.marker([data.personnelStop.TS_Latitude, data.personnelStop.TS_Longitude], { icon })
-        .bindPopup(`<b>Votre arrêt : ${data.personnelStop.TS_Name}</b>${etaText}`)
+        personStopMarker = L.marker([data.personnelStop.tS_Latitude, data.personnelStop.tS_Longitude], { icon })
+        .bindPopup(`<b>Votre arrêt : ${data.personnelStop.tS_Name}</b>${etaText}`)
         .addTo(map);
         }
 
@@ -241,12 +346,16 @@
         busMarkers[bus.bus_Id] = marker;
         });
 
+        // Centrer la carte sur l'arrêt personnel ou le fragment
         if (data.personnelStop) {
-        map.setView([data.personnelStop.TS_Latitude, data.personnelStop.TS_Longitude], 14);
+        map.setView([data.personnelStop.tS_Latitude, data.personnelStop.tS_Longitude], 14);
+        } else if (data.fragmentStops && data.fragmentStops.length > 0) {
+        const firstStop = data.fragmentStops[0];
+        map.setView([firstStop.lat, firstStop.lng], 13);
         } else if (data.buses.length > 0) {
         map.setView([data.buses[0].lat, data.buses[0].lng], 13);
-        } else if (data.trajectory.StartLat && data.trajectory.StartLng) {
-        map.setView([data.trajectory.StartLat, data.trajectory.StartLng], 12);
+        } else if (data.trajectory.startLat && data.trajectory.startLng) {
+        map.setView([data.trajectory.startLat, data.trajectory.startLng], 12);
         }
 
         if (checkInterval) clearInterval(checkInterval);
@@ -306,6 +415,7 @@
         }
         }
 
+        // Géolocalisation
         if (navigator.geolocation) {
         navigator.geolocation.getCurrentPosition(pos => {
         if (!map) return;
