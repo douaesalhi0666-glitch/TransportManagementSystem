@@ -7,6 +7,7 @@ namespace TransportManagementSystem.Models
     public class TrajectoryStop
     {
         [Key]
+        [DatabaseGenerated(DatabaseGeneratedOption.Identity)] // ✅ AJOUTER CETTE LIGNE
         public int TS_Id { get; set; }
 
         public int TS_TrajectoryId { get; set; }
