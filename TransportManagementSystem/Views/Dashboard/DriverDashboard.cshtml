@@ -21,13 +21,17 @@
         margin-right: 5px;
         vertical-align: middle;
     }
+    .fragment-card {
+        background: #f8f9fa;
+        border-left: 4px solid #ffc107;
+    }
 </style>
 
 <h2>Bonjour, @ViewBag.UserName</h2>
 <p>Bienvenue sur votre tableau de bord chauffeur.</p>
 
 <div class="row mb-4">
-    <div class="col-md-6">
+    <div class="col-md-4">
         <div class="card">
             <div class="card-header bg-primary text-white">
                 <h5>🚍 Mon statut</h5>
@@ -40,7 +44,20 @@
             </div>
         </div>
     </div>
-    <div class="col-md-6">
+    <div class="col-md-4">
+        <div class="card">
+            <div class="card-header bg-success text-white">
+                <h5>🚌 Mon bus</h5>
+            </div>
+            <div class="card-body">
+                <p><strong>Code :</strong> <span id="busCode">-</span></p>
+                <p><strong>Plaque :</strong> <span id="busPlate">-</span></p>
+                <p><strong>Modèle :</strong> <span id="busModel">-</span></p>
+                <p><strong>Statut bus :</strong> <span id="busStatus">-</span></p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
         <div class="card border-success">
             <div class="card-header bg-success text-white">
                 <h5>🏁 Terminer ma journée</h5>
@@ -61,25 +78,24 @@
 <div class="row mb-4">
     <div class="col-md-6">
         <div class="card">
-            <div class="card-header bg-primary text-white">
-                <h5>🚍 Mon bus</h5>
+            <div class="card-header bg-info text-white">
+                <h5>📍 Mon trajet</h5>
             </div>
             <div class="card-body">
-                <p><strong>Code :</strong> <span id="busCode">-</span></p>
-                <p><strong>Plaque :</strong> <span id="busPlate">-</span></p>
-                <p><strong>Modèle :</strong> <span id="busModel">-</span></p>
-                <p><strong>Statut bus :</strong> <span id="busStatus">-</span></p>
+                <p><strong>Nom :</strong> <span id="trajName">-</span></p>
+                <p><strong>Code :</strong> <span id="trajCode">-</span></p>
             </div>
         </div>
     </div>
     <div class="col-md-6">
-        <div class="card">
-            <div class="card-header bg-success text-white">
-                <h5>📍 Ma trajectoire</h5>
+        <div class="card fragment-card">
+            <div class="card-header bg-warning text-dark">
+                <h5>🧩 Mon fragment assigné</h5>
             </div>
             <div class="card-body">
-                <p><strong>Nom :</strong> <span id="trajName">Aucune trajectoire assignée</span></p>
-                <p><strong>Code :</strong> <span id="trajCode"></span></p>
+                <p><strong>Code fragment :</strong> <span id="fragmentCode">-</span></p>
+                <p><strong>Nom fragment :</strong> <span id="fragmentName">-</span></p>
+                <p><strong>Personnels à transporter :</strong> <span id="fragmentWorkers">-</span></p>
             </div>
         </div>
     </div>
@@ -89,7 +105,7 @@
     <div class="col-12">
         <div class="card">
             <div class="card-header bg-info text-white">
-                <h5>🗺️ Carte de navigation</h5>
+                <h5>🗺️ Carte de navigation - Points de ramassage</h5>
             </div>
             <div class="card-body">
                 <div id="map" style="height: 500px; width: 100%; border-radius: 10px;"></div>
@@ -155,8 +171,20 @@
                     document.getElementById('busStatus').innerText = data.bus.bus_Status || '-';
                     
                     if (data.trajectory) {
-                        document.getElementById('trajName').innerText = data.trajectory.trajectory_Name;
-                        document.getElementById('trajCode').innerText = data.trajectory.trajectory_Code;
+                        document.getElementById('trajName').innerHTML = data.trajectory.trajectory_Name || '-';
+                        document.getElementById('trajCode').innerHTML = data.trajectory.trajectory_Code || '-';
+                    } else {
+                        document.getElementById('trajName').innerHTML = '<span class="text-muted">Aucun trajet assigné</span>';
+                    }
+                    
+                    if (data.fragment) {
+                        document.getElementById('fragmentCode').innerHTML = data.fragment.fragment_Code || '-';
+                        document.getElementById('fragmentName').innerHTML = data.fragment.fragment_Name || '-';
+                        document.getElementById('fragmentWorkers').innerHTML = data.fragment.total_Workers || '0';
+                    } else {
+                        document.getElementById('fragmentCode').innerHTML = '<span class="text-muted">Aucun fragment assigné</span>';
+                        document.getElementById('fragmentName').innerHTML = '<span class="text-muted">-</span>';
+                        document.getElementById('fragmentWorkers').innerHTML = '0';
                     }
                     
                     const busLat = parseFloat(data.bus.currentLatitude);
@@ -174,7 +202,7 @@
                             let div = L.DomUtil.create('div', 'legend');
                             div.innerHTML = `
                                 <div><i style="background:#dc3545; border-radius:50%;"></i> Ma position (bus)</div>
-                                <div><i style="background:#28a745; border-radius:50%;"></i> Arrêts</div>
+                                <div><i style="background:#28a745; border-radius:50%;"></i> Points de ramassage</div>
                                 <div><i style="background:#3388ff; width:20px; height:4px;"></i> Trajectoire</div>
                             `;
                             return div;
@@ -185,34 +213,36 @@
                     if (busMarker) map.removeLayer(busMarker);
                     if (hasValidBusPos) {
                         const busIcon = L.divIcon({ html: '<div>🚌</div>', iconSize: [40, 40], className: 'bus-marker' });
-                        busMarker = L.marker([busLat, busLng], { icon: busIcon }).bindPopup('Ma position').addTo(map);
+                        busMarker = L.marker([busLat, busLng], { icon: busIcon }).bindPopup('Ma position actuelle').addTo(map);
                     }
                     
                     if (trajectoryLine) map.removeLayer(trajectoryLine);
                     if (data.stops && data.stops.length > 0) {
-                        // Vérifier que les stops ont des coordonnées valides
-                        const validStops = data.stops.filter(s => !isNaN(parseFloat(s.Latitude)) && !isNaN(parseFloat(s.Longitude)));
+                        // Utiliser les bons noms de propriétés (minuscules)
+                        const validStops = data.stops.filter(s => !isNaN(parseFloat(s.tS_Latitude)) && !isNaN(parseFloat(s.tS_Longitude)));
                         if (validStops.length > 0) {
-                            const points = validStops.map(s => [parseFloat(s.Latitude), parseFloat(s.Longitude)]);
+                            const points = validStops.map(s => [parseFloat(s.tS_Latitude), parseFloat(s.tS_Longitude)]);
                             trajectoryLine = L.polyline(points, { color: '#3388ff', weight: 5, opacity: 0.8 }).addTo(map);
                             map.fitBounds(points);
                             
                             validStops.forEach(stop => {
                                 let etaText = "";
                                 if (hasValidBusPos) {
-                                    const distanceToStop = haversine(busLat, busLng, stop.Latitude, stop.Longitude);
+                                    const distanceToStop = haversine(busLat, busLng, stop.tS_Latitude, stop.tS_Longitude);
                                     const etaMin = Math.round(distanceToStop / 1000 / SPEED_KMH * 60);
-                                    etaText = `<br/><small>🚏 Arrivée estimée dans ${etaMin} min</small>`;
+                                    etaText = `<br/><small>🚏 ETA: ${etaMin} min</small><br/><small>👥 ${stop.workers_At_Stop || 0} personnels</small>`;
                                 }
-                                const stopIcon = L.divIcon({ html: stop.TS_OrderIndex.toString(), iconSize: [24, 24], className: 'stop-marker' });
-                                L.marker([stop.Latitude, stop.Longitude], { icon: stopIcon })
-                                    .bindPopup(`<strong>${stop.TS_Name}</strong>${etaText}`)
+                                const stopIcon = L.divIcon({ html: stop.tS_OrderIndex.toString(), iconSize: [24, 24], className: 'stop-marker' });
+                                L.marker([stop.tS_Latitude, stop.tS_Longitude], { icon: stopIcon })
+                                    .bindPopup(`<strong>${stop.tS_Name}</strong>${etaText}`)
                                     .addTo(map);
                             });
                         }
                     } else if (hasValidBusPos) {
                         map.setView([busLat, busLng], 13);
                     }
+                } else {
+                    document.getElementById('busCode').innerHTML = '<span class="text-muted">Aucun bus assigné</span>';
                 }
             } catch (error) {
                 console.error('Erreur chargement:', error);
@@ -233,7 +263,7 @@
                         missionDiv.innerHTML = '<div class="alert alert-danger">❌ ' + result.message + '</div>';
                     }
                 } catch (err) {
-                    document.getElementById('missionStatus').innerHTML = '<div class="alert alert-danger">❌ Erreur réseau</div>';
+                    missionDiv.innerHTML = '<div class="alert alert-danger">❌ Erreur réseau</div>';
                 }
             }
         });
@@ -245,7 +275,7 @@
             }
             navigator.geolocation.getCurrentPosition(async (position) => {
                 try {
-                    const response = await fetch('/Buses/UpdateBusLocation', {
+                    const response = await fetch('/Drivers/UpdateBusLocation', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({ latitude: position.coords.latitude, longitude: position.coords.longitude })
@@ -253,6 +283,8 @@
                     if (response.ok) {
                         alert("Position mise à jour !");
                         loadDriverData();
+                    } else {
+                        alert("Erreur lors de la mise à jour.");
                     }
                 } catch (err) {
                     alert("Erreur réseau.");

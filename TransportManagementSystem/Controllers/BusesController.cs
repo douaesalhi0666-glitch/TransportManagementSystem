@@ -32,7 +32,6 @@ namespace TransportManagementSystem.Controllers
                 .Where(d => d.Driver_Status == "Available" || d.Driver_Status == "On Route")
                 .ToListAsync();
 
-            // REMOVED .Include(f => f.Trajectory) - THIS WAS CAUSING THE ERROR
             ViewBag.Fragments = await _context.TrajectoryFragments
                 .Where(f => f.Status == "Active")
                 .ToListAsync();
@@ -57,7 +56,6 @@ namespace TransportManagementSystem.Controllers
             return View(bus);
         }
 
-        // API: GET /Buses/GetBusData/{id}
         [HttpGet]
         public async Task<IActionResult> GetBusData(long id)
         {
@@ -82,7 +80,6 @@ namespace TransportManagementSystem.Controllers
             });
         }
 
-        // API: POST /Buses/UpdateBus
         [HttpPost]
         public async Task<IActionResult> UpdateBus([FromBody] BusUpdateModel model)
         {
@@ -173,9 +170,6 @@ namespace TransportManagementSystem.Controllers
 
         private bool BusExists(long id) => _context.Buses.Any(e => e.Bus_Id == id);
 
-        // ========================================================
-        // API POUR LES CARTES
-        // ========================================================
         [HttpGet]
         public async Task<IActionResult> GetBusLocations()
         {
@@ -195,9 +189,6 @@ namespace TransportManagementSystem.Controllers
             return Ok(buses);
         }
 
-        // ========================================================
-        // API POUR LE TABLEAU DE BORD DU DRIVER
-        // ========================================================
         [HttpGet]
         public async Task<IActionResult> GetDriverDashboardData()
         {
@@ -294,9 +285,6 @@ namespace TransportManagementSystem.Controllers
             return Ok();
         }
 
-        // ========================================================
-        // API POUR LE TABLEAU DE BORD DU PERSONNEL
-        // ========================================================
         [HttpGet]
         public async Task<IActionResult> GetPersonnelDashboardData()
         {
@@ -471,12 +459,6 @@ namespace TransportManagementSystem.Controllers
             var c = 2 * Math.Atan2(Math.Sqrt(a), Math.Sqrt(1 - a));
             return R * c;
         }
-    }
-
-    public class LocationUpdateModel
-    {
-        public decimal Latitude { get; set; }
-        public decimal Longitude { get; set; }
     }
 
     public class ProximityCheckModel
