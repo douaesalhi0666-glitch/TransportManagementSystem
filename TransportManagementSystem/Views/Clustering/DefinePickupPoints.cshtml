@@ -100,6 +100,27 @@
         transform: scale(1.1);
         transition: transform 0.2s;
         }
+
+        /* Style pour la notification temporaire */
+        .toast-notification {
+        position: fixed;
+        bottom: 20px;
+        right: 20px;
+        background-color: #28a745;
+        color: white;
+        padding: 12px 20px;
+        border-radius: 8px;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+        z-index: 10000;
+        font-size: 16px;
+        font-weight: bold;
+        transition: opacity 0.5s ease;
+        opacity: 1;
+        }
+
+        .toast-notification.error {
+        background-color: #dc3545;
+        }
     </style>
 
     <script>
@@ -111,6 +132,18 @@
         const SEWS_LNG = -6.5700;
         const KENITRA_CENTER_LAT = 34.2610;
         const KENITRA_CENTER_LNG = -6.5800;
+
+        // Fonction pour afficher une notification temporaire
+        function showNotification(message, isError = false) {
+        const div = document.createElement('div');
+        div.className = 'toast-notification' + (isError ? ' error' : '');
+        div.innerText = message;
+        document.body.appendChild(div);
+        setTimeout(() => {
+        div.style.opacity = '0';
+        setTimeout(() => div.remove(), 500);
+        }, 3000);
+        }
 
         async function loadTrajectories() {
         const select = document.getElementById('trajectorySelect');
@@ -152,7 +185,7 @@
         async function loadPickupPoints() {
         const trajectoryId = document.getElementById('trajectorySelect').value;
         if (!trajectoryId) {
-        alert("Veuillez selectionner une trajectoire.");
+        showNotification("Veuillez selectionner une trajectoire.", true);
         return;
         }
         const k = document.getElementById('kValue').value;
@@ -215,7 +248,7 @@
 
         window.createStopForTrajectory = async (lat, lng, defaultName) => {
         if (!currentTrajectoryId) {
-        alert("Aucune trajectoire selectionnee.");
+        showNotification("Aucune trajectoire selectionnee.", true);
         return;
         }
         const name = prompt("Nom de l'arret :", defaultName);
@@ -232,15 +265,15 @@
         })
         });
         if (response.ok) {
-        alert("✅ Arret cree avec succes !");
-        loadPickupPoints();
+        showNotification("✅ Arrêt créé avec succès !");
+        loadPickupPoints(); // Recharge les points pour mettre à jour l'état "exists"
         } else {
         const errorData = await response.json();
-        alert("❌ Erreur : " + (errorData.message || "Erreur lors de la creation."));
+        showNotification("❌ Erreur : " + (errorData.message || "Erreur lors de la création."), true);
         }
         } catch (err) {
         console.error(err);
-        alert("❌ Erreur reseau.");
+        showNotification("❌ Erreur réseau.", true);
         }
         };
 

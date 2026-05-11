@@ -96,7 +96,7 @@
                                 <button class="btn btn-sm btn-warning edit-stop" data-id="@stop.TS_Id" data-name="@stop.TS_Name" data-lat="@stop.TS_Latitude" data-lng="@stop.TS_Longitude" data-order="@stop.TS_OrderIndex" data-trajectory="@stop.TS_TrajectoryId">✏️ Modifier</button>
                                 <button class="btn btn-sm btn-danger delete-stop" data-id="@stop.TS_Id" data-name="@stop.TS_Name">🗑️ Supprimer</button>
                             </td>
-                         </tr>
+                          </tr>
                     }
                 </tbody>
             </table>
@@ -199,6 +199,25 @@
         .stop-marker:hover { transform: scale(1.1); transition: transform 0.2s; }
         .sews-marker { background-color: #2ecc71; color: white; border-radius: 50%; text-align: center; font-size: 14px; font-weight: bold; width: 30px; height: 30px; display: flex; align-items: center; justify-content: center; border: 2px solid white; box-shadow: 0 2px 6px rgba(0,0,0,0.3); cursor: pointer; }
         .worker-list-item { border-left: 3px solid #28a745; margin-bottom: 8px; padding-left: 10px; }
+        /* Style pour les notifications temporaires */
+        .toast-notification {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            background-color: #28a745;
+            color: white;
+            padding: 12px 20px;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+            z-index: 10000;
+            font-size: 16px;
+            font-weight: bold;
+            transition: opacity 0.5s ease;
+            opacity: 1;
+        }
+        .toast-notification.error {
+            background-color: #dc3545;
+        }
     </style>
 
     <script>
@@ -214,6 +233,18 @@
         const SPEED_KMH = 30;
         const SEWS_LAT = 34.2900;
         const SEWS_LNG = -6.5700;
+
+        // Fonction de notification temporaire
+        function showNotification(message, isError = false) {
+            const div = document.createElement('div');
+            div.className = 'toast-notification' + (isError ? ' error' : '');
+            div.innerText = message;
+            document.body.appendChild(div);
+            setTimeout(() => {
+                div.style.opacity = '0';
+                setTimeout(() => div.remove(), 500);
+            }, 3000);
+        }
 
         function haversine(lat1, lon1, lat2, lon2) {
             const R = 6371e3;
@@ -476,7 +507,7 @@
                 new bootstrap.Modal(document.getElementById('viewWorkersModal')).show();
             } catch (error) {
                 console.error(error);
-                alert('Erreur lors du chargement des personnels.');
+                showNotification('Erreur lors du chargement des personnels.', true);
             }
         }
 
@@ -493,13 +524,13 @@
                     });
                     const result = await response.json();
                     if (result.success) {
-                        alert(result.message);
-                        location.reload();
+                        showNotification(result.message);
+                        loadData();
                     } else {
-                        alert('Erreur: ' + result.message);
+                        showNotification('Erreur: ' + result.message, true);
                     }
                 } catch (err) {
-                    alert('Erreur réseau.');
+                    showNotification('Erreur réseau.', true);
                 }
             }
         }
@@ -531,7 +562,7 @@
             const stopId = document.getElementById('assignStopId').value;
             const workerId = document.getElementById('workerSelect').value;
             if (!workerId) {
-                alert('Veuillez sélectionner un personnel.');
+                showNotification('Veuillez sélectionner un personnel.', true);
                 return;
             }
             try {
@@ -542,14 +573,14 @@
                 });
                 const result = await response.json();
                 if (result.success) {
-                    alert(result.message);
+                    showNotification(result.message);
                     bootstrap.Modal.getInstance(document.getElementById('assignWorkerModal')).hide();
                     loadData();
                 } else {
-                    alert('Erreur: ' + result.message);
+                    showNotification('Erreur: ' + result.message, true);
                 }
             } catch (err) {
-                alert('Erreur réseau.');
+                showNotification('Erreur réseau.', true);
             }
         }
 
@@ -561,21 +592,21 @@
                     const response = await fetch(`/Clustering/AutoAssignWorkersToStop?stopId=${stopId}`, { method: 'POST', headers: { 'Content-Type': 'application/json' } });
                     const result = await response.json();
                     if (result.success) {
-                        alert(result.message);
+                        showNotification(result.message);
                         bootstrap.Modal.getInstance(document.getElementById('assignWorkerModal')).hide();
                         loadData();
                     } else {
-                        alert('Erreur: ' + result.message);
+                        showNotification('Erreur: ' + result.message, true);
                     }
                 } catch (err) {
-                    alert('Erreur réseau.');
+                    showNotification('Erreur réseau.', true);
                 }
             }
         }
 
         async function autoAssignAll() {
             if (!currentTrajectoryId) {
-                alert('Veuillez d\'abord sélectionner une trajectoire dans le filtre.');
+                showNotification('Veuillez d\'abord sélectionner une trajectoire dans le filtre.', true);
                 return;
             }
             if (confirm('Assigner automatiquement TOUS les personnels non assignés à l\'arrêt le plus proche ?')) {
@@ -583,13 +614,13 @@
                     const response = await fetch(`/Clustering/AutoAssignAllWorkersToNearestStop?trajectoryId=${currentTrajectoryId}`, { method: 'POST', headers: { 'Content-Type': 'application/json' } });
                     const result = await response.json();
                     if (result.success) {
-                        alert(result.message);
+                        showNotification(result.message);
                         loadData();
                     } else {
-                        alert('Erreur: ' + result.message);
+                        showNotification('Erreur: ' + result.message, true);
                     }
                 } catch (err) {
-                    alert('Erreur réseau.');
+                    showNotification('Erreur réseau.', true);
                 }
             }
         }
@@ -623,13 +654,14 @@
                 try {
                     const response = await fetch(`/Clustering/DeleteStop?id=${id}`, { method: 'DELETE', headers: { 'Content-Type': 'application/json' } });
                     if (response.ok) {
-                        alert('Arrêt supprimé avec succès !');
+                        showNotification(`✅ Arrêt "${name}" supprimé avec succès !`);
                         loadData();
                     } else {
-                        alert('Erreur lors de la suppression.');
+                        const errorData = await response.json();
+                        showNotification(`❌ Erreur : ${errorData.message || 'Erreur lors de la suppression.'}`, true);
                     }
                 } catch (err) {
-                    alert('Erreur réseau.');
+                    showNotification('❌ Erreur réseau.', true);
                 }
             }
         }
@@ -641,7 +673,7 @@
             const lng = parseFloat(document.getElementById('editStopLng').value);
             const order = parseInt(document.getElementById('editStopOrder').value);
             if (!name || isNaN(lat) || isNaN(lng) || isNaN(order)) {
-                alert('Veuillez remplir tous les champs correctement.');
+                showNotification('Veuillez remplir tous les champs correctement.', true);
                 return;
             }
             try {
@@ -651,14 +683,14 @@
                     body: JSON.stringify({ id: parseInt(id), name: name, latitude: lat, longitude: lng, orderIndex: order })
                 });
                 if (response.ok) {
-                    alert('Arrêt modifié avec succès !');
+                    showNotification('✅ Arrêt modifié avec succès !');
                     bootstrap.Modal.getInstance(document.getElementById('editStopModal')).hide();
                     loadData();
                 } else {
-                    alert('Erreur lors de la modification.');
+                    showNotification('❌ Erreur lors de la modification.', true);
                 }
             } catch (err) {
-                alert('Erreur réseau.');
+                showNotification('❌ Erreur réseau.', true);
             }
         }
 

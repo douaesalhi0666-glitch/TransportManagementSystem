@@ -575,6 +575,7 @@ namespace TransportManagementSystem.Controllers
         // ================================================
 
         [HttpDelete]
+        [HttpDelete]
         public async Task<IActionResult> DeleteStop(int id)
         {
             var stop = await _context.TrajectoryStops.FindAsync(id);
@@ -583,23 +584,34 @@ namespace TransportManagementSystem.Controllers
 
             int trajectoryId = stop.TS_TrajectoryId;
 
+            // 1. Supprimer les références dans FragmentStop (liaison avec les fragments)
+            var fragmentStops = await _context.FragmentStops
+                .Where(fs => fs.TS_Id == id)
+                .ToListAsync();
+            if (fragmentStops.Any())
+            {
+                _context.FragmentStops.RemoveRange(fragmentStops);
+            }
+
+            // 2. Désassigner les personnels assignés à cet arrêt
             var workersAtStop = await _context.Personnel
                 .Where(p => p.AssignedStopId == id)
                 .ToListAsync();
-
             foreach (var worker in workersAtStop)
             {
                 worker.AssignedStopId = null;
+                worker.IsAssigned = false; // Optionnel : remettre à false
             }
 
+            // 3. Supprimer l'arrêt
             _context.TrajectoryStops.Remove(stop);
             await _context.SaveChangesAsync();
 
+            // 4. Réordonner les arrêts restants de la même trajectoire
             var remainingStops = await _context.TrajectoryStops
                 .Where(s => s.TS_TrajectoryId == trajectoryId)
                 .OrderBy(s => s.TS_OrderIndex)
                 .ToListAsync();
-
             for (int i = 0; i < remainingStops.Count; i++)
             {
                 remainingStops[i].TS_OrderIndex = i + 1;
