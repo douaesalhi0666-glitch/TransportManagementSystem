@@ -107,11 +107,8 @@
         let currentMarkers = { persons: [], clusters: [], sews: [] };
         let currentTrajectoryId = 0;
         
-        // SEWS Maroc coordinates
         const SEWS_LAT = 34.2900;
         const SEWS_LNG = -6.5700;
-        
-        // Kenitra center coordinates
         const KENITRA_CENTER_LAT = 34.2610;
         const KENITRA_CENTER_LNG = -6.5800;
 
@@ -169,7 +166,6 @@
         const data = await response.json();
 
         if (!map) {
-        // Center map on Kenitra, Morocco (not France!)
         map = L.map('map').setView([KENITRA_CENTER_LAT, KENITRA_CENTER_LNG], 12);
         L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
         attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a> & CartoDB'
@@ -177,8 +173,6 @@
         }
 
         clearMap();
-            
-        // Always add SEWS marker at the start point
         addSEWSMarker();
 
         if (data.points && data.points.length > 0) {
@@ -196,19 +190,23 @@
         if (data.clusters && data.clusters.length > 0) {
         data.clusters.forEach((c, idx) => {
         const icon = L.divIcon({ html: (idx+1).toString(), iconSize: [30, 30], className: 'cluster-marker' });
-        const marker = L.marker([c.lat, c.lng], { icon })
-        .bindPopup('<strong>Point ' + (idx+1) + '</strong><br/>' + c.count + ' personnes<br/><button onclick="createStopForTrajectory(' + c.lat + ', ' + c.lng + ', \'Point ' + (idx+1) + '\')" class="btn btn-sm btn-success mt-2">✅ Creer un arret</button>');
+        let popupContent = '<strong>Point ' + (idx+1) + '</strong><br/>' + c.count + ' personnes';
+        if (c.exists) {
+        popupContent += '<br/><span class="text-muted">✅ Déjà existant</span>';
+        } else {
+        popupContent += '<br/><button onclick="createStopForTrajectory(' + c.lat + ', ' + c.lng + ', \'Point ' + (idx+1) + '\')" class="btn btn-sm btn-success mt-2">✅ Créer un arrêt</button>';
+        }
+        const marker = L.marker([c.lat, c.lng], { icon }).bindPopup(popupContent);
         marker.addTo(map);
         currentMarkers.clusters.push(marker);
         });
-                
-        // Fit bounds to show all markers including SEWS
+                    
         const allLatLngs = [[SEWS_LAT, SEWS_LNG]];
         data.clusters.forEach(c => allLatLngs.push([c.lat, c.lng]));
         data.points.forEach(p => allLatLngs.push([p.lat, p.lng]));
         const bounds = L.latLngBounds(allLatLngs);
         map.fitBounds(bounds);
-                
+                    
         document.getElementById('infoPanel').innerHTML = '<div class="alert alert-success">✅ ' + data.clusters.length + ' points suggeres. Cliquez sur un marqueur orange pour creer l\'arret.</div>';
         } else {
         document.getElementById('infoPanel').innerHTML = '<div class="alert alert-info">ℹ️ Aucun cluster genere (peu de points).</div>';
@@ -237,7 +235,8 @@
         alert("✅ Arret cree avec succes !");
         loadPickupPoints();
         } else {
-        alert("❌ Erreur lors de la creation.");
+        const errorData = await response.json();
+        alert("❌ Erreur : " + (errorData.message || "Erreur lors de la creation."));
         }
         } catch (err) {
         console.error(err);
@@ -248,7 +247,6 @@
         document.getElementById('btnCompute').addEventListener('click', loadPickupPoints);
         loadTrajectories();
         
-        // Initialize map immediately with Kenitra view even before trajectory selection
         setTimeout(() => {
         if (!map) {
         map = L.map('map').setView([KENITRA_CENTER_LAT, KENITRA_CENTER_LNG], 12);

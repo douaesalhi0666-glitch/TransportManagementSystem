@@ -379,6 +379,7 @@ namespace TransportManagementSystem.Controllers
             if (request.TrajectoryId <= 0)
                 return BadRequest("Trajectoire invalide");
 
+            // Récupérer les personnels avec coordonnées
             var personnelPoints = await _context.PersonnelTrajectoryAssignments
                 .Where(pta => pta.PTA_TrajectoryId == request.TrajectoryId && pta.PTA_Status == "Active")
                 .Select(pta => pta.Personnel)
@@ -413,6 +414,12 @@ namespace TransportManagementSystem.Controllers
 
             var clusters = KMeansDeterministic(personnelPoints, k);
 
+            // Récupérer les arrêts existants pour cette trajectoire
+            var existingStops = await _context.TrajectoryStops
+                .Where(s => s.TS_TrajectoryId == request.TrajectoryId)
+                .Select(s => new { s.TS_Latitude, s.TS_Longitude })
+                .ToListAsync();
+
             var uniqueClusters = new List<object>();
             var seenKeys = new HashSet<string>();
 
@@ -428,11 +435,24 @@ namespace TransportManagementSystem.Controllers
                     if (!seenKeys.Contains(key))
                     {
                         seenKeys.Add(key);
+
+                        // Vérifier si un arrêt existe déjà à moins de 100 mètres de ce centre
+                        bool exists = existingStops.Any(stop =>
+                        {
+                            double dist = CalculateDistanceOptimized(
+                                (double)centerLat,
+                                (double)centerLng,
+                                (double)stop.TS_Latitude,
+                                (double)stop.TS_Longitude);
+                            return dist < 0.1; // 100 mètres
+                        });
+
                         uniqueClusters.Add(new
                         {
                             lat = centerLat,
                             lng = centerLng,
-                            count = cluster.Points.Count
+                            count = cluster.Points.Count,
+                            exists = exists
                         });
                     }
                 }
@@ -514,7 +534,11 @@ namespace TransportManagementSystem.Controllers
         public async Task<IActionResult> CreateStopForTrajectory([FromBody] CreateTrajectoryStopModel model)
         {
             if (model.TrajectoryId == 0 || string.IsNullOrWhiteSpace(model.Name))
-                return BadRequest("Données invalides");
+                return BadRequest(new { success = false, message = "Données invalides" });
+
+            var trajectory = await _context.Trajectories.FindAsync(model.TrajectoryId);
+            if (trajectory == null)
+                return BadRequest(new { success = false, message = $"Trajectoire {model.TrajectoryId} inexistante" });
 
             int maxOrder = await _context.TrajectoryStops
                 .Where(s => s.TS_TrajectoryId == model.TrajectoryId)
@@ -528,11 +552,19 @@ namespace TransportManagementSystem.Controllers
                 TS_Latitude = model.Latitude,
                 TS_Longitude = model.Longitude
             };
-            _context.TrajectoryStops.Add(stop);
-            await _context.SaveChangesAsync();
-            return Ok(new { stopId = stop.TS_Id });
-        }
 
+            try
+            {
+                _context.TrajectoryStops.Add(stop);
+                await _context.SaveChangesAsync();
+                return Ok(new { success = true, stopId = stop.TS_Id });
+            }
+            catch (DbUpdateException ex)
+            {
+                var inner = ex.InnerException?.Message ?? ex.Message;
+                return StatusCode(500, new { success = false, message = inner });
+            }
+        }
         public IActionResult DefinePickupPoints()
         {
             return View();
