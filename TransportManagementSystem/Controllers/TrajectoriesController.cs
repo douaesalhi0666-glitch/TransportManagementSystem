@@ -245,10 +245,6 @@ namespace TransportManagementSystem.Controllers
             var driverPerformances = await _context.DriverPerformance_tbl.Where(p => p.Trajectory_Id == id).ToListAsync();
             if (driverPerformances.Any()) _context.DriverPerformance_tbl.RemoveRange(driverPerformances);
 
-            // 12. Delete RecommendationLog records
-            var recommendationLogs = await _context.RecommendationLogs.Where(r => r.Recommended_TrajectoryId == id).ToListAsync();
-            if (recommendationLogs.Any()) _context.RecommendationLogs.RemoveRange(recommendationLogs);
-
             // 13. Delete all stops
             var stops = await _context.TrajectoryStops.Where(s => s.TS_TrajectoryId == id).ToListAsync();
             if (stops.Any()) _context.TrajectoryStops.RemoveRange(stops);

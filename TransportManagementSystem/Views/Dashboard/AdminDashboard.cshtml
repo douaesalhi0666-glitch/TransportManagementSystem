@@ -4,13 +4,16 @@
 }
 
 <div class="container">
+    <!-- En-tête de bienvenue -->
     <div class="alert alert-success shadow-sm">
         <h2>👑 Bonjour, @ViewBag.UserName !</h2>
         <p>Vous êtes connecté en tant qu'<strong>Administrateur</strong> – Tableau de bord central</p>
     </div>
 
-    <!-- Gestion des ressources -->
-    <div class="row">
+    <!-- =============================== -->
+    <!-- 1. Gestion des ressources       -->
+    <!-- =============================== -->
+    <div class="row mb-4">
         <div class="col-md-3 mb-3">
             <div class="card text-white bg-primary h-100">
                 <div class="card-body">
@@ -60,8 +63,10 @@
         </div>
     </div>
 
-    <!-- Assignations -->
-    <div class="row">
+    <!-- =============================== -->
+    <!-- 2. Assignations principales      -->
+    <!-- =============================== -->
+    <div class="row mb-4">
         <div class="col-md-6 mb-3">
             <div class="card border-secondary h-100">
                 <div class="card-header bg-secondary text-white">
@@ -87,18 +92,11 @@
         </div>
     </div>
 
-    <!-- IA Recommandations et Gestion des points de ramassage -->
-    <div class="row">
-        <div class="col-md-6 mb-3">
-            <div class="card text-center border-0 shadow-sm" style="background: #f8f9fa;">
-                <div class="card-body">
-                    <span class="badge bg-primary px-3 py-2">🤖 IA Recommandations</span>
-                    <h6 class="mt-2">Optimisation intelligente des tournées et affectations</h6>
-                    <a href="/AIRecommendation/Index" class="btn btn-outline-primary btn-sm">Accéder aux recommandations →</a>
-                </div>
-            </div>
-        </div>
-        <div class="col-md-6 mb-3">
+    <!-- =============================== -->
+    <!-- 3. Gestion des points de ramassage -->
+    <!-- =============================== -->
+    <div class="row mb-4">
+        <div class="col-12">
             <div class="card text-center border-0 shadow-sm" style="background: #f8f9fa;">
                 <div class="card-body">
                     <span class="badge bg-dark px-3 py-2">📍 Gestion des points de ramassage</span>
@@ -109,8 +107,10 @@
         </div>
     </div>
 
-    <!-- NOUVEAU: Gestion des Fragments de Trajet -->
-    <div class="row mt-3">
+    <!-- =============================== -->
+    <!-- 4. Fragments de trajet           -->
+    <!-- =============================== -->
+    <div class="row mb-4">
         <div class="col-12">
             <div class="card border-info">
                 <div class="card-header bg-info text-white">
@@ -132,10 +132,12 @@
         </div>
     </div>
 
-    <!-- Déconnexion -->
+    <!-- =============================== -->
+    <!-- 5. Déconnexion                  -->
+    <!-- =============================== -->
     <div class="row mt-4 mb-5">
         <div class="col-12 text-center">
-            <a href="/Account/Logout" class="btn btn-danger">🔓 Se déconnecter</a>
+            <a href="/Account/Logout" class="btn btn-danger btn-lg">🔓 Se déconnecter</a>
         </div>
     </div>
 </div>

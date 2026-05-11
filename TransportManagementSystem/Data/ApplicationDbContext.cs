@@ -17,7 +17,6 @@ namespace TransportManagementSystem.Data
         public DbSet<Driver> Drivers { get; set; }
         public DbSet<Bus> Buses { get; set; }
         public DbSet<DriverPerformance> DriverPerformance_tbl { get; set; }
-        public DbSet<RecommendationLog> RecommendationLogs { get; set; }
         public DbSet<Trajectory> Trajectories { get; set; }
         public DbSet<Admin> Admin_tbl { get; set; }
         public DbSet<DriverMission> DriverMissions_tbl { get; set; }
