@@ -86,10 +86,20 @@ namespace TransportManagementSystem.Controllers
             return View();
         }
 
+        // ================================================
+        // GESTION DES NOTIFICATIONS (avec destinataire)
+        // ================================================
+
         [HttpGet]
         public IActionResult GetNotifications()
         {
             var notifications = GetNotificationsFromFile();
+            var personnelIdStr = HttpContext.Session.GetString("PersonnelId");
+            if (!string.IsNullOrEmpty(personnelIdStr))
+            {
+                var personnelId = long.Parse(personnelIdStr);
+                notifications = notifications.Where(n => n.PersonnelId == null || n.PersonnelId == personnelId).ToList();
+            }
             return Ok(notifications);
         }
 
@@ -104,12 +114,10 @@ namespace TransportManagementSystem.Controllers
         private List<Notification> GetNotificationsFromFile()
         {
             var filePath = GetNotificationFilePath();
-
             if (!System.IO.File.Exists(filePath))
             {
                 return new List<Notification>();
             }
-
             var json = System.IO.File.ReadAllText(filePath);
             return JsonSerializer.Deserialize<List<Notification>>(json) ?? new List<Notification>();
         }
@@ -119,7 +127,7 @@ namespace TransportManagementSystem.Controllers
             return Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "notifications.json");
         }
 
-        public static void AddNotification(string type, string title, string message)
+        public static void AddNotification(string type, string title, string message, long? personnelId = null)
         {
             try
             {
@@ -143,7 +151,8 @@ namespace TransportManagementSystem.Controllers
                     Type = type,
                     Title = title,
                     Message = message,
-                    Timestamp = DateTime.Now.ToString("dd/MM/yyyy HH:mm:ss")
+                    Timestamp = DateTime.Now.ToString("dd/MM/yyyy HH:mm:ss"),
+                    PersonnelId = personnelId
                 });
 
                 var newJson = JsonSerializer.Serialize(notifications);
@@ -209,36 +218,53 @@ namespace TransportManagementSystem.Controllers
             return Ok(requests);
         }
 
-        [HttpPost]
-        public async Task<IActionResult> ProcessMotorizationRequest(int requestId, bool approve, string? comment = null)
+        public class ProcessMotorizationRequestModel
         {
+            public int RequestId { get; set; }
+            public bool Approve { get; set; }
+            public string? Comment { get; set; }
+        }
+
+        [HttpPost]
+        public async Task<IActionResult> ProcessMotorizationRequest([FromBody] ProcessMotorizationRequestModel model)
+        {
+            if (model == null || model.RequestId <= 0)
+                return BadRequest(new { success = false, message = "Requête invalide." });
+
             var request = await _context.MotorizationRequests
                 .Include(r => r.Personnel)
-                .FirstOrDefaultAsync(r => r.Id == requestId);
-            if (request == null) return NotFound();
+                .FirstOrDefaultAsync(r => r.Id == model.RequestId);
+            if (request == null)
+                return NotFound(new { success = false, message = "Demande non trouvée." });
 
-            if (approve)
+            if (model.Approve)
             {
-                // Mettre à jour le statut motorisé
                 request.Personnel.IsMotorized = request.RequestedIsMotorized;
                 request.Status = "Approved";
 
-                // Désassigner complètement le personnel (car son mode de transport change)
+                // Désassigner complètement le personnel
                 request.Personnel.AssignedTrajectoryId = null;
                 request.Personnel.AssignedStopId = null;
                 request.Personnel.AssignedFragmentId = null;
                 request.Personnel.AssignedBusId = null;
                 request.Personnel.IsAssigned = false;
+
+                AddNotification("Motorization", "Demande acceptée",
+                    $"Votre demande pour devenir {(request.RequestedIsMotorized ? "motorisé" : "non motorisé")} a été acceptée par l'administrateur.",
+                    request.PersonnelId);
             }
             else
             {
                 request.Status = "Rejected";
+                AddNotification("Motorization", "Demande refusée",
+                    $"Votre demande pour devenir {(request.RequestedIsMotorized ? "motorisé" : "non motorisé")} a été refusée. Raison : {model.Comment ?? "non précisée"}.",
+                    request.PersonnelId);
             }
             request.ProcessedDate = DateTime.Now;
-            request.AdminComment = comment;
+            request.AdminComment = model.Comment;
 
             await _context.SaveChangesAsync();
-            return Ok(new { success = true, message = approve ? "Demande approuvée." : "Demande refusée." });
+            return Ok(new { success = true, message = model.Approve ? "Demande approuvée." : "Demande refusée." });
         }
     }
 
@@ -249,5 +275,6 @@ namespace TransportManagementSystem.Controllers
         public string Title { get; set; } = string.Empty;
         public string Message { get; set; } = string.Empty;
         public string Timestamp { get; set; } = string.Empty;
+        public long? PersonnelId { get; set; }
     }
 }
