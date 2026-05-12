@@ -533,21 +533,20 @@ namespace TransportManagementSystem.Controllers
         [HttpPost]
         public async Task<IActionResult> CreateStopForTrajectory([FromBody] CreateTrajectoryStopModel model)
         {
-            if (model.TrajectoryId == 0 || string.IsNullOrWhiteSpace(model.Name))
-                return BadRequest(new { success = false, message = "Données invalides" });
+            if (model == null || string.IsNullOrWhiteSpace(model.Name))
+            {
+                return BadRequest(new { success = false, message = "Nom invalide" });
+            }
 
-            var trajectory = await _context.Trajectories.FindAsync(model.TrajectoryId);
-            if (trajectory == null)
-                return BadRequest(new { success = false, message = $"Trajectoire {model.TrajectoryId} inexistante" });
-
+            // Accepter trajectoryId = 0 (point sans trajectoire)
             int maxOrder = await _context.TrajectoryStops
                 .Where(s => s.TS_TrajectoryId == model.TrajectoryId)
                 .MaxAsync(s => (int?)s.TS_OrderIndex) ?? 0;
 
             var stop = new TrajectoryStop
             {
-                TS_TrajectoryId = model.TrajectoryId,
-                TS_Name = model.Name,
+                TS_TrajectoryId = model.TrajectoryId, // Peut être 0
+                TS_Name = model.Name.Trim(),
                 TS_OrderIndex = maxOrder + 1,
                 TS_Latitude = model.Latitude,
                 TS_Longitude = model.Longitude
@@ -557,12 +556,11 @@ namespace TransportManagementSystem.Controllers
             {
                 _context.TrajectoryStops.Add(stop);
                 await _context.SaveChangesAsync();
-                return Ok(new { success = true, stopId = stop.TS_Id });
+                return Ok(new { success = true, stopId = stop.TS_Id, message = "Point créé avec succès" });
             }
-            catch (DbUpdateException ex)
+            catch (Exception ex)
             {
-                var inner = ex.InnerException?.Message ?? ex.Message;
-                return StatusCode(500, new { success = false, message = inner });
+                return StatusCode(500, new { success = false, message = ex.Message });
             }
         }
         public IActionResult DefinePickupPoints()

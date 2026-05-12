@@ -1,38 +1,58 @@
 ﻿@{
-    ViewData["Title"] = "Points de ramassage par IA";
+    ViewData["Title"] = "Points de ramassage - Définition manuelle";
     Layout = "~/Views/Shared/_Layout.cshtml";
 }
 
-<h2>Definition automatique des points de ramassage</h2>
-<p>Selectionnez une trajectoire, l'IA regroupe les positions du personnel en points d'arret optimises.</p>
-<p class="text-muted">📍 <strong>Point de depart commun : SEWS Maroc (Bir Rami, Kenitra)</strong> - Latitude: 34.2900, Longitude: -6.5700</p>
+<h2>📍 Définition manuelle des points de ramassage</h2>
+<p>Cliquez sur la carte pour ajouter un point de ramassage, ou utilisez l'IA pour suggérer des points.</p>
+<p class="text-muted">🏭 <strong>Point de départ commun : SEWS Maroc (Bir Rami, Kenitra)</strong> - Latitude: 34.2900, Longitude: -6.5700</p>
 
 <div class="row mb-3">
     <div class="col-md-4">
-        <div class="card">
+        <div class="card mb-3">
             <div class="card-header bg-primary text-white">
-                <h5>Parametres</h5>
+                <h5>➕ Ajouter un point manuellement</h5>
             </div>
             <div class="card-body">
                 <div class="mb-3">
-                    <label>Trajectoire</label>
-                    <select id="trajectorySelect" class="form-select">
-                        <option value="">-- Chargement...</option>
-                    </select>
+                    <label>Nom du point de ramassage</label>
+                    <input type="text" id="stopName" class="form-control" placeholder="Ex: Point 1 - Centre ville" />
                 </div>
                 <div class="mb-3">
-                    <label>Nombre de points de ramassage suggeres</label>
+                    <label>Latitude</label>
+                    <input type="text" id="stopLat" class="form-control" readonly placeholder="Cliquez sur la carte" />
+                </div>
+                <div class="mb-3">
+                    <label>Longitude</label>
+                    <input type="text" id="stopLng" class="form-control" readonly placeholder="Cliquez sur la carte" />
+                </div>
+                <button id="btnAddStop" class="btn btn-success w-100" disabled>
+                    📍 Ajouter ce point (cliquez sur la carte d'abord)
+                </button>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-header bg-info text-white">
+                <h5>🤖 Génération IA</h5>
+            </div>
+            <div class="card-body">
+                <div class="mb-3">
+                    <label>Nombre de points suggérés</label>
                     <input type="number" id="kValue" class="form-control" value="4" min="1" max="10" />
                 </div>
-                <button id="btnCompute" class="btn btn-success w-100">Calculer les points IA</button>
+                <button id="btnCompute" class="btn btn-primary w-100">
+                    🧠 Suggérer des points par IA
+                </button>
                 <div id="infoPanel" class="mt-3"></div>
             </div>
         </div>
     </div>
+    
     <div class="col-md-8">
         <div class="card">
-            <div class="card-header bg-info text-white">
-                <h5>Carte - 🏭 SEWS Depart (vert) | 👤 Personnels (bleus) | 🟠 Clusters suggeres (orange)</h5>
+            <div class="card-header bg-success text-white">
+                <h5>🗺️ Carte - Cliquez pour ajouter un point | 🏭 SEWS (vert) | 🟠 Points existants | 🟣 Points suggérés par IA</h5>
             </div>
             <div class="card-body">
                 <div id="map" style="height: 550px; border-radius: 10px;"></div>
@@ -41,21 +61,48 @@
     </div>
 </div>
 
+<div class="card mt-3">
+    <div class="card-header bg-secondary text-white">
+        <h5>📋 Liste des points de ramassage</h5>
+    </div>
+    <div class="card-body">
+        <div class="table-responsive">
+            <table class="table table-striped table-bordered" id="stopsTable">
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Nom</th>
+                        <th>Latitude</th>
+                        <th>Longitude</th>
+                        <th>Ordre</th>
+                        <th>Personnels</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody id="stopsTableBody">
+                    <tr><td colspan="7" class="text-center">Chargement......</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
 @section Scripts {
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 
     <style>
-        .cluster-marker {
-        background-color: #ff5722;
+        .existing-stop-marker {
+        background-color: #ff8c00;
         color: white;
         border-radius: 50%;
         text-align: center;
-        font-size: 14px;
+        font-size: 12px;
         font-weight: bold;
-        width: 30px;
-        height: 30px;
+        width: 28px;
+        height: 28px;
         display: flex;
         align-items: center;
         justify-content: center;
@@ -64,18 +111,26 @@
         cursor: pointer;
         }
 
-        .person-marker {
-        background-color: #1976d2;
+        .existing-stop-marker:hover {
+        transform: scale(1.1);
+        transition: transform 0.2s;
+        }
+
+        .suggested-marker {
+        background-color: #9b59b6;
         color: white;
         border-radius: 50%;
         text-align: center;
-        font-size: 10px;
-        width: 20px;
-        height: 20px;
+        font-size: 12px;
+        font-weight: bold;
+        width: 28px;
+        height: 28px;
         display: flex;
         align-items: center;
         justify-content: center;
-        border: 1px solid white;
+        border: 2px solid white;
+        box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+        cursor: pointer;
         }
 
         .sews-marker {
@@ -83,7 +138,7 @@
         color: white;
         border-radius: 50%;
         text-align: center;
-        font-size: 16px;
+        font-size: 18px;
         font-weight: bold;
         width: 40px;
         height: 40px;
@@ -93,15 +148,8 @@
         border: 3px solid white;
         box-shadow: 0 2px 8px rgba(0,0,0,0.3);
         cursor: pointer;
-        z-index: 1000;
-        }
-        
-        .sews-marker:hover {
-        transform: scale(1.1);
-        transition: transform 0.2s;
         }
 
-        /* Style pour la notification temporaire */
         .toast-notification {
         position: fixed;
         bottom: 20px;
@@ -121,19 +169,32 @@
         .toast-notification.error {
         background-color: #dc3545;
         }
+
+        .click-instruction {
+        position: absolute;
+        bottom: 20px;
+        left: 20px;
+        background: rgba(0,0,0,0.7);
+        color: white;
+        padding: 8px 12px;
+        border-radius: 5px;
+        font-size: 12px;
+        z-index: 1000;
+        pointer-events: none;
+        }
     </style>
 
     <script>
         let map;
-        let currentMarkers = { persons: [], clusters: [], sews: [] };
-        let currentTrajectoryId = 0;
+        let currentMarkers = { existing: [], suggested: [], sews: [] };
+        let tempClickLat = null;
+        let tempClickLng = null;
         
         const SEWS_LAT = 34.2900;
         const SEWS_LNG = -6.5700;
         const KENITRA_CENTER_LAT = 34.2610;
         const KENITRA_CENTER_LNG = -6.5800;
 
-        // Fonction pour afficher une notification temporaire
         function showNotification(message, isError = false) {
         const div = document.createElement('div');
         div.className = 'toast-notification' + (isError ? ' error' : '');
@@ -145,29 +206,128 @@
         }, 3000);
         }
 
-        async function loadTrajectories() {
-        const select = document.getElementById('trajectorySelect');
-        select.innerHTML = '<option value="">-- Selectionner --</option>';
+        async function loadExistingStops() {
         try {
-        const response = await fetch('/Clustering/GetTrajectoriesForPickup');
-        const trajectories = await response.json();
-        trajectories.forEach(t => {
-        const option = document.createElement('option');
-        option.value = t.trajectory_Id;
-        option.textContent = t.trajectory_Name + ' (' + t.trajectory_Code + ')';
-        select.appendChild(option);
+        // Récupérer TOUS les points (trajectoryId = 0)
+        const response = await fetch(`/Clustering/GetFilteredStops?trajectoryId=0`);
+        const stops = await response.json();
+                
+        if (currentMarkers.existing) {
+        currentMarkers.existing.forEach(m => map.removeLayer(m));
+        }
+        currentMarkers.existing = [];
+                
+        stops.forEach(stop => {
+        const icon = L.divIcon({
+        html: stop.tS_OrderIndex.toString(),
+        iconSize: [28, 28],
+        className: 'existing-stop-marker'
         });
+                    
+        const workerCount = stop.workers ? stop.workers.length : 0;
+        const popupContent = `
+        <strong>${stop.tS_Name}</strong><br>
+        Ordre: ${stop.tS_OrderIndex}<br>
+        👥 Personnels: ${workerCount}<br>
+        📍 ${stop.tS_Latitude}, ${stop.tS_Longitude}<br>
+        <button class="btn btn-sm btn-primary mt-2" onclick="editStop(${stop.tS_Id}, '${stop.tS_Name}', ${stop.tS_Latitude}, ${stop.tS_Longitude}, ${stop.tS_OrderIndex})">✏️ Modifier</button>
+        <button class="btn btn-sm btn-danger mt-2" onclick="deleteStop(${stop.tS_Id}, '${stop.tS_Name}')">🗑️ Supprimer</button>
+        <button class="btn btn-sm btn-success mt-2" onclick="assignWorkers(${stop.tS_Id}, '${stop.tS_Name}', 0)">👥 Assigner personnels</button>
+        `;
+                    
+        const marker = L.marker([stop.tS_Latitude, stop.tS_Longitude], { icon })
+        .bindPopup(popupContent);
+        marker.addTo(map);
+        currentMarkers.existing.push(marker);
+        });
+                
+        updateTable(stops);
         } catch (err) {
         console.error(err);
-        select.innerHTML = '<option value="">Erreur de chargement</option>';
         }
         }
 
-        function clearMap() {
-        if (currentMarkers.persons) currentMarkers.persons.forEach(m => map.removeLayer(m));
-        if (currentMarkers.clusters) currentMarkers.clusters.forEach(m => map.removeLayer(m));
-        if (currentMarkers.sews) currentMarkers.sews.forEach(m => map.removeLayer(m));
-        currentMarkers = { persons: [], clusters: [], sews: [] };
+        function updateTable(stops) {
+        const tbody = document.getElementById('stopsTableBody');
+        tbody.innerHTML = '';
+            
+        if (!stops || stops.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="7" class="text-center">Aucun point de ramassage</td></td>';
+        return;
+        }
+            
+        stops.forEach(stop => {
+        const row = tbody.insertRow();
+        const workerCount = stop.workers ? stop.workers.length : 0;
+        row.insertCell(0).innerHTML = stop.tS_Id;
+        row.insertCell(1).innerHTML = escapeHtml(stop.tS_Name);
+        row.insertCell(2).innerHTML = stop.tS_Latitude;
+        row.insertCell(3).innerHTML = stop.tS_Longitude;
+        row.insertCell(4).innerHTML = stop.tS_OrderIndex;
+        row.insertCell(5).innerHTML = `<span class="badge bg-info">${workerCount} personnels</span>`;
+        row.insertCell(6).innerHTML = `
+        <button class="btn btn-sm btn-primary" onclick="editStop(${stop.tS_Id}, '${escapeHtml(stop.tS_Name)}', ${stop.tS_Latitude}, ${stop.tS_Longitude}, ${stop.tS_OrderIndex})">✏️</button>
+        <button class="btn btn-sm btn-danger" onclick="deleteStop(${stop.tS_Id}, '${escapeHtml(stop.tS_Name)}')">🗑️</button>
+        <button class="btn btn-sm btn-success" onclick="assignWorkers(${stop.tS_Id}, '${escapeHtml(stop.tS_Name)}', 0)">👥</button>
+        `;
+        });
+        }
+
+        function escapeHtml(text) {
+        if (!text) return '';
+        return text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+        }
+
+        window.editStop = async function(id, name, lat, lng, order) {
+        const newName = prompt("Nouveau nom:", name);
+        if (!newName) return;
+        const newOrder = prompt("Nouvel ordre:", order);
+        if (!newOrder) return;
+            
+        try {
+        const response = await fetch('/Clustering/UpdateStop', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: id, name: newName, latitude: lat, longitude: lng, orderIndex: parseInt(newOrder) })
+        });
+        if (response.ok) {
+        showNotification("✅ Point modifié avec succès !");
+        loadExistingStops();
+        } else {
+        showNotification("❌ Erreur lors de la modification.", true);
+        }
+        } catch (err) {
+        showNotification("❌ Erreur réseau.", true);
+        }
+        };
+
+        window.deleteStop = async function(id, name) {
+        if (confirm(`Supprimer le point "${name}" ?`)) {
+        try {
+        const response = await fetch(`/Clustering/DeleteStop?id=${id}`, { method: 'DELETE' });
+        if (response.ok) {
+        showNotification(`✅ Point "${name}" supprimé !`);
+        loadExistingStops();
+        } else {
+        const errorData = await response.json();
+        showNotification("❌ " + (errorData.message || "Erreur lors de la suppression."), true);
+        }
+        } catch (err) {
+        showNotification("❌ Erreur réseau.", true);
+        }
+        }
+        };
+
+        window.assignWorkers = function(stopId, stopName, trajectoryId) {
+        // Rediriger vers DispatcherView
+        window.location.href = `/Clustering/DispatcherView?stopId=${stopId}&trajectoryId=${trajectoryId}`;
+        };
+
+        function clearSuggestedMarkers() {
+        if (currentMarkers.suggested) {
+        currentMarkers.suggested.forEach(m => map.removeLayer(m));
+        }
+        currentMarkers.suggested = [];
         }
 
         function addSEWSMarker() {
@@ -177,117 +337,144 @@
         className: 'sews-marker'
         });
         const marker = L.marker([SEWS_LAT, SEWS_LNG], { icon: sewsIcon })
-        .bindPopup('<strong>🏭 SEWS Maroc</strong><br>Lotissement Al Menzeh TF 9547<br>Bir Rami Z.I., Kenitra<br><em>Point de depart de tous les trajets</em>');
+        .bindPopup('<strong>🏭 SEWS Maroc</strong><br>Point de départ');
         marker.addTo(map);
         currentMarkers.sews.push(marker);
         }
 
         async function loadPickupPoints() {
-        const trajectoryId = document.getElementById('trajectorySelect').value;
-        if (!trajectoryId) {
-        showNotification("Veuillez selectionner une trajectoire.", true);
-        return;
-        }
         const k = document.getElementById('kValue').value;
-        currentTrajectoryId = parseInt(trajectoryId);
-
+            
         const response = await fetch('/Clustering/SuggestPickupPoints', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ trajectoryId: currentTrajectoryId, numberOfClusters: parseInt(k) })
+        body: JSON.stringify({ trajectoryId: 0, numberOfClusters: parseInt(k) })
         });
         const data = await response.json();
 
-        if (!map) {
-        map = L.map('map').setView([KENITRA_CENTER_LAT, KENITRA_CENTER_LNG], 12);
-        L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
-        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a> & CartoDB'
-        }).addTo(map);
-        }
-
-        clearMap();
-        addSEWSMarker();
-
-        if (data.points && data.points.length > 0) {
-        data.points.forEach(p => {
-        const icon = L.divIcon({ html: '👤', iconSize: [20, 20], className: 'person-marker' });
-        const marker = L.marker([p.lat, p.lng], { icon }).bindPopup('👤 Personnel');
-        marker.addTo(map);
-        currentMarkers.persons.push(marker);
-        });
-        } else {
-        document.getElementById('infoPanel').innerHTML = '<div class="alert alert-warning">Aucun personnel avec coordonnees sur cette trajectoire.</div>';
-        return;
-        }
+        clearSuggestedMarkers();
 
         if (data.clusters && data.clusters.length > 0) {
         data.clusters.forEach((c, idx) => {
-        const icon = L.divIcon({ html: (idx+1).toString(), iconSize: [30, 30], className: 'cluster-marker' });
-        let popupContent = '<strong>Point ' + (idx+1) + '</strong><br/>' + c.count + ' personnes';
+        const icon = L.divIcon({
+        html: (idx+1).toString(),
+        iconSize: [28, 28],
+        className: 'suggested-marker'
+        });
+        let popupContent = `<strong>Point suggéré ${idx+1}</strong><br>${c.count} personnes proches<br>`;
         if (c.exists) {
-        popupContent += '<br/><span class="text-muted">✅ Déjà existant</span>';
+        popupContent += '<span class="text-muted">✅ Existe déjà</span>';
         } else {
-        popupContent += '<br/><button onclick="createStopForTrajectory(' + c.lat + ', ' + c.lng + ', \'Point ' + (idx+1) + '\')" class="btn btn-sm btn-success mt-2">✅ Créer un arrêt</button>';
+        popupContent += `<button onclick="createSuggestedStop(${c.lat}, ${c.lng}, 'Point ${idx+1}')" class="btn btn-sm btn-success mt-2">✅ Créer cet arrêt</button>`;
         }
         const marker = L.marker([c.lat, c.lng], { icon }).bindPopup(popupContent);
         marker.addTo(map);
-        currentMarkers.clusters.push(marker);
+        currentMarkers.suggested.push(marker);
         });
-                    
-        const allLatLngs = [[SEWS_LAT, SEWS_LNG]];
-        data.clusters.forEach(c => allLatLngs.push([c.lat, c.lng]));
-        data.points.forEach(p => allLatLngs.push([p.lat, p.lng]));
-        const bounds = L.latLngBounds(allLatLngs);
-        map.fitBounds(bounds);
-                    
-        document.getElementById('infoPanel').innerHTML = '<div class="alert alert-success">✅ ' + data.clusters.length + ' points suggeres. Cliquez sur un marqueur orange pour creer l\'arret.</div>';
+                
+        document.getElementById('infoPanel').innerHTML = `<div class="alert alert-success">✅ ${data.clusters.length} points suggérés. Cliquez sur un marqueur violet pour créer l'arrêt.</div>`;
         } else {
-        document.getElementById('infoPanel').innerHTML = '<div class="alert alert-info">ℹ️ Aucun cluster genere (peu de points).</div>';
+        document.getElementById('infoPanel').innerHTML = '<div class="alert alert-warning">Aucun point suggéré.</div>';
         }
         }
 
-        window.createStopForTrajectory = async (lat, lng, defaultName) => {
-        if (!currentTrajectoryId) {
-        showNotification("Aucune trajectoire selectionnee.", true);
+        window.createSuggestedStop = async (lat, lng, defaultName) => {
+        const name = prompt("Nom du point de ramassage:", defaultName);
+        if (!name) return;
+            
+        try {
+        const response = await fetch('/Clustering/CreateStopForTrajectory', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ trajectoryId: 0, name: name, latitude: lat, longitude: lng })
+        });
+        if (response.ok) {
+        showNotification("✅ Point créé avec succès !");
+        loadExistingStops();
+        loadPickupPoints();
+        } else {
+        showNotification("❌ Erreur lors de la création.", true);
+        }
+        } catch (err) {
+        showNotification("❌ Erreur réseau.", true);
+        }
+        };
+
+        async function addManualStop() {
+        const name = document.getElementById('stopName').value;
+        const lat = document.getElementById('stopLat').value;
+        const lng = document.getElementById('stopLng').value;
+            
+        if (!name) {
+        showNotification("Entrez un nom pour le point.", true);
         return;
         }
-        const name = prompt("Nom de l'arret :", defaultName);
-        if (!name) return;
+        if (!lat || !lng) {
+        showNotification("Cliquez d'abord sur la carte pour placer le point.", true);
+        return;
+        }
+            
         try {
         const response = await fetch('/Clustering/CreateStopForTrajectory', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-        trajectoryId: currentTrajectoryId,
+        trajectoryId: 0,
         name: name,
-        latitude: lat,
-        longitude: lng
+        latitude: parseFloat(lat),
+        longitude: parseFloat(lng)
         })
         });
         if (response.ok) {
-        showNotification("✅ Arrêt créé avec succès !");
-        loadPickupPoints(); // Recharge les points pour mettre à jour l'état "exists"
+        showNotification("✅ Point ajouté manuellement !");
+        document.getElementById('stopName').value = '';
+        document.getElementById('stopLat').value = '';
+        document.getElementById('stopLng').value = '';
+        loadExistingStops();
         } else {
-        const errorData = await response.json();
-        showNotification("❌ Erreur : " + (errorData.message || "Erreur lors de la création."), true);
+        const error = await response.json();
+        showNotification("❌ " + (error.message || "Erreur lors de l'ajout."), true);
         }
         } catch (err) {
-        console.error(err);
         showNotification("❌ Erreur réseau.", true);
         }
-        };
+        }
 
-        document.getElementById('btnCompute').addEventListener('click', loadPickupPoints);
-        loadTrajectories();
-        
-        setTimeout(() => {
-        if (!map) {
+        // Initialisation de la carte
+        function initMap() {
         map = L.map('map').setView([KENITRA_CENTER_LAT, KENITRA_CENTER_LNG], 12);
         L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
         attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a> & CartoDB'
         }).addTo(map);
+            
         addSEWSMarker();
+            
+        const instructionDiv = document.createElement('div');
+        instructionDiv.className = 'click-instruction';
+        instructionDiv.innerHTML = '📍 Cliquez sur la carte pour ajouter un point de ramassage';
+        document.getElementById('map').appendChild(instructionDiv);
+            
+        map.on('click', function(e) {
+        const lat = e.latlng.lat.toFixed(6);
+        const lng = e.latlng.lng.toFixed(6);
+        document.getElementById('stopLat').value = lat;
+        document.getElementById('stopLng').value = lng;
+        document.getElementById('btnAddStop').disabled = false;
+        document.getElementById('btnAddStop').innerHTML = '📌 Ajouter ce point';
+        showNotification(`Position sélectionnée: ${lat}, ${lng}`);
+                
+        if (window.tempMarker) map.removeLayer(window.tempMarker);
+        const tempIcon = L.divIcon({ html: '➕', iconSize: [24, 24], className: 'existing-stop-marker' });
+        window.tempMarker = L.marker([lat, lng], { icon: tempIcon })
+        .bindPopup('Nouveau point à ajouter')
+        .addTo(map);
+        });
         }
-        }, 100);
+
+        document.getElementById('btnAddStop').addEventListener('click', addManualStop);
+        document.getElementById('btnCompute').addEventListener('click', loadPickupPoints);
+        
+        initMap();
+        loadExistingStops();
     </script>
 }
