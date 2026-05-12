@@ -79,9 +79,6 @@ namespace TransportManagementSystem.Models
         [Display(Name = "Trajet assigné")]
         public int? AssignedTrajectoryId { get; set; }
 
-        [Display(Name = "Fragment assigné")]
-        public int? AssignedFragmentId { get; set; }
-
         [Display(Name = "Bus assigné")]
         public long? AssignedBusId { get; set; }
 
@@ -91,16 +88,12 @@ namespace TransportManagementSystem.Models
         [Display(Name = "Assigné")]
         public bool IsAssigned { get; set; }
 
-        // ========== NOUVEAU : MOTORISÉ OU NON ==========
         [Display(Name = "Motorisé")]
         public bool IsMotorized { get; set; } = false;
 
         // ========== NAVIGATION PROPERTIES ==========
         [ForeignKey("AssignedTrajectoryId")]
         public virtual Trajectory? AssignedTrajectory { get; set; }
-
-        [ForeignKey("AssignedFragmentId")]
-        public virtual TrajectoryFragment? AssignedFragment { get; set; }
 
         [ForeignKey("AssignedBusId")]
         public virtual Bus? AssignedBus { get; set; }

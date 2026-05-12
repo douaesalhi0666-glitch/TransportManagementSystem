@@ -11,7 +11,7 @@ namespace TransportManagementSystem.Data
         }
 
         // ================================================
-        // ENTITÉS EXISTANTES
+        // ENTITÉS
         // ================================================
         public DbSet<Personnel> Personnel { get; set; }
         public DbSet<Driver> Drivers { get; set; }
@@ -26,26 +26,15 @@ namespace TransportManagementSystem.Data
         public DbSet<Alert> Alerts { get; set; }
         public DbSet<PersonnelTrajectoryAssignment> PersonnelTrajectoryAssignments { get; set; }
         public DbSet<SuggestedStop> SuggestedStops { get; set; }
-
-        // ================================================
-        // NOUVELLES ENTITÉS POUR LES FRAGMENTS
-        // ================================================
-        public DbSet<TrajectoryFragment> TrajectoryFragments { get; set; }
-        public DbSet<FragmentStop> FragmentStops { get; set; }
-        public DbSet<BusFragmentAssignment> BusFragmentAssignments { get; set; }
-        public DbSet<DriverFragmentAssignment> DriverFragmentAssignments { get; set; }
-
-        // ================================================
-        // NOUVELLE ENTITÉ POUR LES DEMANDES DE MOTORISATION
-        // ================================================
         public DbSet<MotorizationRequest> MotorizationRequests { get; set; }
+        //public DbSet<RecommendationLog> RecommendationLogs { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             base.OnModelCreating(modelBuilder);
 
             // ================================================
-            // CONFIGURATIONS DES TABLES EXISTANTES
+            // CONFIGURATIONS DES TABLES
             // ================================================
 
             modelBuilder.Entity<Personnel>(entity =>
@@ -108,75 +97,6 @@ namespace TransportManagementSystem.Data
             });
 
             // ================================================
-            // CONFIGURATIONS DES NOUVELLES TABLES FRAGMENTS
-            // ================================================
-
-            modelBuilder.Entity<TrajectoryFragment>(entity =>
-            {
-                entity.ToTable("TrajectoryFragment_tbl", "Transport");
-                entity.HasKey(e => e.Fragment_Id);
-                entity.Property(e => e.Fragment_Code).HasMaxLength(50).IsRequired();
-                entity.Property(e => e.Fragment_Name).HasMaxLength(100).IsRequired();
-                entity.Property(e => e.Status).HasMaxLength(20).HasDefaultValue("Active");
-                entity.Property(e => e.Created_At).HasDefaultValueSql("GETDATE()");
-
-                entity.HasOne(e => e.Trajectory)
-                    .WithMany()
-                    .HasForeignKey(e => e.Trajectory_Id)
-                    .OnDelete(DeleteBehavior.Cascade);
-            });
-
-            modelBuilder.Entity<FragmentStop>(entity =>
-            {
-                entity.ToTable("FragmentStop_tbl", "Transport");
-                entity.HasKey(e => e.Stop_Id);
-
-                entity.HasOne(e => e.Fragment)
-                    .WithMany(e => e.FragmentStops)
-                    .HasForeignKey(e => e.Fragment_Id)
-                    .OnDelete(DeleteBehavior.Cascade);
-
-                entity.HasOne(e => e.TrajectoryStop)
-                    .WithMany()
-                    .HasForeignKey(e => e.TS_Id)
-                    .OnDelete(DeleteBehavior.Restrict);
-            });
-
-            modelBuilder.Entity<BusFragmentAssignment>(entity =>
-            {
-                entity.ToTable("BusFragmentAssignment_tbl", "Assignment");
-                entity.HasKey(e => e.Assignment_Id);
-                entity.Property(e => e.Status).HasMaxLength(20).HasDefaultValue("Active");
-
-                entity.HasOne(e => e.Bus)
-                    .WithMany()
-                    .HasForeignKey(e => e.Bus_Id)
-                    .OnDelete(DeleteBehavior.Restrict);
-
-                entity.HasOne(e => e.Fragment)
-                    .WithMany()
-                    .HasForeignKey(e => e.Fragment_Id)
-                    .OnDelete(DeleteBehavior.Cascade);
-            });
-
-            modelBuilder.Entity<DriverFragmentAssignment>(entity =>
-            {
-                entity.ToTable("DriverFragmentAssignment_tbl", "Assignment");
-                entity.HasKey(e => e.Assignment_Id);
-                entity.Property(e => e.Status).HasMaxLength(20).HasDefaultValue("Active");
-
-                entity.HasOne(e => e.Driver)
-                    .WithMany()
-                    .HasForeignKey(e => e.Driver_Id)
-                    .OnDelete(DeleteBehavior.Restrict);
-
-                entity.HasOne(e => e.Fragment)
-                    .WithMany()
-                    .HasForeignKey(e => e.Fragment_Id)
-                    .OnDelete(DeleteBehavior.Cascade);
-            });
-
-            // ================================================
             // CONFIGURATION DES DEMANDES DE MOTORISATION
             // ================================================
             modelBuilder.Entity<MotorizationRequest>(entity =>
@@ -190,8 +110,14 @@ namespace TransportManagementSystem.Data
                       .OnDelete(DeleteBehavior.Restrict);
             });
 
+            modelBuilder.Entity<RecommendationLog>(entity =>
+            {
+                entity.ToTable("RecommendationLog_tbl", "Service");
+                entity.HasKey(e => e.LogId);
+            });
+
             // ================================================
-            // RELATIONS EXISTANTES
+            // RELATIONS
             // ================================================
 
             modelBuilder.Entity<Driver>()
