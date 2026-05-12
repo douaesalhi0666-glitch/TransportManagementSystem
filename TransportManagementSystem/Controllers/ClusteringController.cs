@@ -162,12 +162,11 @@ namespace TransportManagementSystem.Controllers
             });
         }
 
-        // ========== WORKER ASSIGNMENT METHODS - CORRIGÉS ==========
+        // ========== WORKER ASSIGNMENT METHODS ==========
 
         [HttpGet]
         public async Task<IActionResult> GetUnassignedWorkers()
         {
-            // Récupérer TOUS les personnels non assignés (sans filtre de trajectoire)
             var workers = await _context.Personnel
                 .Where(p => p.IsAssigned == false
                             && p.AssignedStopId == null
@@ -245,7 +244,6 @@ namespace TransportManagementSystem.Controllers
                 if (stop == null)
                     return BadRequest(new { success = false, message = "Arrêt non trouvé" });
 
-                // Récupérer TOUS les personnels non assignés
                 var unassignedWorkers = await _context.Personnel
                     .Where(p => p.IsAssigned == false
                                 && p.AssignedStopId == null
@@ -269,7 +267,7 @@ namespace TransportManagementSystem.Controllers
                         (double)worker.Personnel_Longitude!.Value
                     );
 
-                    if (distance <= 5.0) // 5 km
+                    if (distance <= 5.0)
                     {
                         worker.AssignedStopId = stopId;
                         worker.IsAssigned = true;
@@ -304,7 +302,6 @@ namespace TransportManagementSystem.Controllers
                 if (!stops.Any())
                     return BadRequest(new { success = false, message = "Aucun arrêt trouvé pour cette trajectoire" });
 
-                // Récupérer TOUS les personnels non assignés
                 var unassignedWorkers = await _context.Personnel
                     .Where(p => p.IsAssigned == false
                                 && p.AssignedStopId == null
@@ -375,6 +372,115 @@ namespace TransportManagementSystem.Controllers
         }
 
         // ================================================
+        // DELETE AND UPDATE STOP METHODS
+        // ================================================
+
+        [HttpDelete]
+        public async Task<IActionResult> DeleteStop(int id)
+        {
+            try
+            {
+                var stop = await _context.TrajectoryStops.FindAsync(id);
+                if (stop == null)
+                    return NotFound(new { success = false, message = "Arrêt non trouvé" });
+
+                int trajectoryId = stop.TS_TrajectoryId;
+
+                var workersAtStop = await _context.Personnel
+                    .Where(p => p.AssignedStopId == id)
+                    .ToListAsync();
+                foreach (var worker in workersAtStop)
+                {
+                    worker.AssignedStopId = null;
+                    worker.IsAssigned = false;
+                }
+
+                _context.TrajectoryStops.Remove(stop);
+                await _context.SaveChangesAsync();
+
+                var remainingStops = await _context.TrajectoryStops
+                    .Where(s => s.TS_TrajectoryId == trajectoryId)
+                    .OrderBy(s => s.TS_OrderIndex)
+                    .ToListAsync();
+                for (int i = 0; i < remainingStops.Count; i++)
+                {
+                    remainingStops[i].TS_OrderIndex = i + 1;
+                }
+                await _context.SaveChangesAsync();
+
+                return Ok(new { success = true, message = "Arrêt supprimé avec succès" });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { success = false, message = ex.InnerException?.Message ?? ex.Message });
+            }
+        }
+
+        [HttpPost]
+        public async Task<IActionResult> UpdateStop([FromBody] UpdateStopModel model)
+        {
+            if (model == null || model.Id <= 0)
+                return BadRequest(new { success = false, message = "Données invalides" });
+
+            var stop = await _context.TrajectoryStops.FindAsync(model.Id);
+            if (stop == null)
+                return NotFound(new { success = false, message = "Arrêt non trouvé" });
+
+            stop.TS_Name = model.Name;
+            stop.TS_Latitude = model.Latitude;
+            stop.TS_Longitude = model.Longitude;
+            stop.TS_OrderIndex = model.OrderIndex;
+
+            await _context.SaveChangesAsync();
+
+            return Ok(new { success = true, message = "Arrêt modifié avec succès" });
+        }
+
+        [HttpPost]
+        public async Task<IActionResult> CreateStopForTrajectory([FromBody] CreateTrajectoryStopModel model)
+        {
+            if (model == null || string.IsNullOrWhiteSpace(model.Name))
+            {
+                return BadRequest(new { success = false, message = "Nom invalide" });
+            }
+
+            try
+            {
+                int maxOrder = await _context.TrajectoryStops
+                    .Where(s => s.TS_TrajectoryId == model.TrajectoryId)
+                    .MaxAsync(s => (int?)s.TS_OrderIndex) ?? 0;
+
+                var stop = new TrajectoryStop
+                {
+                    TS_TrajectoryId = model.TrajectoryId,
+                    TS_Name = model.Name.Trim(),
+                    TS_OrderIndex = maxOrder + 1,
+                    TS_Latitude = model.Latitude,
+                    TS_Longitude = model.Longitude
+                };
+
+                _context.TrajectoryStops.Add(stop);
+                await _context.SaveChangesAsync();
+
+                return Ok(new { success = true, stopId = stop.TS_Id, message = "Point créé avec succès" });
+            }
+            catch (DbUpdateException ex)
+            {
+                var innerException = ex.InnerException?.Message ?? ex.Message;
+                return StatusCode(500, new { success = false, message = innerException });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { success = false, message = ex.Message });
+            }
+        }
+
+        public IActionResult DefinePickupPoints()
+        {
+            return View();
+        }
+
+        // ================================================
         // CLUSTERING FOR PICKUP POINTS
         // ================================================
 
@@ -394,7 +500,6 @@ namespace TransportManagementSystem.Controllers
             if (request.TrajectoryId <= 0)
                 return BadRequest("Trajectoire invalide");
 
-            // Récupérer les personnels avec coordonnées (sans filtre de trajectoire)
             var personnelPoints = await _context.Personnel
                 .Where(p => p.Personnel_Status == "Active"
                             && p.Personnel_Latitude != null
@@ -528,127 +633,6 @@ namespace TransportManagementSystem.Controllers
 
             return clusters.Where(c => c.Points.Count > 0).ToList();
         }
-
-        [HttpPost]
-        public async Task<IActionResult> CreateStopForTrajectory([FromBody] CreateTrajectoryStopModel model)
-        {
-            if (model == null || string.IsNullOrWhiteSpace(model.Name))
-            {
-                return BadRequest(new { success = false, message = "Nom invalide" });
-            }
-
-            try
-            {
-                int maxOrder = await _context.TrajectoryStops
-                    .Where(s => s.TS_TrajectoryId == model.TrajectoryId)
-                    .MaxAsync(s => (int?)s.TS_OrderIndex) ?? 0;
-
-                var stop = new TrajectoryStop
-                {
-                    TS_TrajectoryId = model.TrajectoryId,
-                    TS_Name = model.Name.Trim(),
-                    TS_OrderIndex = maxOrder + 1,
-                    TS_Latitude = model.Latitude,
-                    TS_Longitude = model.Longitude
-                };
-
-                _context.TrajectoryStops.Add(stop);
-                await _context.SaveChangesAsync();
-
-                return Ok(new { success = true, stopId = stop.TS_Id, message = "Point créé avec succès" });
-            }
-            catch (DbUpdateException ex)
-            {
-                var innerException = ex.InnerException?.Message ?? ex.Message;
-                return StatusCode(500, new { success = false, message = innerException });
-            }
-            catch (Exception ex)
-            {
-                return StatusCode(500, new { success = false, message = ex.Message });
-            }
-        }
-
-        public IActionResult DefinePickupPoints()
-        {
-            return View();
-        }
-
-        // ================================================
-        // DELETE AND UPDATE STOP METHODS
-        // ================================================
-
-        [HttpDelete]
-        public async Task<IActionResult> DeleteStop(int id)
-        {
-            try
-            {
-                var stop = await _context.TrajectoryStops.FindAsync(id);
-                if (stop == null)
-                    return NotFound(new { success = false, message = "Arrêt non trouvé" });
-
-                int trajectoryId = stop.TS_TrajectoryId;
-
-                var fragmentStops = await _context.FragmentStops
-                    .Where(fs => fs.TS_Id == id)
-                    .ToListAsync();
-                if (fragmentStops.Any())
-                {
-                    _context.FragmentStops.RemoveRange(fragmentStops);
-                }
-
-                var workersAtStop = await _context.Personnel
-                    .Where(p => p.AssignedStopId == id)
-                    .ToListAsync();
-                foreach (var worker in workersAtStop)
-                {
-                    worker.AssignedStopId = null;
-                    worker.IsAssigned = false;
-                }
-
-                _context.TrajectoryStops.Remove(stop);
-                await _context.SaveChangesAsync();
-
-                var remainingStops = await _context.TrajectoryStops
-                    .Where(s => s.TS_TrajectoryId == trajectoryId)
-                    .OrderBy(s => s.TS_OrderIndex)
-                    .ToListAsync();
-                for (int i = 0; i < remainingStops.Count; i++)
-                {
-                    remainingStops[i].TS_OrderIndex = i + 1;
-                }
-                await _context.SaveChangesAsync();
-
-                return Ok(new { success = true, message = "Arrêt supprimé avec succès" });
-            }
-            catch (Exception ex)
-            {
-                return StatusCode(500, new { success = false, message = ex.InnerException?.Message ?? ex.Message });
-            }
-        }
-
-        [HttpPost]
-        public async Task<IActionResult> UpdateStop([FromBody] UpdateStopModel model)
-        {
-            if (model == null || model.Id <= 0)
-                return BadRequest(new { success = false, message = "Données invalides" });
-
-            var stop = await _context.TrajectoryStops.FindAsync(model.Id);
-            if (stop == null)
-                return NotFound(new { success = false, message = "Arrêt non trouvé" });
-
-            stop.TS_Name = model.Name;
-            stop.TS_Latitude = model.Latitude;
-            stop.TS_Longitude = model.Longitude;
-            stop.TS_OrderIndex = model.OrderIndex;
-
-            await _context.SaveChangesAsync();
-
-            return Ok(new { success = true, message = "Arrêt modifié avec succès" });
-        }
-
-        // ================================================
-        // AI POWERED ROUTE OPTIMIZATION
-        // ================================================
 
         [HttpPost]
         public async Task<IActionResult> GetOptimizedRoute([FromBody] OptimizedRouteRequest request)

@@ -110,11 +110,11 @@ namespace TransportManagementSystem.Data
                       .OnDelete(DeleteBehavior.Restrict);
             });
 
-            modelBuilder.Entity<RecommendationLog>(entity =>
+            /*modelBuilder.Entity<RecommendationLog>(entity =>
             {
                 entity.ToTable("RecommendationLog_tbl", "Service");
                 entity.HasKey(e => e.LogId);
-            });
+            });*/
 
             // ================================================
             // RELATIONS
