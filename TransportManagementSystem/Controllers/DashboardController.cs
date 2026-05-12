@@ -86,10 +86,6 @@ namespace TransportManagementSystem.Controllers
             return View();
         }
 
-        // ================================================
-        // GESTION DES NOTIFICATIONS (avec destinataire)
-        // ================================================
-
         [HttpGet]
         public IActionResult GetNotifications()
         {
@@ -164,10 +160,6 @@ namespace TransportManagementSystem.Controllers
             }
         }
 
-        // ================================================
-        // DEMANDES DE MOTORISATION
-        // ================================================
-
         [HttpPost]
         public async Task<IActionResult> RequestMotorizationChange(bool isMotorized)
         {
@@ -180,7 +172,6 @@ namespace TransportManagementSystem.Controllers
             if (personnel == null)
                 return NotFound(new { success = false, message = "Personnel non trouvé" });
 
-            // Vérifier si une demande est déjà en attente
             var existing = await _context.MotorizationRequests
                 .FirstOrDefaultAsync(r => r.PersonnelId == personnelId && r.Status == "Pending");
             if (existing != null)
@@ -245,7 +236,6 @@ namespace TransportManagementSystem.Controllers
                 // Désassigner complètement le personnel
                 request.Personnel.AssignedTrajectoryId = null;
                 request.Personnel.AssignedStopId = null;
-                request.Personnel.AssignedFragmentId = null;
                 request.Personnel.AssignedBusId = null;
                 request.Personnel.IsAssigned = false;
 
