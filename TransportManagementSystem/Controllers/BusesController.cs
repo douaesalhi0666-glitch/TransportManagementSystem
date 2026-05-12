@@ -306,7 +306,18 @@ namespace TransportManagementSystem.Controllers
             if (personnel == null)
                 return NotFound("Personnel non trouvé");
 
+            // ✅ AJOUTEZ CECI
+            if (personnel.IsMotorized)
+            {
+                return Ok(new
+                {
+                    isMotorized = true,
+                    message = "Vous êtes motorisé"
+                });
+            }
+
             Trajectory? trajectory = personnel.AssignedTrajectory;
+ 
             TrajectoryStop? stop = null;
             string stopName = "Non défini";
             TrajectoryFragment? personalFragment = personnel.AssignedFragment;
