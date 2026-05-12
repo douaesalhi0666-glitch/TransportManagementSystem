@@ -286,7 +286,7 @@ namespace TransportManagementSystem.Controllers
         }
 
         // =================================================================
-        // MÉTHODE POUR LE DASHBOARD PERSONNEL (avec fragment)
+        // MÉTHODE POUR LE DASHBOARD PERSONNEL (avec fragment et isMotorized)
         // =================================================================
         [HttpGet]
         public async Task<IActionResult> GetPersonnelDashboardData()
@@ -340,7 +340,6 @@ namespace TransportManagementSystem.Controllers
                 if (stop != null)
                 {
                     stopName = stop.TS_Name;
-                    // Si la trajectoire n'est pas encore définie, on la prend depuis l'arrêt
                     if (trajectory == null && stop != null)
                     {
                         trajectory = await _context.Trajectories.FindAsync(stop.TS_TrajectoryId);
@@ -506,7 +505,8 @@ namespace TransportManagementSystem.Controllers
                     displayFragment.Total_Workers,
                     trajectoryName = trajectory.Trajectory_Name
                 } : null,
-                fragmentStops = fragmentStops
+                fragmentStops = fragmentStops,
+                isMotorized = personnel.IsMotorized
             });
         }
 

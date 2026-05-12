@@ -106,7 +106,8 @@ namespace TransportManagementSystem.Controllers
                 personnel.HomeAddress,
                 personnel.IsAssigned,
                 AssignedTrajectoryId = personnel.AssignedTrajectoryId,
-                AssignedBusId = personnel.AssignedBusId
+                AssignedBusId = personnel.AssignedBusId,
+                IsMotorized = personnel.IsMotorized
             });
         }
 
@@ -138,6 +139,7 @@ namespace TransportManagementSystem.Controllers
             personnel.AssignedTrajectoryId = model.AssignedTrajectoryId;
             personnel.AssignedBusId = model.AssignedBusId;
             personnel.IsAssigned = model.IsAssigned;
+            personnel.IsMotorized = model.IsMotorized;
             personnel.Personnel_UpdatedAt = DateTime.Now;
 
             _context.Update(personnel);
@@ -175,7 +177,6 @@ namespace TransportManagementSystem.Controllers
         private bool PersonnelExists(long id) => _context.Personnel.Any(e => e.Personnel_Id == id);
     }
 
-    // Modèle pour la mise à jour
     public class PersonnelUpdateModel
     {
         public long Personnel_Id { get; set; }
@@ -196,5 +197,6 @@ namespace TransportManagementSystem.Controllers
         public int? AssignedTrajectoryId { get; set; }
         public long? AssignedBusId { get; set; }
         public bool IsAssigned { get; set; }
+        public bool IsMotorized { get; set; } = false;
     }
 }

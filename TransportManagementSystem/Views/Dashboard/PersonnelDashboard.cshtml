@@ -4,95 +4,16 @@
 }
 
 <style>
-    .stop-marker {
-        background-color: #28a745;
-        color: white;
-        border-radius: 50%;
-        text-align: center;
-        font-size: 12px;
-        font-weight: bold;
-        width: 24px;
-        height: 24px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        border: 2px solid white;
-        box-shadow: 0 2px 6px rgba(0,0,0,0.3);
-        cursor: pointer;
-    }
-
-    .bus-marker {
-        background-color: #007bff;
-        color: white;
-        border-radius: 50%;
-        text-align: center;
-        font-size: 16px;
-        width: 32px;
-        height: 32px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        border: 2px solid white;
-        box-shadow: 0 2px 6px rgba(0,0,0,0.3);
-        cursor: pointer;
-    }
-
-    .person-marker {
-        background-color: #dc3545;
-        color: white;
-        border-radius: 50%;
-        text-align: center;
-        font-size: 14px;
-        width: 28px;
-        height: 28px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        border: 2px solid white;
-        box-shadow: 0 2px 6px rgba(0,0,0,0.3);
-        cursor: pointer;
-    }
-
-    .fragment-marker {
-        background-color: #ff9800;
-        color: white;
-        border-radius: 50%;
-        text-align: center;
-        font-size: 12px;
-        font-weight: bold;
-        width: 24px;
-        height: 24px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        border: 2px solid white;
-        box-shadow: 0 2px 6px rgba(0,0,0,0.3);
-        cursor: pointer;
-    }
-
-    .info-card {
-        transition: transform 0.2s;
-    }
-
-        .info-card:hover {
-            transform: translateY(-5px);
-        }
-
-    .legend {
-        background: white;
-        padding: 8px 12px;
-        border-radius: 8px;
-        box-shadow: 0 2px 6px rgba(0,0,0,0.3);
-        font-size: 12px;
-    }
-
-        .legend i {
-            display: inline-block;
-            width: 20px;
-            height: 20px;
-            margin-right: 5px;
-            vertical-align: middle;
-        }
+    /* ... vos styles existants (stop-marker, bus-marker, etc.) ... */
+    .info-card { transition: transform 0.2s; }
+    .info-card:hover { transform: translateY(-5px); }
+    .legend { background: white; padding: 8px 12px; border-radius: 8px; box-shadow: 0 2px 6px rgba(0,0,0,0.3); font-size: 12px; }
+    .legend i { display: inline-block; width: 20px; height: 20px; margin-right: 5px; vertical-align: middle; }
+    .sews-marker { background-color: #2ecc71; color: white; border-radius: 50%; text-align: center; font-size: 18px; width: 36px; height: 36px; display: flex; align-items: center; justify-content: center; border: 2px solid white; box-shadow: 0 2px 6px rgba(0,0,0,0.3); cursor: pointer; }
+    .fragment-marker { background-color: #ff9800; color: white; border-radius: 50%; text-align: center; font-size: 12px; font-weight: bold; width: 24px; height: 24px; display: flex; align-items: center; justify-content: center; border: 2px solid white; box-shadow: 0 2px 6px rgba(0,0,0,0.3); cursor: pointer; }
+    .bus-marker { background-color: #007bff; color: white; border-radius: 50%; text-align: center; font-size: 16px; width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; border: 2px solid white; box-shadow: 0 2px 6px rgba(0,0,0,0.3); cursor: pointer; }
+    .person-marker { background-color: #dc3545; color: white; border-radius: 50%; text-align: center; font-size: 14px; width: 28px; height: 28px; display: flex; align-items: center; justify-content: center; border: 2px solid white; box-shadow: 0 2px 6px rgba(0,0,0,0.3); cursor: pointer; }
+    .stop-marker { background-color: #28a745; color: white; border-radius: 50%; text-align: center; font-size: 12px; font-weight: bold; width: 24px; height: 24px; display: flex; align-items: center; justify-content: center; border: 2px solid white; box-shadow: 0 2px 6px rgba(0,0,0,0.3); cursor: pointer; }
 </style>
 
 <h2>Bienvenue, @ViewBag.UserName</h2>
@@ -130,6 +51,21 @@
     </div>
 </div>
 
+<!-- Carte motorisation -->
+<div class="card mb-4">
+    <div class="card-header bg-secondary text-white">
+        <h5 class="mb-0">🚗 Mon statut de déplacement</h5>
+    </div>
+    <div class="card-body">
+        <div id="motorizationStatus">Chargement...</div>
+        <div id="motorizationRequestForm" class="mt-3">
+            <button id="requestMotorizedBtn" class="btn btn-primary">📢 Devenir motorisé (véhicule personnel)</button>
+            <button id="requestNonMotorizedBtn" class="btn btn-info">📢 Devenir non motorisé (utiliser les bus SEWS)</button>
+        </div>
+        <div id="motorizationRequestMessage" class="mt-2"></div>
+    </div>
+</div>
+
 <div id="assignmentInfo" class="alert alert-info">
     Chargement de votre trajet...
 </div>
@@ -155,282 +91,340 @@
         const SPEED_KMH = 30;
 
         function haversine(lat1, lon1, lat2, lon2) {
-        const R = 6371e3;
-        const φ1 = lat1 * Math.PI / 180;
-        const φ2 = lat2 * Math.PI / 180;
-        const Δφ = (lat2 - lat1) * Math.PI / 180;
-        const Δλ = (lon2 - lon1) * Math.PI / 180;
-        const a = Math.sin(Δφ/2) * Math.sin(Δφ/2) +
-        Math.cos(φ1) * Math.cos(φ2) *
-        Math.sin(Δλ/2) * Math.sin(Δλ/2);
-        const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-        return R * c;
+            const R = 6371e3;
+            const φ1 = lat1 * Math.PI / 180;
+            const φ2 = lat2 * Math.PI / 180;
+            const Δφ = (lat2 - lat1) * Math.PI / 180;
+            const Δλ = (lon2 - lon1) * Math.PI / 180;
+            const a = Math.sin(Δφ/2) * Math.sin(Δφ/2) +
+                      Math.cos(φ1) * Math.cos(φ2) *
+                      Math.sin(Δλ/2) * Math.sin(Δλ/2);
+            const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+            return R * c;
         }
 
         function showToast(title, message, type = 'warning') {
-        const container = document.getElementById('toastContainer');
-        const id = 'toast-' + Date.now();
-        const html = `
-        <div id="${id}" class="toast ${type}" role="alert" data-bs-autohide="true" data-bs-delay="8000">
-        <div class="toast-header">
-        <strong class="me-auto">🚨 ${title}</strong>
-        <button type="button" class="btn-close" data-bs-dismiss="toast"></button>
-        </div>
-        <div class="toast-body">${message}</div>
-        </div>
-        `;
-        container.insertAdjacentHTML('beforeend', html);
-        const el = document.getElementById(id);
-        const toast = new bootstrap.Toast(el, { autohide: true, delay: 8000 });
-        toast.show();
-        el.addEventListener('hidden.bs.toast', () => el.remove());
+            const container = document.getElementById('toastContainer');
+            const id = 'toast-' + Date.now();
+            const html = `
+                <div id="${id}" class="toast ${type}" role="alert" data-bs-autohide="true" data-bs-delay="8000">
+                    <div class="toast-header">
+                        <strong class="me-auto">🚨 ${title}</strong>
+                        <button type="button" class="btn-close" data-bs-dismiss="toast"></button>
+                    </div>
+                    <div class="toast-body">${message}</div>
+                </div>
+            `;
+            container.insertAdjacentHTML('beforeend', html);
+            const el = document.getElementById(id);
+            const toast = new bootstrap.Toast(el, { autohide: true, delay: 8000 });
+            toast.show();
+            el.addEventListener('hidden.bs.toast', () => el.remove());
         }
 
         function showBrowserNotification(title, body) {
-        if (!("Notification" in window)) return;
-        if (Notification.permission === "granted") {
-        new Notification(title, { body: body, icon: "/favicon.ico" });
-        } else if (Notification.permission !== "denied") {
-        Notification.requestPermission();
-        }
+            if (!("Notification" in window)) return;
+            if (Notification.permission === "granted") {
+                new Notification(title, { body: body, icon: "/favicon.ico" });
+            } else if (Notification.permission !== "denied") {
+                Notification.requestPermission();
+            }
         }
 
         function triggerAlert(busCode, distance, alertType) {
-        const title = alertType === '200m' ? '⚠️ URGENT : Bus très proche !' : '🔔 Alerte : Bus en approche';
-        const message = `Le bus ${busCode} est à ${Math.round(distance)} mètres de votre arrêt.`;
-        showToast(title, message, alertType === '200m' ? 'danger' : 'warning');
-        showBrowserNotification(title, message);
+            const title = alertType === '200m' ? '⚠️ URGENT : Bus très proche !' : '🔔 Alerte : Bus en approche';
+            const message = `Le bus ${busCode} est à ${Math.round(distance)} mètres de votre arrêt.`;
+            showToast(title, message, alertType === '200m' ? 'danger' : 'warning');
+            showBrowserNotification(title, message);
         }
 
         async function loadPersonnelData() {
-        try {
-        const response = await fetch('/Buses/GetPersonnelDashboardData');
-        if (!response.ok) {
-        document.getElementById('assignmentInfo').innerHTML = '<div class="alert alert-danger">Aucune trajectoire assignée active.</div>';
-        return;
-        }
-        const data = await response.json();
+            try {
+                const response = await fetch('/Buses/GetPersonnelDashboardData');
+                if (!response.ok) {
+                    document.getElementById('assignmentInfo').innerHTML = '<div class="alert alert-danger">Aucune trajectoire assignée active.</div>';
+                    return;
+                }
+                const data = await response.json();
 
-        document.getElementById('trajectoryInfo').innerHTML = `
-        <strong>${data.trajectory.trajectory_Name}</strong><br/>
-        Code: ${data.trajectory.trajectory_Code}<br/>
-        Distance: ${data.trajectory.distance} km<br/>
-        Durée estimée: ${data.trajectory.estimatedDuration} min
-        `;
+                // Si motorisé, on cache les infos de bus/trajectoire
+                if (data.isMotorized === true) {
+                    document.getElementById('trajectoryInfo').innerHTML = '<em>Vous êtes motorisé, aucune trajectoire SEWS assignée.</em>';
+                    document.getElementById('busInfo').innerHTML = '<em>Non applicable</em>';
+                    document.getElementById('driverInfo').innerHTML = '<em>Non applicable</em>';
+                    document.getElementById('assignmentInfo').innerHTML = '<div class="alert alert-warning">Vous êtes enregistré comme motorisé. Vous n’utilisez pas les bus SEWS.</div>';
+                    return;
+                }
 
-        if (data.assignedBus) {
-        document.getElementById('busInfo').innerHTML = `
-        <strong>${data.assignedBus.bus_Code}</strong><br/>
-        Plaque: ${data.assignedBus.bus_PlateNumber}<br/>
-        Modèle: ${data.assignedBus.bus_Brand} ${data.assignedBus.bus_Model}<br/>
-        Capacité: ${data.assignedBus.bus_Capacity} places
-        `;
-        } else {
-        document.getElementById('busInfo').innerHTML = 'Aucun bus assigné';
-        }
+                // Sinon, affichage normal
+                document.getElementById('trajectoryInfo').innerHTML = `
+                    <strong>${data.trajectory.trajectory_Name}</strong><br/>
+                    Code: ${data.trajectory.trajectory_Code}<br/>
+                    Distance: ${data.trajectory.distance} km<br/>
+                    Durée estimée: ${data.trajectory.estimatedDuration} min
+                `;
 
-        document.getElementById('driverInfo').innerHTML = `<strong>${data.assignedDriver}</strong>`;
+                if (data.assignedBus) {
+                    document.getElementById('busInfo').innerHTML = `
+                        <strong>${data.assignedBus.bus_Code}</strong><br/>
+                        Plaque: ${data.assignedBus.bus_PlateNumber}<br/>
+                        Modèle: ${data.assignedBus.bus_Brand} ${data.assignedBus.bus_Model}<br/>
+                        Capacité: ${data.assignedBus.bus_Capacity} places
+                    `;
+                } else {
+                    document.getElementById('busInfo').innerHTML = 'Aucun bus assigné';
+                }
 
-        // Point de référence pour alertes (arrêt personnel ou début trajectoire)
-        if (data.personnelStop) {
-        currentRefLat = data.personnelStop.tS_Latitude;
-        currentRefLng = data.personnelStop.tS_Longitude;
-        } else if (data.trajectory.startLat && data.trajectory.startLng) {
-        currentRefLat = data.trajectory.startLat;
-        currentRefLng = data.trajectory.startLng;
-        }
+                document.getElementById('driverInfo').innerHTML = `<strong>${data.assignedDriver}</strong>`;
 
-        // Construction de l'affichage des informations
-        let assignmentHtml = `
-        <strong>Trajectoire :</strong> ${data.trajectory.trajectory_Name} (${data.trajectory.trajectory_Code})<br/>
-        <strong>Chauffeur :</strong> ${data.assignedDriver}<br/>
-        <strong>Bus :</strong> ${data.assignedBus ? data.assignedBus.bus_Code : 'Non assigné'}<br/>
-        <strong>Bus sur cette trajectoire :</strong> ${data.buses.length}
-        `;
-        if (data.stopName && data.stopName !== "Non défini") {
-        assignmentHtml += `<br/><strong>Arrêt personnel :</strong> ${data.stopName}`;
-        }
-        document.getElementById('assignmentInfo').innerHTML = assignmentHtml;
+                // Point de référence pour alertes
+                if (data.personnelStop) {
+                    currentRefLat = data.personnelStop.tS_Latitude;
+                    currentRefLng = data.personnelStop.tS_Longitude;
+                } else if (data.trajectory.startLat && data.trajectory.startLng) {
+                    currentRefLat = data.trajectory.startLat;
+                    currentRefLng = data.trajectory.startLng;
+                }
 
-        currentTrajectoryId = data.trajectory.trajectory_Id;
+                let assignmentHtml = `
+                    <strong>Trajectoire :</strong> ${data.trajectory.trajectory_Name} (${data.trajectory.trajectory_Code})<br/>
+                    <strong>Chauffeur :</strong> ${data.assignedDriver}<br/>
+                    <strong>Bus :</strong> ${data.assignedBus ? data.assignedBus.bus_Code : 'Non assigné'}<br/>
+                    <strong>Bus sur cette trajectoire :</strong> ${data.buses.length}
+                `;
+                if (data.stopName && data.stopName !== "Non défini") {
+                    assignmentHtml += `<br/><strong>Arrêt personnel :</strong> ${data.stopName}`;
+                }
+                document.getElementById('assignmentInfo').innerHTML = assignmentHtml;
 
-        if (!map) {
-        map = L.map('map').setView([34.0, -6.8], 10);
-        L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
-        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a> & CartoDB'
-        }).addTo(map);
-        L.control.scale({ metric: true, imperial: false }).addTo(map);
-        let legend = L.control({ position: 'bottomright' });
-        legend.onAdd = function() {
-        let div = L.DomUtil.create('div', 'legend');
-        div.innerHTML = `
-        <div><i style="background:#ff9800; border-radius:50%;"></i> Arrêts du fragment</div>
-        <div><i style="background:#ffc107; border-radius:50%;"></i> Mon arrêt</div>
-        <div><i style="background:#007bff; border-radius:50%;"></i> Bus</div>
-        <div><i style="background:#dc3545; border-radius:50%;"></i> Ma position</div>
-        <div><i style="background:#ff9800; width:20px; height:4px;"></i> Trajet du fragment</div>
-        `;
-        return div;
-        };
-        legend.addTo(map);
-        }
+                currentTrajectoryId = data.trajectory.trajectory_Id;
 
-        // Nettoyer les calques existants
-        if (window.busLayer) map.removeLayer(window.busLayer);
-        if (personStopMarker) map.removeLayer(personStopMarker);
-        if (personLocationMarker) map.removeLayer(personLocationMarker);
-        if (fragmentLine) map.removeLayer(fragmentLine);
-        fragmentMarkers.forEach(m => map.removeLayer(m));
-        fragmentMarkers = [];
+                if (!map) {
+                    map = L.map('map').setView([34.0, -6.8], 10);
+                    L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
+                        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a> & CartoDB'
+                    }).addTo(map);
+                    L.control.scale({ metric: true, imperial: false }).addTo(map);
+                    let legend = L.control({ position: 'bottomright' });
+                    legend.onAdd = function() {
+                        let div = L.DomUtil.create('div', 'legend');
+                        div.innerHTML = `
+                            <div><i style="background:#2ecc71; border-radius:50%;"></i> Départ SEWS</div>
+                            <div><i style="background:#ff9800; border-radius:50%;"></i> Arrêts du fragment</div>
+                            <div><i style="background:#ffc107; border-radius:50%;"></i> Mon arrêt</div>
+                            <div><i style="background:#007bff; border-radius:50%;"></i> Bus</div>
+                            <div><i style="background:#dc3545; border-radius:50%;"></i> Ma position</div>
+                            <div><i style="background:#ff9800; width:20px; height:4px;"></i> Trajet du fragment</div>
+                        `;
+                        return div;
+                    };
+                    legend.addTo(map);
+                }
 
-        // NE PAS AFFICHER LES AUTRES ARRÊTS (verts)
+                // Nettoyer les calques
+                if (window.busLayer) map.removeLayer(window.busLayer);
+                if (personStopMarker) map.removeLayer(personStopMarker);
+                if (personLocationMarker) map.removeLayer(personLocationMarker);
+                if (fragmentLine) map.removeLayer(fragmentLine);
+                fragmentMarkers.forEach(m => map.removeLayer(m));
+                fragmentMarkers = [];
 
-        // ** Tracer le fragment personnel (orange) **
-        if (data.fragmentStops && data.fragmentStops.length > 0) {
-        // Points du fragment (départ SEWS + arrêts du fragment)
-        const fragmentPoints = [[34.2900, -6.5700]]; // SEWS
-        data.fragmentStops.forEach(s => fragmentPoints.push([s.lat, s.lng]));
-        fragmentLine = L.polyline(fragmentPoints, { color: '#ff9800', weight: 6, opacity: 0.9 }).addTo(map);
-                    
-        // Marqueurs pour chaque arrêt du fragment
-        data.fragmentStops.forEach((s, idx) => {
-        const icon = L.divIcon({ html: (idx+1).toString(), iconSize: [24, 24], className: 'fragment-marker' });
-        const marker = L.marker([s.lat, s.lng], { icon })
-        .bindPopup(`<b>Fragment : ${s.name}</b><br/>Ordre dans le fragment : ${s.order}<br/>Personnels à cet arrêt : ${s.workersAtStop}`);
-        marker.addTo(map);
-        fragmentMarkers.push(marker);
-        });
-        } else if (data.personnelFragment) {
-        console.log("Aucun arrêt trouvé pour le fragment personnel");
-        }
+                // Marqueur SEWS
+                L.marker([34.2900, -6.5700], { icon: L.divIcon({ html: '🏭', iconSize: [36, 36], className: 'sews-marker' }) })
+                    .bindPopup('<b>🏭 SEWS Maroc</b><br>Bir Rami, Kénitra<br>Point de départ')
+                    .addTo(map);
 
-        // Arrêt personnel (point jaune) – s'il existe
-        if (data.personnelStop) {
-        let nearestBus = null;
-        let minDistance = Infinity;
-        data.buses.forEach(bus => {
-        if (bus.lat && bus.lng) {
-        const d = haversine(data.personnelStop.tS_Latitude, data.personnelStop.tS_Longitude, bus.lat, bus.lng);
-        if (d < minDistance) {
-        minDistance = d;
-        nearestBus = bus;
-        }
-        }
-        });
-        let etaText = "";
-        if (nearestBus && nearestBus.etaMinutes !== undefined) {
-        etaText = `<br/>🚏 Le prochain bus arrive dans environ <strong>${nearestBus.etaMinutes} minutes</strong>.`;
-        } else if (nearestBus) {
-        const etaMin = Math.round(minDistance / 1000 / SPEED_KMH * 60);
-        etaText = `<br/>🚏 Le prochain bus arrive dans environ <strong>${etaMin} minutes</strong> (estimation).`;
-        }
-        const icon = L.divIcon({ html: '📍', iconSize: [28, 28], className: 'stop-marker' });
-        personStopMarker = L.marker([data.personnelStop.tS_Latitude, data.personnelStop.tS_Longitude], { icon })
-        .bindPopup(`<b>Votre arrêt : ${data.personnelStop.tS_Name}</b>${etaText}`)
-        .addTo(map);
-        }
+                // Fragment
+                if (data.fragmentStops && data.fragmentStops.length > 0) {
+                    const fragmentPoints = [[34.2900, -6.5700]];
+                    data.fragmentStops.forEach(s => fragmentPoints.push([s.lat, s.lng]));
+                    fragmentLine = L.polyline(fragmentPoints, { color: '#ff9800', weight: 6, opacity: 0.9 }).addTo(map);
+                    data.fragmentStops.forEach((s, idx) => {
+                        const icon = L.divIcon({ html: (idx+1).toString(), iconSize: [24, 24], className: 'fragment-marker' });
+                        L.marker([s.lat, s.lng], { icon })
+                            .bindPopup(`<b>Fragment : ${s.name}</b><br/>Ordre : ${s.order}<br/>Personnels : ${s.workersAtStop}`)
+                            .addTo(map);
+                    });
+                }
 
-        // Bus
-        window.busLayer = L.layerGroup().addTo(map);
-        busMarkers = {};
-        data.buses.forEach(bus => {
-        const busIcon = L.divIcon({ html: '🚌', iconSize: [32, 32], className: 'bus-marker' });
-        let etaText = "";
-        if (bus.etaMinutes !== undefined && bus.etaMinutes !== null) {
-        etaText = `<br/>🚏 Arrive dans : ${bus.etaMinutes} min`;
-        }
-        const popupContent = `<b>${bus.bus_Code}</b><br/>Plaque: ${bus.bus_PlateNumber}<br/>Statut: ${bus.bus_Status}${etaText}`;
-        const marker = L.marker([bus.lat, bus.lng], { icon: busIcon })
-        .bindPopup(popupContent)
-        .addTo(window.busLayer);
-        busMarkers[bus.bus_Id] = marker;
-        });
+                // Arrêt personnel
+                if (data.personnelStop) {
+                    let etaText = "";
+                    let nearestBus = null;
+                    let minDistance = Infinity;
+                    (data.buses || []).forEach(bus => {
+                        if (bus.lat && bus.lng) {
+                            const d = haversine(data.personnelStop.tS_Latitude, data.personnelStop.tS_Longitude, bus.lat, bus.lng);
+                            if (d < minDistance) {
+                                minDistance = d;
+                                nearestBus = bus;
+                            }
+                        }
+                    });
+                    if (nearestBus && nearestBus.etaMinutes !== undefined) {
+                        etaText = `<br/>🚏 Le prochain bus arrive dans environ <strong>${nearestBus.etaMinutes} minutes</strong>.`;
+                    } else if (nearestBus) {
+                        const etaMin = Math.round(minDistance / 1000 / SPEED_KMH * 60);
+                        etaText = `<br/>🚏 Le prochain bus arrive dans environ <strong>${etaMin} minutes</strong> (estimation).`;
+                    }
+                    const icon = L.divIcon({ html: '📍', iconSize: [28, 28], className: 'stop-marker' });
+                    personStopMarker = L.marker([data.personnelStop.tS_Latitude, data.personnelStop.tS_Longitude], { icon })
+                        .bindPopup(`<b>Votre arrêt : ${data.personnelStop.tS_Name}</b>${etaText}`)
+                        .addTo(map);
+                }
 
-        // Centrer la carte sur l'arrêt personnel ou le fragment
-        if (data.personnelStop) {
-        map.setView([data.personnelStop.tS_Latitude, data.personnelStop.tS_Longitude], 14);
-        } else if (data.fragmentStops && data.fragmentStops.length > 0) {
-        const firstStop = data.fragmentStops[0];
-        map.setView([firstStop.lat, firstStop.lng], 13);
-        } else if (data.buses.length > 0) {
-        map.setView([data.buses[0].lat, data.buses[0].lng], 13);
-        } else if (data.trajectory.startLat && data.trajectory.startLng) {
-        map.setView([data.trajectory.startLat, data.trajectory.startLng], 12);
-        }
+                // Buses
+                window.busLayer = L.layerGroup().addTo(map);
+                busMarkers = {};
+                (data.buses || []).forEach(bus => {
+                    const busIcon = L.divIcon({ html: '🚌', iconSize: [32, 32], className: 'bus-marker' });
+                    let etaText = "";
+                    if (bus.etaMinutes !== undefined && bus.etaMinutes !== null) {
+                        etaText = `<br/>🚏 Arrive dans : ${bus.etaMinutes} min`;
+                    }
+                    const marker = L.marker([bus.lat, bus.lng], { icon: busIcon })
+                        .bindPopup(`<b>${bus.bus_Code}</b><br/>Plaque: ${bus.bus_PlateNumber}<br/>Statut: ${bus.bus_Status}${etaText}`)
+                        .addTo(window.busLayer);
+                    busMarkers[bus.bus_Id] = marker;
+                });
 
-        if (checkInterval) clearInterval(checkInterval);
-        checkInterval = setInterval(() => checkProximity(currentRefLat, currentRefLng), 15000);
-        await checkProximity(currentRefLat, currentRefLng);
-        } catch (error) {
-        console.error(error);
-        document.getElementById('assignmentInfo').innerHTML = '<div class="alert alert-danger">Erreur de chargement.</div>';
-        }
+                // Centrage
+                if (data.personnelStop) {
+                    map.setView([data.personnelStop.tS_Latitude, data.personnelStop.tS_Longitude], 14);
+                } else if (data.fragmentStops && data.fragmentStops.length > 0) {
+                    map.setView([data.fragmentStops[0].lat, data.fragmentStops[0].lng], 13);
+                } else if (data.buses && data.buses.length > 0) {
+                    map.setView([data.buses[0].lat, data.buses[0].lng], 13);
+                } else if (data.trajectory.startLat && data.trajectory.startLng) {
+                    map.setView([data.trajectory.startLat, data.trajectory.startLng], 12);
+                }
+
+                if (checkInterval) clearInterval(checkInterval);
+                checkInterval = setInterval(() => checkProximity(currentRefLat, currentRefLng), 15000);
+                await checkProximity(currentRefLat, currentRefLng);
+            } catch (error) {
+                console.error(error);
+                document.getElementById('assignmentInfo').innerHTML = '<div class="alert alert-danger">Erreur de chargement.</div>';
+            }
         }
 
         async function checkProximity(refLat, refLng) {
-        if (!refLat || !refLng) return;
-        try {
-        const response = await fetch('/Buses/GetPersonnelDashboardData');
-        if (!response.ok) return;
-        const data = await response.json();
-        const stopLat = refLat;
-        const stopLng = refLng;
-        for (const bus of data.buses) {
-        const distance = haversine(stopLat, stopLng, bus.lat, bus.lng);
-        const marker = busMarkers[bus.bus_Id];
-        if (marker) {
-        let etaText = "";
-        if (bus.etaMinutes !== undefined && bus.etaMinutes !== null) {
-        etaText = `<br/>🚏 Arrive dans : ${bus.etaMinutes} min`;
-        }
-        const newPopup = `<b>${bus.bus_Code}</b><br/>Plaque: ${bus.bus_PlateNumber}<br/>Statut: ${bus.bus_Status}${etaText}`;
-        marker.bindPopup(newPopup);
-        }
-        let triggerType = null;
-        if (distance <= 200 && lastAlertTypes[bus.bus_Id] !== '200m') {
-        triggerType = '200m';
-        } else if (distance <= 500 && lastAlertTypes[bus.bus_Id] !== '200m' && lastAlertTypes[bus.bus_Id] !== '500m') {
-        triggerType = '500m';
-        }
-        if (triggerType) {
-        const res = await fetch('/Buses/CheckProximityAlert', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-        busId: bus.bus_Id,
-        busCode: bus.bus_Code,
-        trajectoryId: currentTrajectoryId,
-        distance: distance
-        })
-        });
-        const alertRes = await res.json();
-        if (alertRes.alertType !== 'none') {
-        triggerAlert(bus.bus_Code, distance, alertRes.alertType);
-        lastAlertTypes[bus.bus_Id] = alertRes.alertType;
-        }
-        }
-        }
-        } catch (error) {
-        console.error('Error in checkProximity:', error);
-        }
+            if (!refLat || !refLng) return;
+            try {
+                const response = await fetch('/Buses/GetPersonnelDashboardData');
+                if (!response.ok) return;
+                const data = await response.json();
+                if (data.isMotorized === true) return; // pas d'alerte pour les motorisés
+                for (const bus of (data.buses || [])) {
+                    const distance = haversine(refLat, refLng, bus.lat, bus.lng);
+                    const marker = busMarkers[bus.bus_Id];
+                    if (marker) {
+                        let etaText = "";
+                        if (bus.etaMinutes !== undefined && bus.etaMinutes !== null) {
+                            etaText = `<br/>🚏 Arrive dans : ${bus.etaMinutes} min`;
+                        }
+                        marker.bindPopup(`<b>${bus.bus_Code}</b><br/>Plaque: ${bus.bus_PlateNumber}<br/>Statut: ${bus.bus_Status}${etaText}`);
+                    }
+                    let triggerType = null;
+                    if (distance <= 200 && lastAlertTypes[bus.bus_Id] !== '200m') {
+                        triggerType = '200m';
+                    } else if (distance <= 500 && lastAlertTypes[bus.bus_Id] !== '200m' && lastAlertTypes[bus.bus_Id] !== '500m') {
+                        triggerType = '500m';
+                    }
+                    if (triggerType) {
+                        const res = await fetch('/Buses/CheckProximityAlert', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
+                                busId: bus.bus_Id,
+                                busCode: bus.bus_Code,
+                                trajectoryId: currentTrajectoryId,
+                                distance: distance
+                            })
+                        });
+                        const alertRes = await res.json();
+                        if (alertRes.alertType !== 'none') {
+                            triggerAlert(bus.bus_Code, distance, alertRes.alertType);
+                            lastAlertTypes[bus.bus_Id] = alertRes.alertType;
+                        }
+                    }
+                }
+            } catch (error) {
+                console.error('Error in checkProximity:', error);
+            }
         }
 
         // Géolocalisation
         if (navigator.geolocation) {
-        navigator.geolocation.getCurrentPosition(pos => {
-        if (!map) return;
-        if (personLocationMarker) map.removeLayer(personLocationMarker);
-        const icon = L.divIcon({ html: '👤', iconSize: [32, 32], className: 'person-marker' });
-        personLocationMarker = L.marker([pos.coords.latitude, pos.coords.longitude], { icon })
-        .bindPopup('Votre position actuelle')
-        .addTo(map);
-        });
+            navigator.geolocation.getCurrentPosition(pos => {
+                if (!map) return;
+                if (personLocationMarker) map.removeLayer(personLocationMarker);
+                const icon = L.divIcon({ html: '👤', iconSize: [32, 32], className: 'person-marker' });
+                personLocationMarker = L.marker([pos.coords.latitude, pos.coords.longitude], { icon })
+                    .bindPopup('Votre position actuelle')
+                    .addTo(map);
+            });
         }
 
         if ("Notification" in window && Notification.permission !== "denied") {
-        Notification.requestPermission();
+            Notification.requestPermission();
         }
 
+        // ========== MOTORISATION : statut et boutons ==========
+        async function checkMotorizationStatus() {
+            try {
+                const res = await fetch('/Buses/GetPersonnelDashboardData');
+                const data = await res.json();
+                const statusDiv = document.getElementById('motorizationStatus');
+                const motorizedBtn = document.getElementById('requestMotorizedBtn');
+                const nonMotorizedBtn = document.getElementById('requestNonMotorizedBtn');
+                if (data.isMotorized === true) {
+                    statusDiv.innerHTML = '<span class="badge bg-success">🚗 Vous êtes motorisé (vous utilisez votre véhicule personnel)</span>';
+                    motorizedBtn.style.display = 'none';
+                    nonMotorizedBtn.style.display = 'inline-block';
+                } else if (data.isMotorized === false) {
+                    statusDiv.innerHTML = '<span class="badge bg-warning">🚶 Vous êtes non motorisé (vous utilisez les bus SEWS)</span>';
+                    motorizedBtn.style.display = 'inline-block';
+                    nonMotorizedBtn.style.display = 'none';
+                } else {
+                    statusDiv.innerHTML = '<span class="badge bg-secondary">Statut inconnu</span>';
+                }
+            } catch (err) {
+                console.error(err);
+            }
+        }
+
+        document.getElementById('requestMotorizedBtn')?.addEventListener('click', async () => {
+            const response = await fetch('/Dashboard/RequestMotorizationChange?isMotorized=true', { method: 'POST' });
+            const result = await response.json();
+            const msgDiv = document.getElementById('motorizationRequestMessage');
+            if (response.ok && result.success) {
+                msgDiv.innerHTML = `<div class="alert alert-success">${result.message}</div>`;
+                document.getElementById('requestMotorizedBtn').disabled = true;
+                document.getElementById('requestNonMotorizedBtn').disabled = true;
+                setTimeout(() => msgDiv.innerHTML = '', 5000);
+                checkMotorizationStatus();
+            } else {
+                msgDiv.innerHTML = `<div class="alert alert-danger">${result.message || 'Erreur'}</div>`;
+            }
+        });
+
+        document.getElementById('requestNonMotorizedBtn')?.addEventListener('click', async () => {
+            const response = await fetch('/Dashboard/RequestMotorizationChange?isMotorized=false', { method: 'POST' });
+            const result = await response.json();
+            const msgDiv = document.getElementById('motorizationRequestMessage');
+            if (response.ok && result.success) {
+                msgDiv.innerHTML = `<div class="alert alert-success">${result.message}</div>`;
+                document.getElementById('requestMotorizedBtn').disabled = true;
+                document.getElementById('requestNonMotorizedBtn').disabled = true;
+                setTimeout(() => msgDiv.innerHTML = '', 5000);
+                checkMotorizationStatus();
+            } else {
+                msgDiv.innerHTML = `<div class="alert alert-danger">${result.message || 'Erreur'}</div>`;
+            }
+        });
+
+        checkMotorizationStatus();
         loadPersonnelData();
         setInterval(() => loadPersonnelData(), 30000);
     </script>

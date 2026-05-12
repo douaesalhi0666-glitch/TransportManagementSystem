@@ -50,6 +50,7 @@
             <th>Trajet assigné</th>
             <th>Bus assigné</th>
             <th>Statut</th>
+            <th>Motorisé</th>
             <th>Actions</th>
         </tr>
     </thead>
@@ -108,6 +109,16 @@
                     else
                     {
                         <span class="badge bg-danger">Inactif</span>
+                    }
+                </td>
+                <td>
+                    @if (item.IsMotorized)
+                    {
+                        <span class="badge bg-success">Oui</span>
+                    }
+                    else
+                    {
+                        <span class="badge bg-secondary">Non</span>
                     }
                 </td>
                 <td>
@@ -233,6 +244,10 @@
                         <input type="checkbox" id="edit_IsAssigned" name="IsAssigned" class="form-check-input" value="true" />
                         <label class="form-check-label">Assigné</label>
                     </div>
+                    <div class="form-check mb-2">
+                        <input type="checkbox" id="edit_IsMotorized" name="IsMotorized" class="form-check-input" value="true" />
+                        <label class="form-check-label">Motorisé (véhicule personnel)</label>
+                    </div>
                 </form>
             </div>
             <div class="modal-footer">
@@ -305,6 +320,7 @@
         $('#edit_TrajectoryId').val(data.assignedTrajectoryId);
         $('#edit_BusId').val(data.assignedBusId);
         $('#edit_IsAssigned').prop('checked', data.isAssigned === true);
+        $('#edit_IsMotorized').prop('checked', data.isMotorized === true);
         $('#editModal').modal('show');
         }).fail(function() {
         alert('Erreur lors du chargement des données.');
@@ -330,7 +346,8 @@
         HomeAddress: $('#edit_HomeAddress').val(),
         AssignedTrajectoryId: $('#edit_TrajectoryId').val() === '' ? null : parseInt($('#edit_TrajectoryId').val()),
         AssignedBusId: $('#edit_BusId').val() === '' ? null : parseInt($('#edit_BusId').val()),
-        IsAssigned: $('#edit_IsAssigned').is(':checked')
+        IsAssigned: $('#edit_IsAssigned').is(':checked'),
+        IsMotorized: $('#edit_IsMotorized').is(':checked')
         };
 
         $.ajax({

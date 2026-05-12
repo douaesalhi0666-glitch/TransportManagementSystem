@@ -1,5 +1,7 @@
 ﻿using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 using TransportManagementSystem.Data;
+using TransportManagementSystem.Models;
 using System.Text.Json;
 using System.IO;
 
@@ -151,6 +153,92 @@ namespace TransportManagementSystem.Controllers
             {
                 Console.WriteLine($"Error adding notification: {ex.Message}");
             }
+        }
+
+        // ================================================
+        // DEMANDES DE MOTORISATION
+        // ================================================
+
+        [HttpPost]
+        public async Task<IActionResult> RequestMotorizationChange(bool isMotorized)
+        {
+            var personnelIdStr = HttpContext.Session.GetString("PersonnelId");
+            if (string.IsNullOrEmpty(personnelIdStr))
+                return Unauthorized(new { success = false, message = "Non connecté" });
+
+            var personnelId = long.Parse(personnelIdStr);
+            var personnel = await _context.Personnel.FindAsync(personnelId);
+            if (personnel == null)
+                return NotFound(new { success = false, message = "Personnel non trouvé" });
+
+            // Vérifier si une demande est déjà en attente
+            var existing = await _context.MotorizationRequests
+                .FirstOrDefaultAsync(r => r.PersonnelId == personnelId && r.Status == "Pending");
+            if (existing != null)
+                return BadRequest(new { success = false, message = "Vous avez déjà une demande en attente." });
+
+            var request = new MotorizationRequest
+            {
+                PersonnelId = personnelId,
+                RequestedIsMotorized = isMotorized,
+                RequestDate = DateTime.Now,
+                Status = "Pending"
+            };
+            _context.MotorizationRequests.Add(request);
+            await _context.SaveChangesAsync();
+
+            return Ok(new { success = true, message = "Demande envoyée à l'administrateur." });
+        }
+
+        [HttpGet]
+        public async Task<IActionResult> GetPendingMotorizationRequests()
+        {
+            var requests = await _context.MotorizationRequests
+                .Include(r => r.Personnel)
+                .Where(r => r.Status == "Pending")
+                .OrderBy(r => r.RequestDate)
+                .Select(r => new
+                {
+                    r.Id,
+                    PersonnelId = r.PersonnelId,
+                    PersonnelName = r.Personnel != null ? r.Personnel.Personnel_FirstName + " " + r.Personnel.Personnel_LastName : "",
+                    RequestedIsMotorized = r.RequestedIsMotorized,
+                    RequestDate = r.RequestDate
+                })
+                .ToListAsync();
+            return Ok(requests);
+        }
+
+        [HttpPost]
+        public async Task<IActionResult> ProcessMotorizationRequest(int requestId, bool approve, string? comment = null)
+        {
+            var request = await _context.MotorizationRequests
+                .Include(r => r.Personnel)
+                .FirstOrDefaultAsync(r => r.Id == requestId);
+            if (request == null) return NotFound();
+
+            if (approve)
+            {
+                // Mettre à jour le statut motorisé
+                request.Personnel.IsMotorized = request.RequestedIsMotorized;
+                request.Status = "Approved";
+
+                // Désassigner complètement le personnel (car son mode de transport change)
+                request.Personnel.AssignedTrajectoryId = null;
+                request.Personnel.AssignedStopId = null;
+                request.Personnel.AssignedFragmentId = null;
+                request.Personnel.AssignedBusId = null;
+                request.Personnel.IsAssigned = false;
+            }
+            else
+            {
+                request.Status = "Rejected";
+            }
+            request.ProcessedDate = DateTime.Now;
+            request.AdminComment = comment;
+
+            await _context.SaveChangesAsync();
+            return Ok(new { success = true, message = approve ? "Demande approuvée." : "Demande refusée." });
         }
     }
 

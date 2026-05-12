@@ -431,44 +431,6 @@ namespace TransportManagementSystem.Migrations
                     b.ToTable("FragmentStop_tbl", "Transport");
                 });
 
-            modelBuilder.Entity("TransportManagementSystem.Models.MotorizationRequest", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
-
-                    b.Property<string>("AdminComment")
-                        .HasMaxLength(500)
-                        .HasColumnType("nvarchar(500)");
-
-                    b.Property<long>("PersonnelId")
-                        .HasColumnType("bigint");
-
-                    b.Property<DateTime?>("ProcessedDate")
-                        .HasColumnType("datetime2");
-
-                    b.Property<DateTime>("RequestDate")
-                        .HasColumnType("datetime2");
-
-                    b.Property<bool>("RequestedIsMotorized")
-                        .HasColumnType("bit");
-
-                    b.Property<string>("Status")
-                        .IsRequired()
-                        .ValueGeneratedOnAdd()
-                        .HasMaxLength(20)
-                        .HasColumnType("nvarchar(20)")
-                        .HasDefaultValue("Pending");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("PersonnelId");
-
-                    b.ToTable("MotorizationRequests_tbl", "Service");
-                });
-
             modelBuilder.Entity("TransportManagementSystem.Models.Personnel", b =>
                 {
                     b.Property<long>("Personnel_Id")
@@ -929,17 +891,6 @@ namespace TransportManagementSystem.Migrations
                     b.Navigation("Fragment");
 
                     b.Navigation("TrajectoryStop");
-                });
-
-            modelBuilder.Entity("TransportManagementSystem.Models.MotorizationRequest", b =>
-                {
-                    b.HasOne("TransportManagementSystem.Models.Personnel", "Personnel")
-                        .WithMany()
-                        .HasForeignKey("PersonnelId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
-                    b.Navigation("Personnel");
                 });
 
             modelBuilder.Entity("TransportManagementSystem.Models.Personnel", b =>
