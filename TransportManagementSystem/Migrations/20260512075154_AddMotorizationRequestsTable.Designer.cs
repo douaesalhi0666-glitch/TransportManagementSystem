@@ -3,6 +3,7 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using TransportManagementSystem.Data;
 
@@ -11,9 +12,11 @@ using TransportManagementSystem.Data;
 namespace TransportManagementSystem.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    partial class ApplicationDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260512075154_AddMotorizationRequestsTable")]
+    partial class AddMotorizationRequestsTable
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -429,44 +432,6 @@ namespace TransportManagementSystem.Migrations
                     b.HasIndex("TS_Id");
 
                     b.ToTable("FragmentStop_tbl", "Transport");
-                });
-
-            modelBuilder.Entity("TransportManagementSystem.Models.MotorizationRequest", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
-
-                    b.Property<string>("AdminComment")
-                        .HasMaxLength(500)
-                        .HasColumnType("nvarchar(500)");
-
-                    b.Property<long>("PersonnelId")
-                        .HasColumnType("bigint");
-
-                    b.Property<DateTime?>("ProcessedDate")
-                        .HasColumnType("datetime2");
-
-                    b.Property<DateTime>("RequestDate")
-                        .HasColumnType("datetime2");
-
-                    b.Property<bool>("RequestedIsMotorized")
-                        .HasColumnType("bit");
-
-                    b.Property<string>("Status")
-                        .IsRequired()
-                        .ValueGeneratedOnAdd()
-                        .HasMaxLength(20)
-                        .HasColumnType("nvarchar(20)")
-                        .HasDefaultValue("Pending");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("PersonnelId");
-
-                    b.ToTable("MotorizationRequests_tbl", "Service");
                 });
 
             modelBuilder.Entity("TransportManagementSystem.Models.Personnel", b =>
@@ -929,17 +894,6 @@ namespace TransportManagementSystem.Migrations
                     b.Navigation("Fragment");
 
                     b.Navigation("TrajectoryStop");
-                });
-
-            modelBuilder.Entity("TransportManagementSystem.Models.MotorizationRequest", b =>
-                {
-                    b.HasOne("TransportManagementSystem.Models.Personnel", "Personnel")
-                        .WithMany()
-                        .HasForeignKey("PersonnelId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
-                    b.Navigation("Personnel");
                 });
 
             modelBuilder.Entity("TransportManagementSystem.Models.Personnel", b =>

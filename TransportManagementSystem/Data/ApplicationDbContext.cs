@@ -35,6 +35,11 @@ namespace TransportManagementSystem.Data
         public DbSet<BusFragmentAssignment> BusFragmentAssignments { get; set; }
         public DbSet<DriverFragmentAssignment> DriverFragmentAssignments { get; set; }
 
+        // ================================================
+        // NOUVELLE ENTITÉ POUR LES DEMANDES DE MOTORISATION
+        // ================================================
+        public DbSet<MotorizationRequest> MotorizationRequests { get; set; }
+
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             base.OnModelCreating(modelBuilder);
@@ -172,6 +177,20 @@ namespace TransportManagementSystem.Data
             });
 
             // ================================================
+            // CONFIGURATION DES DEMANDES DE MOTORISATION
+            // ================================================
+            modelBuilder.Entity<MotorizationRequest>(entity =>
+            {
+                entity.ToTable("MotorizationRequests_tbl", "Service");
+                entity.HasKey(e => e.Id);
+                entity.Property(e => e.Status).HasMaxLength(20).HasDefaultValue("Pending");
+                entity.HasOne(e => e.Personnel)
+                      .WithMany()
+                      .HasForeignKey(e => e.PersonnelId)
+                      .OnDelete(DeleteBehavior.Restrict);
+            });
+
+            // ================================================
             // RELATIONS EXISTANTES
             // ================================================
 
@@ -198,7 +217,7 @@ namespace TransportManagementSystem.Data
                 .WithMany()
                 .HasForeignKey(pt => pt.PTA_StopId)
                 .OnDelete(DeleteBehavior.Restrict);
-              
+
             modelBuilder.Entity<Alert>()
                 .HasOne(a => a.Bus)
                 .WithMany()

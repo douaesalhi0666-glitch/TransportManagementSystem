@@ -91,6 +91,10 @@ namespace TransportManagementSystem.Models
         [Display(Name = "Assigné")]
         public bool IsAssigned { get; set; }
 
+        // ========== NOUVEAU : MOTORISÉ OU NON ==========
+        [Display(Name = "Motorisé")]
+        public bool IsMotorized { get; set; } = false;
+
         // ========== NAVIGATION PROPERTIES ==========
         [ForeignKey("AssignedTrajectoryId")]
         public virtual Trajectory? AssignedTrajectory { get; set; }
