@@ -167,7 +167,6 @@ namespace TransportManagementSystem.Controllers
         [HttpGet]
         public async Task<IActionResult> GetUnassignedWorkers()
         {
-            // Récupérer TOUS les personnels non assignés (sans filtre de trajectoire)
             var workers = await _context.Personnel
                 .Where(p => p.IsAssigned == false
                             && p.AssignedStopId == null
@@ -245,7 +244,6 @@ namespace TransportManagementSystem.Controllers
                 if (stop == null)
                     return BadRequest(new { success = false, message = "Arrêt non trouvé" });
 
-                // Récupérer TOUS les personnels non assignés
                 var unassignedWorkers = await _context.Personnel
                     .Where(p => p.IsAssigned == false
                                 && p.AssignedStopId == null
@@ -304,7 +302,6 @@ namespace TransportManagementSystem.Controllers
                 if (!stops.Any())
                     return BadRequest(new { success = false, message = "Aucun arrêt trouvé pour cette trajectoire" });
 
-                // Récupérer TOUS les personnels non assignés
                 var unassignedWorkers = await _context.Personnel
                     .Where(p => p.IsAssigned == false
                                 && p.AssignedStopId == null
@@ -394,7 +391,6 @@ namespace TransportManagementSystem.Controllers
             if (request.TrajectoryId <= 0)
                 return BadRequest("Trajectoire invalide");
 
-            // Récupérer les personnels avec coordonnées (sans filtre de trajectoire)
             var personnelPoints = await _context.Personnel
                 .Where(p => p.Personnel_Status == "Active"
                             && p.Personnel_Latitude != null
@@ -744,6 +740,328 @@ namespace TransportManagementSystem.Controllers
             public double CenterX { get; set; }
             public double CenterY { get; set; }
             public List<ClusterPoint> Points { get; set; } = new List<ClusterPoint>();
+        }
+
+        // ================================================
+        // ALGORITHME GÉNÉTIQUE POUR LA GÉNÉRATION DE TRAJETS
+        // ================================================
+
+        [HttpPost]
+        public async Task<IActionResult> GenerateSmartTrajectories(int maxTimeMinutes = 60, int busCapacity = 20, double speedKmh = 30)
+        {
+            // Récupérer les arrêts avec leurs personnels assignés
+            var stops = await _context.TrajectoryStops
+                .Where(s => s.TS_Latitude != 0 && s.TS_Longitude != 0)
+                .Select(s => new StopWithWorkers
+                {
+                    Stop = s,
+                    WorkerCount = _context.Personnel.Count(p => p.AssignedStopId == s.TS_Id && p.IsAssigned == true)
+                })
+                .ToListAsync();
+
+            if (!stops.Any())
+                return BadRequest("Aucun arrêt actif avec personnels assignés.");
+
+            const double startLat = 34.2900, startLng = -6.5700;
+            var stopTravels = stops.Select(s => new StopTravel
+            {
+                StopId = s.Stop.TS_Id,
+                Lat = (double)s.Stop.TS_Latitude,
+                Lng = (double)s.Stop.TS_Longitude,
+                WorkCount = s.WorkerCount,
+                TravelTimeFromDepot = HaversineDistance(startLat, startLng, (double)s.Stop.TS_Latitude, (double)s.Stop.TS_Longitude) / 1000.0 / speedKmh * 60.0
+            }).ToList();
+
+            // Algorithme génétique pour le bin packing
+            var bestClusters = GeneticBinPacking(stopTravels, busCapacity, maxTimeMinutes, 200, 500);
+
+            var createdTrajs = new List<Trajectory>();
+
+            foreach (var cluster in bestClusters)
+            {
+                var groupStops = cluster.Select(idx => stopTravels[idx]).ToList();
+                var ordered = SolveTSP(groupStops, startLat, startLng, speedKmh);
+                double totalTime = ordered.Last().CumulativeTime;
+                double maxDistance = ordered.Max(s => HaversineDistance(startLat, startLng, s.Lat, s.Lng) / 1000.0);
+
+                var traj = new Trajectory
+                {
+                    Trajectory_Name = $"Trajet IA-{DateTime.Now:yyyyMMddHHmmss}-{createdTrajs.Count + 1}",
+                    Trajectory_Code = $"IA-{createdTrajs.Count + 1}",
+                    Trajectory_Description = $"{groupStops.Count} arrêts, {groupStops.Sum(s => s.WorkCount)} pers, temps total {totalTime:F1} min",
+                    Trajectory_StartLatitude = 34.2900m,
+                    Trajectory_StartLongitude = -6.5700m,
+                    Trajectory_EndLatitude = (decimal)ordered.Last().Lat,
+                    Trajectory_EndLongitude = (decimal)ordered.Last().Lng,
+                    Trajectory_DistanceKm = (decimal)Math.Round(maxDistance, 2),
+                    Trajectory_EstimatedDurationMinutes = (int)Math.Ceiling(totalTime),
+                    Trajectory_Status = "Active",
+                    Trajectory_CreatedAt = DateTime.Now,
+                    Trajectory_UpdatedAt = DateTime.Now
+                };
+                _context.Trajectories.Add(traj);
+                await _context.SaveChangesAsync();
+
+                int order = 1;
+                foreach (var s in ordered)
+                {
+                    var stopEntity = await _context.TrajectoryStops.FindAsync(s.StopId);
+                    if (stopEntity != null)
+                    {
+                        stopEntity.TS_TrajectoryId = traj.Trajectory_Id;
+                        stopEntity.TS_OrderIndex = order++;
+                        _context.TrajectoryStops.Update(stopEntity);
+                    }
+                }
+                await _context.SaveChangesAsync();
+                createdTrajs.Add(traj);
+            }
+
+            return Ok(new { success = true, count = createdTrajs.Count, trajectories = createdTrajs });
+        }
+
+        // ----- Classes auxiliaires pour l'optimisation -----
+        private class StopWithWorkers
+        {
+            public TrajectoryStop Stop { get; set; }
+            public int WorkerCount { get; set; }
+        }
+
+        private class StopTravel
+        {
+            public int StopId { get; set; }
+            public double Lat { get; set; }
+            public double Lng { get; set; }
+            public int WorkCount { get; set; }
+            public double TravelTimeFromDepot { get; set; }
+        }
+
+        private class Chromosome
+        {
+            public List<List<int>> Clusters { get; set; }
+            public double Fitness { get; set; }
+        }
+
+        private class OrderedStop : StopTravel
+        {
+            public double CumulativeTime { get; set; }
+        }
+
+        // ----- Algorithme génétique -----
+        private List<List<int>> GeneticBinPacking(List<StopTravel> items, int capacity, double maxTime, int populationSize = 200, int generations = 500, double mutationRate = 0.1)
+        {
+            int n = items.Count;
+            if (n == 0) return new List<List<int>>();
+
+            var population = new List<Chromosome>();
+            for (int i = 0; i < populationSize; i++)
+            {
+                var chrom = RandomChromosome(items, capacity, maxTime);
+                chrom.Fitness = EvaluateFitness(chrom, items, capacity, maxTime);
+                population.Add(chrom);
+            }
+
+            for (int gen = 0; gen < generations; gen++)
+            {
+                var newPopulation = new List<Chromosome>();
+                for (int i = 0; i < populationSize; i++)
+                {
+                    var parent1 = TournamentSelection(population);
+                    var parent2 = TournamentSelection(population);
+                    var child = Crossover(parent1, parent2, items, capacity, maxTime);
+                    if (new Random().NextDouble() < mutationRate)
+                        Mutate(child, items, capacity, maxTime);
+                    child.Fitness = EvaluateFitness(child, items, capacity, maxTime);
+                    newPopulation.Add(child);
+                }
+                var best = population.OrderBy(c => c.Fitness).First();
+                newPopulation[0] = best;
+                population = newPopulation;
+            }
+
+            return population.OrderBy(c => c.Fitness).First().Clusters;
+        }
+
+        private Chromosome RandomChromosome(List<StopTravel> items, int capacity, double maxTime)
+        {
+            var indices = Enumerable.Range(0, items.Count).OrderBy(x => Guid.NewGuid()).ToList();
+            var clusters = new List<List<int>>();
+            var workSums = new List<int>();
+            var timeMaxs = new List<double>();
+
+            foreach (var idx in indices)
+            {
+                bool placed = false;
+                for (int i = 0; i < clusters.Count; i++)
+                {
+                    if (workSums[i] + items[idx].WorkCount <= capacity && Math.Max(timeMaxs[i], items[idx].TravelTimeFromDepot) <= maxTime)
+                    {
+                        clusters[i].Add(idx);
+                        workSums[i] += items[idx].WorkCount;
+                        timeMaxs[i] = Math.Max(timeMaxs[i], items[idx].TravelTimeFromDepot);
+                        placed = true;
+                        break;
+                    }
+                }
+                if (!placed)
+                {
+                    clusters.Add(new List<int> { idx });
+                    workSums.Add(items[idx].WorkCount);
+                    timeMaxs.Add(items[idx].TravelTimeFromDepot);
+                }
+            }
+            return new Chromosome { Clusters = clusters, Fitness = 0 };
+        }
+
+        private Chromosome TournamentSelection(List<Chromosome> population, int tournamentSize = 5)
+        {
+            var best = population.OrderBy(c => c.Fitness).First();
+            for (int i = 0; i < tournamentSize; i++)
+            {
+                var candidate = population[new Random().Next(population.Count)];
+                if (candidate.Fitness < best.Fitness)
+                    best = candidate;
+            }
+            return best;
+        }
+
+        private Chromosome Crossover(Chromosome parent1, Chromosome parent2, List<StopTravel> items, int capacity, double maxTime)
+        {
+            var usedIndices = new HashSet<int>();
+            var newClusters = new List<List<int>>();
+
+            foreach (var cluster in parent1.Clusters)
+            {
+                var validCluster = new List<int>();
+                int sumWork = 0;
+                double maxT = 0;
+                foreach (var idx in cluster)
+                {
+                    if (!usedIndices.Contains(idx))
+                    {
+                        if (sumWork + items[idx].WorkCount <= capacity && Math.Max(maxT, items[idx].TravelTimeFromDepot) <= maxTime)
+                        {
+                            validCluster.Add(idx);
+                            sumWork += items[idx].WorkCount;
+                            maxT = Math.Max(maxT, items[idx].TravelTimeFromDepot);
+                            usedIndices.Add(idx);
+                        }
+                    }
+                }
+                if (validCluster.Any())
+                    newClusters.Add(validCluster);
+            }
+
+            foreach (var cluster in parent2.Clusters)
+            {
+                var validCluster = new List<int>();
+                int sumWork = 0;
+                double maxT = 0;
+                foreach (var idx in cluster)
+                {
+                    if (!usedIndices.Contains(idx))
+                    {
+                        if (sumWork + items[idx].WorkCount <= capacity && Math.Max(maxT, items[idx].TravelTimeFromDepot) <= maxTime)
+                        {
+                            validCluster.Add(idx);
+                            sumWork += items[idx].WorkCount;
+                            maxT = Math.Max(maxT, items[idx].TravelTimeFromDepot);
+                            usedIndices.Add(idx);
+                        }
+                    }
+                }
+                if (validCluster.Any())
+                    newClusters.Add(validCluster);
+            }
+
+            for (int i = 0; i < items.Count; i++)
+            {
+                if (!usedIndices.Contains(i))
+                {
+                    newClusters.Add(new List<int> { i });
+                }
+            }
+
+            return new Chromosome { Clusters = newClusters, Fitness = 0 };
+        }
+
+        private void Mutate(Chromosome chrom, List<StopTravel> items, int capacity, double maxTime)
+        {
+            if (chrom.Clusters.Count < 2) return;
+            var rand = new Random();
+            int clusterIdx1 = rand.Next(chrom.Clusters.Count);
+            int clusterIdx2 = rand.Next(chrom.Clusters.Count);
+            if (clusterIdx1 == clusterIdx2) return;
+            if (chrom.Clusters[clusterIdx1].Count == 0) return;
+
+            int elementIdx = rand.Next(chrom.Clusters[clusterIdx1].Count);
+            int stopId = chrom.Clusters[clusterIdx1][elementIdx];
+            int newWork = chrom.Clusters[clusterIdx2].Sum(idx => items[idx].WorkCount) + items[stopId].WorkCount;
+            double newTime = Math.Max(items[stopId].TravelTimeFromDepot, chrom.Clusters[clusterIdx2].Max(idx => items[idx].TravelTimeFromDepot));
+            if (newWork <= capacity && newTime <= maxTime)
+            {
+                chrom.Clusters[clusterIdx1].RemoveAt(elementIdx);
+                chrom.Clusters[clusterIdx2].Add(stopId);
+                chrom.Clusters = chrom.Clusters.Where(c => c.Any()).ToList();
+            }
+        }
+
+        private double EvaluateFitness(Chromosome chrom, List<StopTravel> items, int capacity, double maxTime)
+        {
+            int clusterCount = chrom.Clusters.Count;
+            double penalty = 0;
+            foreach (var cluster in chrom.Clusters)
+            {
+                int sumWork = cluster.Sum(idx => items[idx].WorkCount);
+                double maxT = cluster.Max(idx => items[idx].TravelTimeFromDepot);
+                if (sumWork > capacity) penalty += 1000;
+                if (maxT > maxTime) penalty += 1000;
+            }
+            return clusterCount + penalty;
+        }
+
+        // ----- TSP heuristique -----
+        private List<OrderedStop> SolveTSP(List<StopTravel> stops, double startLat, double startLng, double speedKmh)
+        {
+            var remaining = stops.ToList();
+            var route = new List<OrderedStop>();
+            double currentLat = startLat, currentLng = startLng;
+            double cumulativeTime = 0;
+
+            while (remaining.Any())
+            {
+                var nearest = remaining.OrderBy(s => HaversineDistance(currentLat, currentLng, s.Lat, s.Lng)).First();
+                double dist = HaversineDistance(currentLat, currentLng, nearest.Lat, nearest.Lng);
+                double time = dist / 1000.0 / speedKmh * 60;
+                cumulativeTime += time;
+                route.Add(new OrderedStop
+                {
+                    StopId = nearest.StopId,
+                    Lat = nearest.Lat,
+                    Lng = nearest.Lng,
+                    WorkCount = nearest.WorkCount,
+                    TravelTimeFromDepot = nearest.TravelTimeFromDepot,
+                    CumulativeTime = cumulativeTime
+                });
+                currentLat = nearest.Lat;
+                currentLng = nearest.Lng;
+                remaining.Remove(nearest);
+            }
+            return route;
+        }
+
+        private double HaversineDistance(double lat1, double lon1, double lat2, double lon2)
+        {
+            const double R = 6371e3; // mètres
+            var φ1 = lat1 * Math.PI / 180;
+            var φ2 = lat2 * Math.PI / 180;
+            var Δφ = (lat2 - lat1) * Math.PI / 180;
+            var Δλ = (lon2 - lon1) * Math.PI / 180;
+            var a = Math.Sin(Δφ / 2) * Math.Sin(Δφ / 2) +
+                    Math.Cos(φ1) * Math.Cos(φ2) *
+                    Math.Sin(Δλ / 2) * Math.Sin(Δλ / 2);
+            var c = 2 * Math.Atan2(Math.Sqrt(a), Math.Sqrt(1 - a));
+            return R * c;
         }
     }
 
