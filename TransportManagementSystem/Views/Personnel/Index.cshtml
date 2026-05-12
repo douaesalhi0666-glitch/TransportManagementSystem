@@ -3,141 +3,241 @@
 @{
     ViewData["Title"] = "Personnel";
     Layout = "~/Views/Shared/_Layout.cshtml";
+    var pickupPoints = ViewBag.PickupPoints as IEnumerable<TransportManagementSystem.Models.TrajectoryStop>;
 }
 
-<h1>Gestion du Personnel</h1>
+<style>
+    .table th, .table td {
+        vertical-align: middle;
+        white-space: normal;
+        word-wrap: break-word;
+    }
+
+    .table {
+        font-size: 13px;
+    }
+
+    .badge-active {
+        background-color: #28a745;
+        color: white;
+        padding: 4px 8px;
+        border-radius: 4px;
+        font-size: 11px;
+    }
+
+    .badge-inactive {
+        background-color: #dc3545;
+        color: white;
+        padding: 4px 8px;
+        border-radius: 4px;
+        font-size: 11px;
+    }
+
+    .badge-motorized {
+        background-color: #17a2b8;
+        color: white;
+        padding: 4px 8px;
+        border-radius: 4px;
+        font-size: 11px;
+    }
+
+    .badge-non-motorized {
+        background-color: #6c757d;
+        color: white;
+        padding: 4px 8px;
+        border-radius: 4px;
+        font-size: 11px;
+    }
+
+    .badge-pickup {
+        background-color: #fd7e14;
+        color: white;
+        padding: 4px 8px;
+        border-radius: 4px;
+        font-size: 11px;
+    }
+
+    .filter-bar {
+        background: #f8f9fa;
+        padding: 15px;
+        border-radius: 8px;
+        margin-bottom: 20px;
+    }
+
+    .action-buttons {
+        display: flex;
+        gap: 5px;
+        flex-wrap: wrap;
+    }
+
+    .table-responsive {
+        overflow-x: auto;
+    }
+
+    .btn-icon {
+        padding: 4px 8px;
+        font-size: 14px;
+    }
+
+    .email-cell, .address-cell {
+        max-width: 200px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+</style>
+
+<h1>📋 Gestion du Personnel</h1>
 
 <p>
-    <a href="/Personnel/Create" class="btn btn-primary">Ajouter un personnel</a>
+    <a href="/Personnel/Create" class="btn btn-primary">➕ Ajouter un personnel</a>
 </p>
 
-<!-- Barre de recherche et filtres -->
-<div class="row mb-3">
-    <div class="col-md-4">
-        <input type="text" id="searchInput" class="form-control" placeholder="Rechercher par ID, prénom ou nom" />
-    </div>
-    <div class="col-md-2">
-        <select id="statusFilter" class="form-select">
-            <option value="">Tous les statuts</option>
-            <option value="Active">Actif</option>
-            <option value="Inactive">Inactif</option>
-        </select>
-    </div>
-    <div class="col-md-2">
-        <select id="assignedFilter" class="form-select">
-            <option value="">Tous</option>
-            <option value="assigned">Assigné</option>
-            <option value="unassigned">Non assigné</option>
-        </select>
-    </div>
-    <div class="col-md-2">
-        <button id="resetFilter" class="btn btn-secondary">Réinitialiser</button>
+<div class="filter-bar">
+    <div class="row">
+        <div class="col-md-4 mb-2">
+            <input type="text" id="searchInput" class="form-control" placeholder="🔍 Rechercher par ID, prénom ou nom" />
+        </div>
+        <div class="col-md-2 mb-2">
+            <select id="statusFilter" class="form-select">
+                <option value="">📊 Tous les statuts</option>
+                <option value="Active">✅ Actif</option>
+                <option value="Inactive">❌ Inactif</option>
+            </select>
+        </div>
+        <div class="col-md-2 mb-2">
+            <select id="assignedFilter" class="form-select">
+                <option value="">👥 Tous</option>
+                <option value="assigned">✅ Assigné</option>
+                <option value="unassigned">❌ Non assigné</option>
+            </select>
+        </div>
+        <div class="col-md-2 mb-2">
+            <button id="resetFilter" class="btn btn-secondary w-100">⟳ Réinitialiser</button>
+        </div>
     </div>
 </div>
 
-<table class="table table-striped" id="personnelTable">
-    <thead>
-        <tr>
-            <th>ID</th>
-            <th>Prénom</th>
-            <th>Nom</th>
-            <th>Genre</th>
-            <th>Email</th>
-            <th>Téléphone</th>
-            <th>Code employé</th>
-            <th>Département</th>
-            <th>Adresse domicile</th>
-            <th>Trajet assigné</th>
-            <th>Bus assigné</th>
-            <th>Statut</th>
-            <th>Motorisé</th>
-            <th>Actions</th>
-        </tr>
-    </thead>
-    <tbody>
-        @foreach (var item in Model)
-        {
-            var isAssigned = item.AssignedBusId != null || item.AssignedTrajectoryId != null;
-            <tr id="row-@item.Personnel_Id" data-status="@item.Personnel_Status" data-assigned="@(isAssigned ? "assigned" : "unassigned")">
-                <td>@item.Personnel_Id</td>
-                <td>@item.Personnel_FirstName</td>
-                <td>@item.Personnel_LastName</td>
-                <td>
-                    @if (item.Personnel_Gender == "Male")
-                    {
-                        <span>Homme</span>
-                    }
-                    else if (item.Personnel_Gender == "Female")
-                    {
-                        <span>Femme</span>
-                    }
-                    else
-                    {
-                        @item.Personnel_Gender
-                    }
-                </td>
-                <td>@item.Personnel_Email</td>
-                <td>@item.Personnel_PhoneNumber</td>
-                <td>@item.Personnel_EmployeeCode</td>
-                <td>@item.Personnel_Department</td>
-                <td>@item.HomeAddress</td>
-                <td>
-                    @if (item.AssignedTrajectory != null)
-                    {
-                        @item.AssignedTrajectory.Trajectory_Name
-                    }
-                    else
-                    {
-                        <span class="text-muted">Non assigné</span>
-                    }
-                </td>
-                <td>
-                    @if (item.AssignedBus != null)
-                    {
-                        @item.AssignedBus.Bus_Code
-                    }
-                    else
-                    {
-                        <span class="text-muted">Non assigné</span>
-                    }
-                </td>
-                <td>
-                    @if (item.Personnel_Status == "Active")
-                    {
-                        <span class="badge bg-success">Actif</span>
-                    }
-                    else
-                    {
-                        <span class="badge bg-danger">Inactif</span>
-                    }
-                </td>
-                <td>
-                    @if (item.IsMotorized)
-                    {
-                        <span class="badge bg-success">Oui</span>
-                    }
-                    else
-                    {
-                        <span class="badge bg-secondary">Non</span>
-                    }
-                </td>
-                <td>
-                    <button class="btn btn-sm btn-warning edit-btn" data-id="@item.Personnel_Id">Modifier</button>
-                    <a href="/Personnel/Delete/@item.Personnel_Id" class="btn btn-sm btn-danger">Supprimer</a>
-                </td>
+<div class="table-responsive">
+    <table class="table table-striped table-bordered" id="personnelTable">
+        <thead class="table-dark">
+            <tr>
+                <th>ID</th>
+                <th>Prénom</th>
+                <th>Nom</th>
+                <th>Genre</th>
+                <th>Email</th>
+                <th>Téléphone</th>
+                <th>Code</th>
+                <th>Département</th>
+                <th>Adresse</th>
+                <th>📍 Point de ramassage</th>
+                <th>📌 Trajet</th>
+                <th>🚌 Bus</th>
+                <th>Statut</th>
+                <th>Motorisé</th>
+                <th>Actions</th>
             </tr>
-        }
-    </tbody>
-</table>
+        </thead>
+        <tbody>
+            @foreach (var item in Model)
+            {
+                var isAssigned = item.AssignedBusId != null || item.AssignedTrajectoryId != null;
+                var assignedStop = pickupPoints?.FirstOrDefault(s => s.TS_Id == item.AssignedStopId);
+                var assignedStopName = assignedStop?.TS_Name ?? "-";
+                
+                <tr id="row-@item.Personnel_Id" data-status="@item.Personnel_Status" data-assigned="@(isAssigned ? "assigned" : "unassigned")">
+                    <td>@item.Personnel_Id</td>
+                    <td>@item.Personnel_FirstName</td>
+                    <td>@item.Personnel_LastName</td>
+                    <td>
+                        @if (item.Personnel_Gender == "Male")
+                        {
+                            <span>👨 Homme</span>
+                        }
+                        else if (item.Personnel_Gender == "Female")
+                        {
+                            <span>👩 Femme</span>
+                        }
+                        else
+                        {
+                            @item.Personnel_Gender
+                        }
+                    </td>
+                    <td class="email-cell" title="@item.Personnel_Email">@(item.Personnel_Email ?? "-")</td>
+                    <td>@(item.Personnel_PhoneNumber ?? "-")</td>
+                    <td>@item.Personnel_EmployeeCode</td>
+                    <td>@(item.Personnel_Department ?? "-")</td>
+                    <td class="address-cell" title="@item.HomeAddress">@(item.HomeAddress ?? "-")</td>
+                    <td>
+                        @if (assignedStop != null)
+                        {
+                            <span class="badge badge-pickup">📍 @assignedStop.TS_Name</span>
+                        }
+                        else
+                        {
+                            <span class="text-muted">-</span>
+                        }
+                    </td>
+                    <td>
+                        @if (item.AssignedTrajectory != null)
+                        {
+                            @item.AssignedTrajectory.Trajectory_Name
+                        }
+                        else
+                        {
+                            <span class="text-muted">-</span>
+                        }
+                    </td>
+                    <td>
+                        @if (item.AssignedBus != null)
+                        {
+                            @item.AssignedBus.Bus_Code
+                        }
+                        else
+                        {
+                            <span class="text-muted">-</span>
+                        }
+                    </td>
+                    <td>
+                        @if (item.Personnel_Status == "Active")
+                        {
+                            <span class="badge-active">✅ Actif</span>
+                        }
+                        else
+                        {
+                            <span class="badge-inactive">❌ Inactif</span>
+                        }
+                    </td>
+                    <td>
+                        @if (item.IsMotorized)
+                        {
+                            <span class="badge-motorized">🛵 Oui</span>
+                        }
+                        else
+                        {
+                            <span class="badge-non-motorized">🚶 Non</span>
+                        }
+                    </td>
+                    <td class="action-buttons">
+                        <button class="btn btn-sm btn-warning edit-btn" data-id="@item.Personnel_Id" title="Modifier">✏️</button>
+                        <a href="/Personnel/Delete/@item.Personnel_Id" class="btn btn-sm btn-danger" title="Supprimer">🗑️</a>
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+</div>
 
-<a href="/Dashboard/AdminDashboard" class="btn btn-secondary">Retour au Dashboard</a>
+<div class="mt-3">
+    <a href="/Dashboard/AdminDashboard" class="btn btn-secondary">← Retour au Dashboard</a>
+</div>
 
 <!-- Modal d'édition -->
 <div class="modal fade" id="editModal" tabindex="-1" aria-labelledby="editModalLabel" aria-hidden="true">
-    <div class="modal-dialog modal-lg">
+    <div class="modal-dialog modal-xl">
         <div class="modal-content">
             <div class="modal-header bg-primary text-white">
-                <h5 class="modal-title" id="editModalLabel">Modifier le personnel</h5>
+                <h5 class="modal-title" id="editModalLabel">✏️ Modifier le personnel</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body">
@@ -146,113 +246,140 @@
                     
                     <div class="row">
                         <div class="col-md-6 mb-2">
-                            <label>Prénom</label>
+                            <label class="fw-bold">Prénom</label>
                             <input type="text" id="edit_FirstName" name="Personnel_FirstName" class="form-control" required />
                         </div>
                         <div class="col-md-6 mb-2">
-                            <label>Nom</label>
+                            <label class="fw-bold">Nom</label>
                             <input type="text" id="edit_LastName" name="Personnel_LastName" class="form-control" required />
                         </div>
                     </div>
+                    
                     <div class="row">
                         <div class="col-md-4 mb-2">
-                            <label>Genre</label>
+                            <label class="fw-bold">Genre</label>
                             <select id="edit_Gender" name="Personnel_Gender" class="form-select">
-                                <option value="Male">Homme</option>
-                                <option value="Female">Femme</option>
+                                <option value="Male">👨 Homme</option>
+                                <option value="Female">👩 Femme</option>
                             </select>
                         </div>
                         <div class="col-md-4 mb-2">
-                            <label>Date de naissance</label>
+                            <label class="fw-bold">Date de naissance</label>
                             <input type="date" id="edit_DateOfBirth" name="Personnel_DateOfBirth" class="form-control" />
                         </div>
                         <div class="col-md-4 mb-2">
-                            <label>Statut</label>
+                            <label class="fw-bold">Statut</label>
                             <select id="edit_Status" name="Personnel_Status" class="form-select">
-                                <option value="Active">Actif</option>
-                                <option value="Inactive">Inactif</option>
+                                <option value="Active">✅ Actif</option>
+                                <option value="Inactive">❌ Inactif</option>
                             </select>
                         </div>
                     </div>
+                    
                     <div class="row">
                         <div class="col-md-6 mb-2">
-                            <label>Email</label>
+                            <label class="fw-bold">Email</label>
                             <input type="email" id="edit_Email" name="Personnel_Email" class="form-control" />
                         </div>
                         <div class="col-md-6 mb-2">
-                            <label>Téléphone</label>
+                            <label class="fw-bold">Téléphone</label>
                             <input type="text" id="edit_PhoneNumber" name="Personnel_PhoneNumber" class="form-control" />
                         </div>
                     </div>
+                    
                     <div class="row">
                         <div class="col-md-6 mb-2">
-                            <label>Code employé</label>
+                            <label class="fw-bold">Code employé</label>
                             <input type="text" id="edit_EmployeeCode" name="Personnel_EmployeeCode" class="form-control" required />
                         </div>
                         <div class="col-md-6 mb-2">
-                            <label>Département</label>
+                            <label class="fw-bold">Département</label>
                             <input type="text" id="edit_Department" name="Personnel_Department" class="form-control" />
                         </div>
                     </div>
+                    
                     <div class="mb-2">
-                        <label>Adresse domicile</label>
-                        <input type="text" id="edit_HomeAddress" name="HomeAddress" class="form-control" />
+                        <label class="fw-bold">Adresse domicile</label>
+                        <input type="text" id="edit_HomeAddress" name="HomeAddress" class="form-control" placeholder="Rue, numéro, quartier" />
                     </div>
+                    
                     <div class="row">
                         <div class="col-md-6 mb-2">
-                            <label>Adresse (rue)</label>
+                            <label class="fw-bold">Adresse (rue)</label>
                             <input type="text" id="edit_Address" name="Personnel_Address" class="form-control" />
                         </div>
                         <div class="col-md-6 mb-2">
-                            <label>Ville</label>
+                            <label class="fw-bold">Ville</label>
                             <input type="text" id="edit_City" name="Personnel_City" class="form-control" />
                         </div>
                     </div>
+                    
                     <div class="row">
                         <div class="col-md-6 mb-2">
-                            <label>Latitude</label>
-                            <input type="number" step="any" id="edit_Latitude" name="Personnel_Latitude" class="form-control" />
+                            <label class="fw-bold">Latitude</label>
+                            <input type="number" step="any" id="edit_Latitude" name="Personnel_Latitude" class="form-control" placeholder="Ex: 34.2610" />
                         </div>
                         <div class="col-md-6 mb-2">
-                            <label>Longitude</label>
-                            <input type="number" step="any" id="edit_Longitude" name="Personnel_Longitude" class="form-control" />
+                            <label class="fw-bold">Longitude</label>
+                            <input type="number" step="any" id="edit_Longitude" name="Personnel_Longitude" class="form-control" placeholder="Ex: -6.5800" />
                         </div>
                     </div>
+                    
                     <div class="row">
-                        <div class="col-md-6 mb-2">
-                            <label>Trajet assigné</label>
+                        <div class="col-md-4 mb-2">
+                            <label class="fw-bold">📍 Point de ramassage</label>
+                            <select id="edit_StopId" name="AssignedStopId" class="form-select">
+                                <option value="">-- Aucun --</option>
+                                @if (ViewBag.PickupPoints != null)
+                                {
+                                    foreach (var stop in ViewBag.PickupPoints)
+                                    {
+                                        <option value="@stop.TS_Id">📍 @stop.TS_Name</option>
+                                    }
+                                }
+                            </select>
+                        </div>
+                        <div class="col-md-4 mb-2">
+                            <label class="fw-bold">📌 Trajet assigné</label>
                             <select id="edit_TrajectoryId" name="AssignedTrajectoryId" class="form-select">
                                 <option value="">-- Aucun --</option>
                                 @foreach (var traj in ViewBag.Trajectories)
                                 {
-                                    <option value="@traj.Trajectory_Id">@traj.Trajectory_Name</option>
+                                    <option value="@traj.Trajectory_Id">📌 @traj.Trajectory_Name</option>
                                 }
                             </select>
                         </div>
-                        <div class="col-md-6 mb-2">
-                            <label>Bus assigné</label>
+                        <div class="col-md-4 mb-2">
+                            <label class="fw-bold">🚌 Bus assigné</label>
                             <select id="edit_BusId" name="AssignedBusId" class="form-select">
                                 <option value="">-- Aucun --</option>
                                 @foreach (var bus in ViewBag.Buses)
                                 {
-                                    <option value="@bus.Bus_Id">@bus.Bus_Code - @bus.Bus_PlateNumber</option>
+                                    <option value="@bus.Bus_Id">🚌 @bus.Bus_Code - @bus.Bus_PlateNumber</option>
                                 }
                             </select>
                         </div>
                     </div>
-                    <div class="form-check mb-2">
-                        <input type="checkbox" id="edit_IsAssigned" name="IsAssigned" class="form-check-input" value="true" />
-                        <label class="form-check-label">Assigné</label>
-                    </div>
-                    <div class="form-check mb-2">
-                        <input type="checkbox" id="edit_IsMotorized" name="IsMotorized" class="form-check-input" value="true" />
-                        <label class="form-check-label">Motorisé (véhicule personnel)</label>
+                    
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="form-check mb-2">
+                                <input type="checkbox" id="edit_IsAssigned" name="IsAssigned" class="form-check-input" value="true" />
+                                <label class="form-check-label fw-bold">✅ Assigné</label>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="form-check mb-2">
+                                <input type="checkbox" id="edit_IsMotorized" name="IsMotorized" class="form-check-input" value="true" />
+                                <label class="form-check-label fw-bold">🛵 Motorisé (véhicule personnel)</label>
+                            </div>
+                        </div>
                     </div>
                 </form>
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
-                <button type="button" id="saveEditBtn" class="btn btn-primary">Enregistrer</button>
+                <button type="button" id="saveEditBtn" class="btn btn-primary">💾 Enregistrer</button>
             </div>
         </div>
     </div>
@@ -297,7 +424,6 @@
         filterTable();
         });
 
-        // Édition en ligne (modal)
         $('.edit-btn').click(function() {
         var id = $(this).data('id');
         $.get('/Personnel/GetPersonnelData/' + id, function(data) {
@@ -317,13 +443,14 @@
         $('#edit_Latitude').val(data.personnel_Latitude);
         $('#edit_Longitude').val(data.personnel_Longitude);
         $('#edit_HomeAddress').val(data.homeAddress);
+        $('#edit_StopId').val(data.assignedStopId);
         $('#edit_TrajectoryId').val(data.assignedTrajectoryId);
         $('#edit_BusId').val(data.assignedBusId);
         $('#edit_IsAssigned').prop('checked', data.isAssigned === true);
         $('#edit_IsMotorized').prop('checked', data.isMotorized === true);
         $('#editModal').modal('show');
         }).fail(function() {
-        alert('Erreur lors du chargement des données.');
+        alert('❌ Erreur lors du chargement des données.');
         });
         });
 
@@ -344,6 +471,7 @@
         Personnel_Latitude: $('#edit_Latitude').val() === '' ? null : parseFloat($('#edit_Latitude').val()),
         Personnel_Longitude: $('#edit_Longitude').val() === '' ? null : parseFloat($('#edit_Longitude').val()),
         HomeAddress: $('#edit_HomeAddress').val(),
+        AssignedStopId: $('#edit_StopId').val() === '' ? null : parseInt($('#edit_StopId').val()),
         AssignedTrajectoryId: $('#edit_TrajectoryId').val() === '' ? null : parseInt($('#edit_TrajectoryId').val()),
         AssignedBusId: $('#edit_BusId').val() === '' ? null : parseInt($('#edit_BusId').val()),
         IsAssigned: $('#edit_IsAssigned').is(':checked'),
@@ -357,14 +485,14 @@
         data: JSON.stringify(formData),
         success: function(response) {
         if (response.success) {
-        alert(response.message);
+        alert('✅ ' + response.message);
         location.reload();
         } else {
-        alert('Erreur : ' + (response.message || 'Vérifiez les données'));
+        alert('❌ Erreur : ' + (response.message || 'Vérifiez les données'));
         }
         },
         error: function() {
-        alert('Erreur lors de l’envoi.');
+        alert('❌ Erreur lors de l\'envoi.');
         }
         });
         });

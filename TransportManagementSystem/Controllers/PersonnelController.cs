@@ -20,10 +20,14 @@ namespace TransportManagementSystem.Controllers
             var personnel = await _context.Personnel
                 .Include(p => p.AssignedTrajectory)
                 .Include(p => p.AssignedBus)
+                .Include(p => p.AssignedStop)
                 .ToListAsync();
 
             ViewBag.Trajectories = await _context.Trajectories.ToListAsync();
             ViewBag.Buses = await _context.Buses.ToListAsync();
+            ViewBag.PickupPoints = await _context.TrajectoryStops
+                .OrderBy(s => s.TS_OrderIndex)
+                .ToListAsync();
 
             return View(personnel);
         }
@@ -36,6 +40,7 @@ namespace TransportManagementSystem.Controllers
             var personnel = await _context.Personnel
                 .Include(p => p.AssignedTrajectory)
                 .Include(p => p.AssignedBus)
+                .Include(p => p.AssignedStop)
                 .FirstOrDefaultAsync(m => m.Personnel_Id == id);
             if (personnel == null) return NotFound();
 
@@ -47,6 +52,9 @@ namespace TransportManagementSystem.Controllers
         {
             ViewBag.Trajectories = await _context.Trajectories.ToListAsync();
             ViewBag.Buses = await _context.Buses.ToListAsync();
+            ViewBag.PickupPoints = await _context.TrajectoryStops
+                .OrderBy(s => s.TS_OrderIndex)
+                .ToListAsync();
             return View();
         }
 
@@ -61,6 +69,9 @@ namespace TransportManagementSystem.Controllers
                 if (existing != null)
                 {
                     ModelState.AddModelError("Personnel_Id", "Cet ID existe déjà.");
+                    ViewBag.Trajectories = await _context.Trajectories.ToListAsync();
+                    ViewBag.Buses = await _context.Buses.ToListAsync();
+                    ViewBag.PickupPoints = await _context.TrajectoryStops.OrderBy(s => s.TS_OrderIndex).ToListAsync();
                     return View(personnel);
                 }
 
@@ -69,11 +80,15 @@ namespace TransportManagementSystem.Controllers
 
                 _context.Add(personnel);
                 await _context.SaveChangesAsync();
+
+                DashboardController.AddNotification("success", "Personnel ajouté", $"Le personnel {personnel.Personnel_FirstName} {personnel.Personnel_LastName} a été ajouté.");
+
                 return RedirectToAction(nameof(Index));
             }
 
             ViewBag.Trajectories = await _context.Trajectories.ToListAsync();
             ViewBag.Buses = await _context.Buses.ToListAsync();
+            ViewBag.PickupPoints = await _context.TrajectoryStops.OrderBy(s => s.TS_OrderIndex).ToListAsync();
             return View(personnel);
         }
 
@@ -84,6 +99,7 @@ namespace TransportManagementSystem.Controllers
             var personnel = await _context.Personnel
                 .Include(p => p.AssignedTrajectory)
                 .Include(p => p.AssignedBus)
+                .Include(p => p.AssignedStop)
                 .FirstOrDefaultAsync(p => p.Personnel_Id == id);
             if (personnel == null) return NotFound();
 
@@ -105,6 +121,7 @@ namespace TransportManagementSystem.Controllers
                 personnel.Personnel_Longitude,
                 personnel.HomeAddress,
                 personnel.IsAssigned,
+                AssignedStopId = personnel.AssignedStopId,
                 AssignedTrajectoryId = personnel.AssignedTrajectoryId,
                 AssignedBusId = personnel.AssignedBusId,
                 IsMotorized = personnel.IsMotorized
@@ -122,6 +139,13 @@ namespace TransportManagementSystem.Controllers
             if (personnel == null)
                 return NotFound(new { success = false, message = "Personnel non trouvé" });
 
+            string oldStopName = null;
+            if (personnel.AssignedStopId != model.AssignedStopId)
+            {
+                var oldStop = await _context.TrajectoryStops.FindAsync(personnel.AssignedStopId);
+                oldStopName = oldStop?.TS_Name;
+            }
+
             personnel.Personnel_FirstName = model.Personnel_FirstName;
             personnel.Personnel_LastName = model.Personnel_LastName;
             personnel.Personnel_Gender = model.Personnel_Gender;
@@ -136,14 +160,34 @@ namespace TransportManagementSystem.Controllers
             personnel.Personnel_Latitude = model.Personnel_Latitude;
             personnel.Personnel_Longitude = model.Personnel_Longitude;
             personnel.HomeAddress = model.HomeAddress;
+            personnel.AssignedStopId = model.AssignedStopId;
             personnel.AssignedTrajectoryId = model.AssignedTrajectoryId;
             personnel.AssignedBusId = model.AssignedBusId;
             personnel.IsAssigned = model.IsAssigned;
             personnel.IsMotorized = model.IsMotorized;
             personnel.Personnel_UpdatedAt = DateTime.Now;
 
+            // Si assigné à un point de ramassage, marquer comme assigné
+            if (model.AssignedStopId.HasValue && !model.IsAssigned)
+            {
+                personnel.IsAssigned = true;
+            }
+
             _context.Update(personnel);
             await _context.SaveChangesAsync();
+
+            if (oldStopName != null && model.AssignedStopId != null)
+            {
+                var newStop = await _context.TrajectoryStops.FindAsync(model.AssignedStopId);
+                DashboardController.AddNotification("assignment", "Point de ramassage modifié",
+                    $"{personnel.Personnel_FirstName} {personnel.Personnel_LastName} a été réassigné de '{oldStopName}' à '{newStop?.TS_Name}'.");
+            }
+            else if (model.AssignedStopId != null)
+            {
+                var newStop = await _context.TrajectoryStops.FindAsync(model.AssignedStopId);
+                DashboardController.AddNotification("assignment", "Personnel assigné",
+                    $"{personnel.Personnel_FirstName} {personnel.Personnel_LastName} a été assigné au point de ramassage '{newStop?.TS_Name}'.");
+            }
 
             return Ok(new { success = true, message = "Personnel mis à jour avec succès" });
         }
@@ -155,6 +199,7 @@ namespace TransportManagementSystem.Controllers
             var personnel = await _context.Personnel
                 .Include(p => p.AssignedTrajectory)
                 .Include(p => p.AssignedBus)
+                .Include(p => p.AssignedStop)
                 .FirstOrDefaultAsync(m => m.Personnel_Id == id);
             if (personnel == null) return NotFound();
             return View(personnel);
@@ -168,8 +213,12 @@ namespace TransportManagementSystem.Controllers
             var personnel = await _context.Personnel.FindAsync(id);
             if (personnel != null)
             {
+                string personnelName = $"{personnel.Personnel_FirstName} {personnel.Personnel_LastName}";
                 _context.Personnel.Remove(personnel);
                 await _context.SaveChangesAsync();
+
+                DashboardController.AddNotification("delete", "Personnel supprimé",
+                    $"Le personnel {personnelName} a été supprimé.");
             }
             return RedirectToAction(nameof(Index));
         }
@@ -194,6 +243,7 @@ namespace TransportManagementSystem.Controllers
         public decimal? Personnel_Latitude { get; set; }
         public decimal? Personnel_Longitude { get; set; }
         public string HomeAddress { get; set; } = string.Empty;
+        public int? AssignedStopId { get; set; }
         public int? AssignedTrajectoryId { get; set; }
         public long? AssignedBusId { get; set; }
         public bool IsAssigned { get; set; }
