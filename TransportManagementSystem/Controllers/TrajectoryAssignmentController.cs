@@ -126,8 +126,9 @@ namespace TransportManagementSystem.Controllers
             if (personnel != null)
             {
                 personnel.AssignedTrajectoryId = null;
-                personnel.AssignedFragmentId = null;
+                // personnel.AssignedFragmentId = null; // SUPPRIMÉ - plus utilisé
                 personnel.AssignedBusId = null;
+                personnel.AssignedStopId = null;
                 personnel.IsAssigned = false;
                 await _context.SaveChangesAsync();
                 TempData["Success"] = "Personnel désassigné avec succès.";
@@ -139,8 +140,9 @@ namespace TransportManagementSystem.Controllers
         {
             var assignments = await _context.Personnel
                 .Include(p => p.AssignedTrajectory)
-                .Include(p => p.AssignedFragment)
+                // .Include(p => p.AssignedFragment) // SUPPRIMÉ
                 .Include(p => p.AssignedBus)
+                .Include(p => p.AssignedStop)
                 .Where(p => p.IsAssigned == true)
                 .ToListAsync();
             return View(assignments);
@@ -152,27 +154,11 @@ namespace TransportManagementSystem.Controllers
                 .Include(b => b.CurrentDriver)
                 .ToListAsync();
 
-            var fragmentIds = buses.Where(b => b.Bus_CurrentFragmentId.HasValue)
-                .Select(b => b.Bus_CurrentFragmentId.Value)
-                .Distinct()
-                .ToList();
-
-            var fragments = await _context.TrajectoryFragments
-                .Where(f => fragmentIds.Contains(f.Fragment_Id))
-                .Include(f => f.Trajectory)
-                .ToDictionaryAsync(f => f.Fragment_Id, f => f);
-
             var busOccupancy = new List<BusOccupancyViewModel>();
 
             foreach (var bus in buses)
             {
-                if (bus.Bus_CurrentFragmentId.HasValue && fragments.ContainsKey(bus.Bus_CurrentFragmentId.Value))
-                {
-                    bus.AssignedFragment = fragments[bus.Bus_CurrentFragmentId.Value];
-                }
-
                 var personnel = await _context.Personnel
-                    .Include(p => p.AssignedFragment)
                     .Where(p => p.AssignedBusId == bus.Bus_Id && p.IsAssigned == true)
                     .ToListAsync();
 
@@ -186,7 +172,6 @@ namespace TransportManagementSystem.Controllers
             }
 
             ViewBag.BusOccupancy = busOccupancy;
-            ViewBag.Fragments = fragments;
             return View();
         }
 
@@ -194,23 +179,17 @@ namespace TransportManagementSystem.Controllers
         public async Task<IActionResult> AssignPersonnelToBus(long busId)
         {
             var bus = await _context.Buses.FindAsync(busId);
-            if (bus == null || bus.Bus_CurrentFragmentId == null)
+            if (bus == null)
             {
-                TempData["Error"] = "Ce bus n'est assigné à aucun fragment.";
+                TempData["Error"] = "Bus non trouvé.";
                 return RedirectToAction("BusOccupancy");
             }
 
-            var fragmentId = bus.Bus_CurrentFragmentId.Value;
-
-            var fragmentStops = await _context.FragmentStops
-                .Where(fs => fs.Fragment_Id == fragmentId)
-                .Select(fs => fs.TS_Id)
-                .ToListAsync();
-
             var personnelToAssign = await _context.Personnel
-                .Where(p => fragmentStops.Contains(p.AssignedStopId ?? 0) &&
-                            p.IsAssigned == true &&
-                            p.AssignedBusId == null)
+                .Where(p => p.IsAssigned == false
+                            && p.AssignedStopId != null
+                            && p.AssignedBusId == null
+                            && p.Personnel_Status == "Active")
                 .ToListAsync();
 
             var capacity = bus.Bus_Capacity ?? 50;
@@ -223,7 +202,7 @@ namespace TransportManagementSystem.Controllers
                     break;
 
                 person.AssignedBusId = busId;
-                person.AssignedFragmentId = fragmentId;
+                person.IsAssigned = true;
                 assignedCount++;
             }
 
@@ -240,7 +219,6 @@ namespace TransportManagementSystem.Controllers
             var personnel = await _context.Personnel.FindAsync(personnelId);
             if (personnel != null && personnel.AssignedBusId == busId)
             {
-                personnel.AssignedFragmentId = null;
                 personnel.AssignedBusId = null;
                 personnel.IsAssigned = false;
                 await _context.SaveChangesAsync();
