@@ -48,13 +48,13 @@
         @foreach (var item in Model)
         {
             <tr id="row-@item.Bus_Id" data-status="@item.Bus_Status">
-                <td>@item.Bus_Id</td>
-                <td>@item.Bus_Code</td>
-                <td>@item.Bus_PlateNumber</td>
-                <td>@item.Bus_Brand</td>
-                <td>@item.Bus_Model</td>
-                <td>@item.Bus_Year</td>
-                <td>@item.Bus_Capacity</td>
+                <td>@item.Bus_Id</td
+                <td>@item.Bus_Code</td
+                <td>@item.Bus_PlateNumber</td
+                <td>@item.Bus_Brand</td
+                <td>@item.Bus_Model</td
+                <td>@item.Bus_Year</td
+                <td>@item.Bus_Capacity</td
                 <td>
                     @if (item.CurrentDriver != null)
                     {
@@ -64,8 +64,8 @@
                     {
                         <span class="text-muted">Non assigné</span>
                     }
-                 </td>
-                <tr>
+                </td
+                <td>
                     @if (item.Bus_Status == "In Service")
                     {
                         <span class="badge bg-success">En service</span>
@@ -78,14 +78,14 @@
                     {
                         <span class="badge bg-danger">Hors service</span>
                     }
-                 </td>
+                </td
                 <td>
                     <button class="btn btn-sm btn-warning edit-btn" data-id="@item.Bus_Id">Modifier</button>
                     <form asp-action="Delete" asp-route-id="@item.Bus_Id" method="post" style="display:inline;">
                         <input type="submit" value="Supprimer" class="btn btn-sm btn-danger" onclick="return confirm('Êtes-vous sûr de vouloir supprimer ce bus ?');" />
                     </form>
-                 </td>
-             </tr>
+                </td
+            </tr>
         }
     </tbody>
 </table>
@@ -153,6 +153,16 @@
                                 }
                             </select>
                         </div>
+                        <div class="col-md-6 mb-2">
+                            <label>Latitude</label>
+                            <input type="text" id="edit_Latitude" name="Bus_CurrentLatitude" class="form-control" placeholder="Latitude actuelle" />
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6 mb-2">
+                            <label>Longitude</label>
+                            <input type="text" id="edit_Longitude" name="Bus_CurrentLongitude" class="form-control" placeholder="Longitude actuelle" />
+                        </div>
                     </div>
                 </form>
             </div>
@@ -207,6 +217,8 @@
                     $('#edit_Capacity').val(data.bus_Capacity);
                     $('#edit_Status').val(data.bus_Status);
                     $('#edit_DriverId').val(data.bus_CurrentDriverId);
+                    $('#edit_Latitude').val(data.bus_CurrentLatitude);
+                    $('#edit_Longitude').val(data.bus_CurrentLongitude);
                     $('#editModal').modal('show');
                 }).fail(function() {
                     alert('Erreur lors du chargement des données.');
@@ -223,7 +235,9 @@
                     Bus_Year: $('#edit_Year').val() === '' ? null : parseInt($('#edit_Year').val()),
                     Bus_Capacity: $('#edit_Capacity').val() === '' ? null : parseInt($('#edit_Capacity').val()),
                     Bus_Status: $('#edit_Status').val(),
-                    Bus_CurrentDriverId: $('#edit_DriverId').val() === '' ? null : parseInt($('#edit_DriverId').val())
+                    Bus_CurrentDriverId: $('#edit_DriverId').val() === '' ? null : parseInt($('#edit_DriverId').val()),
+                    Bus_CurrentLatitude: $('#edit_Latitude').val() === '' ? null : parseFloat($('#edit_Latitude').val()),
+                    Bus_CurrentLongitude: $('#edit_Longitude').val() === '' ? null : parseFloat($('#edit_Longitude').val())
                 };
 
                 $.ajax({
