@@ -249,9 +249,29 @@ namespace TransportManagementSystem.Controllers
                 request.Personnel.AssignedBusId = null;
                 request.Personnel.IsAssigned = false;
 
-                AddNotification("Motorization", "Demande acceptée",
-                    $"Votre demande pour devenir {(request.RequestedIsMotorized ? "motorisé" : "non motorisé")} a été acceptée par l'administrateur.",
-                    request.PersonnelId);
+                // Si le personnel devient non motorisé, on l'assigne au point de ramassage le plus proche
+                if (!request.RequestedIsMotorized)
+                {
+                    bool assigned = await AssignToNearestStop(request.Personnel);
+                    if (assigned)
+                    {
+                        AddNotification("Motorization", "Demande acceptée",
+                            $"Vous êtes maintenant non motorisé. Vous avez été assigné au point de ramassage le plus proche.",
+                            request.PersonnelId);
+                    }
+                    else
+                    {
+                        AddNotification("Motorization", "Demande acceptée (sans assignation)",
+                            $"Vous êtes non motorisé mais aucun point de ramassage proche n'a été trouvé. Contactez l'administrateur.",
+                            request.PersonnelId);
+                    }
+                }
+                else
+                {
+                    AddNotification("Motorization", "Demande acceptée",
+                        $"Votre demande pour devenir motorisé a été acceptée par l'administrateur.",
+                        request.PersonnelId);
+                }
             }
             else
             {
@@ -265,6 +285,62 @@ namespace TransportManagementSystem.Controllers
 
             await _context.SaveChangesAsync();
             return Ok(new { success = true, message = model.Approve ? "Demande approuvée." : "Demande refusée." });
+        }
+
+        // ================================================
+        // MÉTHODES PRIVÉES POUR L'AFFECTATION AU POINT LE PLUS PROCHE
+        // ================================================
+
+        private async Task<bool> AssignToNearestStop(Personnel personnel)
+        {
+            if (personnel == null) return false;
+            if (!personnel.Personnel_Latitude.HasValue || !personnel.Personnel_Longitude.HasValue)
+                return false;
+
+            // Récupérer tous les arrêts (TrajectoryStop)
+            var stops = await _context.TrajectoryStops.ToListAsync();
+            if (!stops.Any()) return false;
+
+            double personnelLat = (double)personnel.Personnel_Latitude.Value;
+            double personnelLng = (double)personnel.Personnel_Longitude.Value;
+
+            TrajectoryStop? nearestStop = null;
+            double minDistance = double.MaxValue;
+
+            foreach (var stop in stops)
+            {
+                double stopLat = (double)stop.TS_Latitude;
+                double stopLng = (double)stop.TS_Longitude;
+                double distance = CalculateDistance(personnelLat, personnelLng, stopLat, stopLng);
+                if (distance < minDistance)
+                {
+                    minDistance = distance;
+                    nearestStop = stop;
+                }
+            }
+
+            if (nearestStop == null) return false;
+
+            personnel.AssignedStopId = nearestStop.TS_Id;
+            personnel.AssignedTrajectoryId = nearestStop.TS_TrajectoryId;
+            personnel.IsAssigned = true;
+
+            await _context.SaveChangesAsync();
+            return true;
+        }
+
+        private double CalculateDistance(double lat1, double lon1, double lat2, double lon2)
+        {
+            const double R = 6371e3; // mètres
+            var φ1 = lat1 * Math.PI / 180;
+            var φ2 = lat2 * Math.PI / 180;
+            var Δφ = (lat2 - lat1) * Math.PI / 180;
+            var Δλ = (lon2 - lon1) * Math.PI / 180;
+            var a = Math.Sin(Δφ / 2) * Math.Sin(Δφ / 2) +
+                    Math.Cos(φ1) * Math.Cos(φ2) *
+                    Math.Sin(Δλ / 2) * Math.Sin(Δλ / 2);
+            var c = 2 * Math.Atan2(Math.Sqrt(a), Math.Sqrt(1 - a));
+            return R * c;
         }
     }
 
