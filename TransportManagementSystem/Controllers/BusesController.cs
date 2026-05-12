@@ -25,15 +25,10 @@ namespace TransportManagementSystem.Controllers
         {
             var buses = await _context.Buses
                 .Include(b => b.CurrentDriver)
-                .Include(b => b.AssignedFragment)
                 .ToListAsync();
 
             ViewBag.Drivers = await _context.Drivers
                 .Where(d => d.Driver_Status == "Available" || d.Driver_Status == "On Route")
-                .ToListAsync();
-
-            ViewBag.Fragments = await _context.TrajectoryFragments
-                .Where(f => f.Status == "Active")
                 .ToListAsync();
 
             return View(buses);
@@ -61,7 +56,6 @@ namespace TransportManagementSystem.Controllers
         {
             var bus = await _context.Buses
                 .Include(b => b.CurrentDriver)
-                .Include(b => b.AssignedFragment)
                 .FirstOrDefaultAsync(b => b.Bus_Id == id);
             if (bus == null) return NotFound();
 
@@ -75,8 +69,7 @@ namespace TransportManagementSystem.Controllers
                 bus.Bus_Year,
                 bus.Bus_Capacity,
                 bus.Bus_Status,
-                bus.Bus_CurrentDriverId,
-                bus.Bus_CurrentFragmentId
+                bus.Bus_CurrentDriverId
             });
         }
 
@@ -97,7 +90,6 @@ namespace TransportManagementSystem.Controllers
             bus.Bus_Capacity = model.Bus_Capacity;
             bus.Bus_Status = model.Bus_Status;
             bus.Bus_CurrentDriverId = model.Bus_CurrentDriverId;
-            bus.Bus_CurrentFragmentId = model.Bus_CurrentFragmentId;
             bus.Bus_UpdatedAt = DateTime.Now;
 
             _context.Update(bus);
@@ -111,7 +103,6 @@ namespace TransportManagementSystem.Controllers
             if (id == null) return NotFound();
             var bus = await _context.Buses
                 .Include(b => b.CurrentDriver)
-                .Include(b => b.AssignedFragment)
                 .FirstOrDefaultAsync(b => b.Bus_Id == id);
             if (bus == null) return NotFound();
             return View(bus);
@@ -130,7 +121,6 @@ namespace TransportManagementSystem.Controllers
                     if (existingBus == null) return NotFound();
 
                     bus.Bus_CurrentDriverId = existingBus.Bus_CurrentDriverId;
-                    bus.Bus_CurrentFragmentId = existingBus.Bus_CurrentFragmentId;
                     bus.Bus_CurrentLatitude = existingBus.Bus_CurrentLatitude;
                     bus.Bus_CurrentLongitude = existingBus.Bus_CurrentLongitude;
                     bus.Bus_LastLocationUpdateTime = existingBus.Bus_LastLocationUpdateTime;
@@ -183,8 +173,7 @@ namespace TransportManagementSystem.Controllers
                     b.Bus_Status,
                     lat = b.Bus_CurrentLatitude,
                     lng = b.Bus_CurrentLongitude,
-                    lastUpdate = b.Bus_LastLocationUpdateTime,
-                    bus_CurrentFragmentId = b.Bus_CurrentFragmentId
+                    lastUpdate = b.Bus_LastLocationUpdateTime
                 }).ToListAsync();
             return Ok(buses);
         }
@@ -205,34 +194,6 @@ namespace TransportManagementSystem.Controllers
                 return NotFound("Aucun bus assigné.");
 
             var bus = driver.AssignedBus;
-            var fragmentId = bus.Bus_CurrentFragmentId;
-            TrajectoryFragment? fragment = null;
-            var stops = new List<object>();
-
-            if (fragmentId.HasValue)
-            {
-                fragment = await _context.TrajectoryFragments
-                    .Include(f => f.Trajectory)
-                    .Include(f => f.FragmentStops)
-                        .ThenInclude(fs => fs.TrajectoryStop)
-                    .FirstOrDefaultAsync(f => f.Fragment_Id == fragmentId);
-
-                if (fragment != null && fragment.FragmentStops != null)
-                {
-                    stops = fragment.FragmentStops
-                        .OrderBy(fs => fs.Stop_Order)
-                        .Select(fs => new
-                        {
-                            fs.TS_Id,
-                            StopName = fs.TrajectoryStop != null ? fs.TrajectoryStop.TS_Name : "Arrêt",
-                            fs.Stop_Order,
-                            Latitude = fs.TrajectoryStop != null ? fs.TrajectoryStop.TS_Latitude : 0,
-                            Longitude = fs.TrajectoryStop != null ? fs.TrajectoryStop.TS_Longitude : 0,
-                            WorkersAtStop = fs.Workers_At_Stop
-                        })
-                        .ToList<object>();
-                }
-            }
 
             return Ok(new
             {
@@ -248,16 +209,7 @@ namespace TransportManagementSystem.Controllers
                     CurrentLatitude = bus.Bus_CurrentLatitude,
                     CurrentLongitude = bus.Bus_CurrentLongitude,
                     LastLocationUpdateTime = bus.Bus_LastLocationUpdateTime
-                },
-                Fragment = fragment != null ? new
-                {
-                    fragment.Fragment_Id,
-                    fragment.Fragment_Name,
-                    fragment.Fragment_Code,
-                    fragment.Total_Workers,
-                    TrajectoryName = fragment.Trajectory?.Trajectory_Name
-                } : null,
-                Stops = stops
+                }
             });
         }
 
@@ -286,7 +238,7 @@ namespace TransportManagementSystem.Controllers
         }
 
         // =================================================================
-        // MÉTHODE POUR LE DASHBOARD PERSONNEL (avec fragment et isMotorized)
+        // MÉTHODE POUR LE DASHBOARD PERSONNEL (sans fragments)
         // =================================================================
         [HttpGet]
         public async Task<IActionResult> GetPersonnelDashboardData()
@@ -300,13 +252,12 @@ namespace TransportManagementSystem.Controllers
                 .Include(p => p.AssignedTrajectory)
                 .Include(p => p.AssignedBus)
                     .ThenInclude(b => b.CurrentDriver)
-                .Include(p => p.AssignedFragment)
                 .FirstOrDefaultAsync(p => p.Personnel_Id == personnelId);
 
             if (personnel == null)
                 return NotFound("Personnel non trouvé");
 
-            // ✅ AJOUTEZ CECI
+            // Si motorisé, retour simplifié
             if (personnel.IsMotorized)
             {
                 return Ok(new
@@ -317,12 +268,10 @@ namespace TransportManagementSystem.Controllers
             }
 
             Trajectory? trajectory = personnel.AssignedTrajectory;
- 
             TrajectoryStop? stop = null;
             string stopName = "Non défini";
-            TrajectoryFragment? personalFragment = personnel.AssignedFragment;
 
-            // 1. Chercher via PersonnelTrajectoryAssignments
+            // Chercher via PersonnelTrajectoryAssignments
             if (trajectory == null)
             {
                 var assignment = await _context.PersonnelTrajectoryAssignments
@@ -338,75 +287,41 @@ namespace TransportManagementSystem.Controllers
                 }
             }
 
-            // 2. Si toujours pas de trajectoire, essayer via le fragment personnel
-            if (trajectory == null && personalFragment != null)
-            {
-                trajectory = await _context.Trajectories.FindAsync(personalFragment.Trajectory_Id);
-            }
-
-            // 3. Si l'arrêt n'a pas été trouvé mais que le personnel a un AssignedStopId direct
+            // Si arrêt direct dans personnel
             if (stop == null && personnel.AssignedStopId.HasValue)
             {
                 stop = await _context.TrajectoryStops.FindAsync(personnel.AssignedStopId.Value);
                 if (stop != null)
                 {
                     stopName = stop.TS_Name;
-                    if (trajectory == null && stop != null)
-                    {
+                    if (trajectory == null)
                         trajectory = await _context.Trajectories.FindAsync(stop.TS_TrajectoryId);
-                    }
                 }
             }
 
             if (trajectory == null)
                 return NotFound("Aucune trajectoire assignée.");
 
-            // Récupérer le bus assigné et son fragment
+            // Récupérer le bus assigné et son chauffeur
             Bus? assignedBus = personnel.AssignedBus;
-            TrajectoryFragment? busFragment = null;
-            if (assignedBus != null && assignedBus.Bus_CurrentFragmentId.HasValue)
-            {
-                busFragment = await _context.TrajectoryFragments
-                    .Include(f => f.Trajectory)
-                    .FirstOrDefaultAsync(f => f.Fragment_Id == assignedBus.Bus_CurrentFragmentId);
-            }
+            string driverName = "Non assigné";
+            if (assignedBus?.CurrentDriver != null)
+                driverName = $"{assignedBus.CurrentDriver.Driver_FirstName} {assignedBus.CurrentDriver.Driver_LastName}";
 
-            // Fragment à afficher (priorité au fragment personnel)
-            var displayFragment = personalFragment ?? busFragment;
+            // Récupérer tous les bus actifs sur cette trajectoire (via la trajectoire, pas via fragments)
+            var buses = await _context.Buses
+                .Where(b => b.Bus_CurrentLatitude != null && b.Bus_CurrentLongitude != null)
+                .Select(b => new { b.Bus_Id, b.Bus_Code, b.Bus_PlateNumber, b.Bus_Status, lat = b.Bus_CurrentLatitude, lng = b.Bus_CurrentLongitude, b.Bus_LastLocationUpdateTime })
+                .ToListAsync();
 
-            // Récupérer les arrêts du fragment (si existe)
-            List<object> fragmentStops = new List<object>();
-            if (displayFragment != null)
-            {
-                fragmentStops = await _context.FragmentStops
-                    .Where(fs => fs.Fragment_Id == displayFragment.Fragment_Id)
-                    .OrderBy(fs => fs.Stop_Order)
-                    .Join(_context.TrajectoryStops,
-                        fs => fs.TS_Id,
-                        ts => ts.TS_Id,
-                        (fs, ts) => new
-                        {
-                            ts.TS_Id,
-                            ts.TS_Name,
-                            ts.TS_OrderIndex,
-                            ts.TS_Latitude,
-                            ts.TS_Longitude,
-                            fs.Stop_Order,
-                            fs.Workers_At_Stop
-                        })
-                    .Select(s => new
-                    {
-                        Id = s.TS_Id,
-                        Name = s.TS_Name,
-                        Order = s.Stop_Order,
-                        Lat = s.TS_Latitude,
-                        Lng = s.TS_Longitude,
-                        WorkersAtStop = s.Workers_At_Stop
-                    })
-                    .ToListAsync<object>();
-            }
+            // Récupérer tous les arrêts de la trajectoire
+            var stopsList = await _context.TrajectoryStops
+                .Where(s => s.TS_TrajectoryId == trajectory.Trajectory_Id)
+                .OrderBy(s => s.TS_OrderIndex)
+                .Select(s => new { s.TS_Id, s.TS_Name, s.TS_OrderIndex, s.TS_Latitude, s.TS_Longitude })
+                .ToListAsync();
 
-            // Coordonnées de référence pour alertes
+            // Coordonnées de référence pour alertes (l'arrêt du personnel ou début trajectoire)
             double? refLat = null;
             double? refLng = null;
             if (stop != null)
@@ -420,21 +335,7 @@ namespace TransportManagementSystem.Controllers
                 refLng = (double)trajectory.Trajectory_StartLongitude.Value;
             }
 
-            // Récupérer tous les bus actifs sur cette trajectoire
-            var buses = await _context.Buses
-                .Where(b => b.Bus_CurrentFragmentId.HasValue && _context.TrajectoryFragments.Any(f => f.Fragment_Id == b.Bus_CurrentFragmentId && f.Trajectory_Id == trajectory.Trajectory_Id)
-                            && b.Bus_CurrentLatitude != null && b.Bus_CurrentLongitude != null)
-                .Select(b => new { b.Bus_Id, b.Bus_Code, b.Bus_PlateNumber, b.Bus_Status, lat = b.Bus_CurrentLatitude, lng = b.Bus_CurrentLongitude, b.Bus_LastLocationUpdateTime })
-                .ToListAsync();
-
-            // Récupérer tous les arrêts de la trajectoire (optionnel)
-            var stopsList = await _context.TrajectoryStops
-                .Where(s => s.TS_TrajectoryId == trajectory.Trajectory_Id)
-                .OrderBy(s => s.TS_OrderIndex)
-                .Select(s => new { s.TS_Id, s.TS_Name, s.TS_OrderIndex, s.TS_Latitude, s.TS_Longitude })
-                .ToListAsync();
-
-            // Calculer ETA pour chaque bus
+            // Calculer ETA pour chaque bus (optionnel, garde le service)
             var busesWithETA = new List<object>();
             if (refLat.HasValue && refLng.HasValue)
             {
@@ -474,11 +375,6 @@ namespace TransportManagementSystem.Controllers
                 }
             }
 
-            // Nom du chauffeur associé au bus personnel
-            string driverName = "Non assigné";
-            if (assignedBus?.CurrentDriver != null)
-                driverName = $"{assignedBus.CurrentDriver.Driver_FirstName} {assignedBus.CurrentDriver.Driver_LastName}";
-
             return Ok(new
             {
                 personnelId = personnelId,
@@ -508,16 +404,7 @@ namespace TransportManagementSystem.Controllers
                 } : null,
                 assignedDriver = driverName,
                 stopName = stopName,
-                personnelFragment = displayFragment != null ? new
-                {
-                    displayFragment.Fragment_Id,
-                    displayFragment.Fragment_Name,
-                    displayFragment.Fragment_Code,
-                    displayFragment.Total_Workers,
-                    trajectoryName = trajectory.Trajectory_Name
-                } : null,
-                fragmentStops = fragmentStops,
-                isMotorized = personnel.IsMotorized
+                isMotorized = false
             });
         }
 
@@ -592,6 +479,5 @@ namespace TransportManagementSystem.Controllers
         public int? Bus_Capacity { get; set; }
         public string Bus_Status { get; set; } = string.Empty;
         public long? Bus_CurrentDriverId { get; set; }
-        public int? Bus_CurrentFragmentId { get; set; }
     }
 }
