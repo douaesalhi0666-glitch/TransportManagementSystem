@@ -18,11 +18,11 @@
 
     <!-- Champs cachés pour préserver les assignations -->
     <input type="hidden" asp-for="Bus_CurrentDriverId" />
-    <input type="hidden" asp-for="Bus_CurrentFragmentId" />
     <input type="hidden" asp-for="Bus_CurrentLatitude" />
     <input type="hidden" asp-for="Bus_CurrentLongitude" />
     <input type="hidden" asp-for="Bus_LastLocationUpdateTime" />
     <input type="hidden" asp-for="Bus_CreatedAt" />
+    <input type="hidden" asp-for="Bus_UpdatedAt" />
 
     <div class="row">
         <div class="col-md-6">
@@ -82,6 +82,23 @@
                     <option value="Out of Service">Hors service</option>
                 </select>
                 <span asp-validation-for="Bus_Status" class="text-danger"></span>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-md-6">
+            <div class="form-group">
+                <label>Latitude actuelle</label>
+                <input asp-for="Bus_CurrentLatitude" class="form-control" />
+                <span asp-validation-for="Bus_CurrentLatitude" class="text-danger"></span>
+            </div>
+        </div>
+        <div class="col-md-6">
+            <div class="form-group">
+                <label>Longitude actuelle</label>
+                <input asp-for="Bus_CurrentLongitude" class="form-control" />
+                <span asp-validation-for="Bus_CurrentLongitude" class="text-danger"></span>
             </div>
         </div>
     </div>
