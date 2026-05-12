@@ -34,8 +34,6 @@ namespace TransportManagementSystem.Models
 
         public long? Bus_CurrentDriverId { get; set; }
 
-        public int? Bus_CurrentFragmentId { get; set; }
-
         public int? CurrentOccupancy { get; set; }
 
         [Column(TypeName = "decimal(10,8)")]
@@ -52,9 +50,6 @@ namespace TransportManagementSystem.Models
 
         [ForeignKey("Bus_CurrentDriverId")]
         public virtual Driver? CurrentDriver { get; set; }
-
-        [ForeignKey("Bus_CurrentFragmentId")]
-        public virtual TrajectoryFragment? AssignedFragment { get; set; }
 
         public virtual ICollection<Personnel>? AssignedPersonnel { get; set; }
     }

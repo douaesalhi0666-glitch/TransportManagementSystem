@@ -76,44 +76,26 @@ namespace TransportManagementSystem.Controllers
                 .Select(t => new { t.Trajectory_Name, t.Trajectory_Code })
                 .FirstOrDefaultAsync();
 
-            var fragments = await _context.TrajectoryFragments
-                .Where(f => f.Trajectory_Id == id && f.Status == "Active")
-                .Include(f => f.FragmentStops!)
-                    .ThenInclude(fs => fs.TrajectoryStop)
-                .ToListAsync();
-
-            var stopsList = new List<object>();
-
-            foreach (var fragment in fragments)
-            {
-                if (fragment.FragmentStops != null)
+            var stops = await _context.TrajectoryStops
+                .Where(s => s.TS_TrajectoryId == id)
+                .OrderBy(s => s.TS_OrderIndex)
+                .Select(s => new
                 {
-                    foreach (var fragmentStop in fragment.FragmentStops.OrderBy(fs => fs.Stop_Order))
-                    {
-                        stopsList.Add(new
-                        {
-                            fragment_Id = fragment.Fragment_Id,
-                            fragment_Code = fragment.Fragment_Code,
-                            fragment_Name = fragment.Fragment_Name,
-                            total_Workers = fragment.Total_Workers,
-                            ts_Id = fragmentStop.TrajectoryStop?.TS_Id,
-                            ts_Name = fragmentStop.TrajectoryStop?.TS_Name ?? "Arrêt inconnu",
-                            ts_OrderIndex = fragmentStop.Stop_Order,
-                            ts_Latitude = fragmentStop.TrajectoryStop?.TS_Latitude,
-                            ts_Longitude = fragmentStop.TrajectoryStop?.TS_Longitude,
-                            workers_At_Stop = fragmentStop.Workers_At_Stop
-                        });
-                    }
-                }
-            }
+                    s.TS_Id,
+                    s.TS_Name,
+                    s.TS_Latitude,
+                    s.TS_Longitude,
+                    s.TS_OrderIndex
+                })
+                .ToListAsync();
 
             return Ok(new
             {
                 trajectoryId = id,
                 trajectoryName = trajectory?.Trajectory_Name ?? "Inconnu",
                 trajectoryCode = trajectory?.Trajectory_Code ?? "",
-                stopsCount = stopsList.Count,
-                stops = stopsList
+                stopsCount = stops.Count,
+                stops = stops
             });
         }
 
@@ -171,51 +153,11 @@ namespace TransportManagementSystem.Controllers
                 var trajectory = await _context.Trajectories
                     .FirstOrDefaultAsync(t => t.Trajectory_Id == id);
 
-                if (trajectory == null)
-                {
-                    return NotFound();
-                }
+                if (trajectory == null) return NotFound();
 
                 string trajectoryName = trajectory.Trajectory_Name;
 
-                var fragments = await _context.TrajectoryFragments
-                    .Where(f => f.Trajectory_Id == id)
-                    .ToListAsync();
-
-                foreach (var fragment in fragments)
-                {
-                    var fragmentStops = await _context.FragmentStops
-                        .Where(fs => fs.Fragment_Id == fragment.Fragment_Id)
-                        .ToListAsync();
-                    if (fragmentStops.Any())
-                    {
-                        _context.FragmentStops.RemoveRange(fragmentStops);
-                    }
-
-                    var busAssignments = await _context.BusFragmentAssignments
-                        .Where(ba => ba.Fragment_Id == fragment.Fragment_Id && ba.Status == "Active")
-                        .ToListAsync();
-
-                    foreach (var assignment in busAssignments)
-                    {
-                        assignment.Status = "Ended";
-                        assignment.End_DateTime = DateTime.Now;
-
-                        var bus = await _context.Buses.FindAsync(assignment.Bus_Id);
-                        if (bus != null)
-                        {
-                            bus.Bus_CurrentFragmentId = null;
-                            bus.Bus_Status = "In Service";
-                            bus.CurrentOccupancy = 0;
-                        }
-                    }
-                }
-
-                if (fragments.Any())
-                {
-                    _context.TrajectoryFragments.RemoveRange(fragments);
-                }
-
+                // 1. Libérer les personnels assignés à cette trajectoire
                 var personnelList = await _context.Personnel
                     .Where(p => p.AssignedTrajectoryId == id)
                     .ToListAsync();
@@ -223,12 +165,12 @@ namespace TransportManagementSystem.Controllers
                 foreach (var person in personnelList)
                 {
                     person.AssignedTrajectoryId = null;
-                    person.AssignedFragmentId = null;
                     person.AssignedBusId = null;
                     person.AssignedStopId = null;
                     person.IsAssigned = false;
                 }
 
+                // 2. Supprimer les assignations personnel-trajet
                 var personnelAssignments = await _context.PersonnelTrajectoryAssignments
                     .Where(a => a.PTA_TrajectoryId == id)
                     .ToListAsync();
@@ -237,6 +179,7 @@ namespace TransportManagementSystem.Controllers
                     _context.PersonnelTrajectoryAssignments.RemoveRange(personnelAssignments);
                 }
 
+                // 3. Supprimer les assignations bus-trajet
                 var busTrajAssignments = await _context.BusTrajectoryAssignments
                     .Where(a => a.BTA_TrajectoryId == id)
                     .ToListAsync();
@@ -245,38 +188,43 @@ namespace TransportManagementSystem.Controllers
                     _context.BusTrajectoryAssignments.RemoveRange(busTrajAssignments);
                 }
 
-                var busFragmentAssignments = await _context.BusFragmentAssignments
-                    .Include(bf => bf.Fragment)
-                    .Where(bf => bf.Fragment != null && bf.Fragment.Trajectory_Id == id)
+                // 4. Supprimer les alertes
+                var alerts = await _context.Alerts
+                    .Where(a => a.Alert_TrajectoryId == id)
                     .ToListAsync();
-                if (busFragmentAssignments.Any())
+                if (alerts.Any())
                 {
-                    _context.BusFragmentAssignments.RemoveRange(busFragmentAssignments);
+                    _context.Alerts.RemoveRange(alerts);
                 }
 
-                var driverFragmentAssignments = await _context.DriverFragmentAssignments
-                    .Include(df => df.Fragment)
-                    .Where(df => df.Fragment != null && df.Fragment.Trajectory_Id == id)
+                // 5. Supprimer les schedules
+                var schedules = await _context.TrajectorySchedules
+                    .Where(s => s.TSched_TrajectoryId == id)
                     .ToListAsync();
-                if (driverFragmentAssignments.Any())
+                if (schedules.Any())
                 {
-                    _context.DriverFragmentAssignments.RemoveRange(driverFragmentAssignments);
+                    _context.TrajectorySchedules.RemoveRange(schedules);
                 }
 
-                var alerts = await _context.Alerts.Where(a => a.Alert_TrajectoryId == id).ToListAsync();
-                if (alerts.Any()) _context.Alerts.RemoveRange(alerts);
+                // 6. Supprimer les driver performances
+                var driverPerformances = await _context.DriverPerformance_tbl
+                    .Where(p => p.Trajectory_Id == id)
+                    .ToListAsync();
+                if (driverPerformances.Any())
+                {
+                    _context.DriverPerformance_tbl.RemoveRange(driverPerformances);
+                }
 
-                var schedules = await _context.TrajectorySchedules.Where(s => s.TSched_TrajectoryId == id).ToListAsync();
-                if (schedules.Any()) _context.TrajectorySchedules.RemoveRange(schedules);
+                // 7. Supprimer les stops (points de ramassage)
+                var stops = await _context.TrajectoryStops
+                    .Where(s => s.TS_TrajectoryId == id)
+                    .ToListAsync();
+                if (stops.Any())
+                {
+                    _context.TrajectoryStops.RemoveRange(stops);
+                }
 
-                var driverPerformances = await _context.DriverPerformance_tbl.Where(p => p.Trajectory_Id == id).ToListAsync();
-                if (driverPerformances.Any()) _context.DriverPerformance_tbl.RemoveRange(driverPerformances);
-
-                // RecommendationLogs supprimé - plus utilisé
-
-                var stops = await _context.TrajectoryStops.Where(s => s.TS_TrajectoryId == id).ToListAsync();
-                if (stops.Any()) _context.TrajectoryStops.RemoveRange(stops);
-
+                // 8. Supprimer la trajectoire
                 _context.Trajectories.Remove(trajectory);
                 await _context.SaveChangesAsync();
 
