@@ -1,10 +1,10 @@
 ﻿@{
-    ViewData["Title"] = "Points de ramassage - Définition manuelle";
+    ViewData["Title"] = "Points de ramassage - Gestion complète";
     Layout = "~/Views/Shared/_Layout.cshtml";
 }
 
-<h2>📍 Définition manuelle des points de ramassage</h2>
-<p>Cliquez sur la carte pour ajouter un point de ramassage, ou utilisez l'IA pour suggérer des points.</p>
+<h2>📍 Gestion des points de ramassage</h2>
+<p>Cliquez sur la carte pour ajouter un point, ou utilisez l'IA pour suggérer des points. Assignez les personnels aux points existants.</p>
 <p class="text-muted">🏭 <strong>Point de départ commun : SEWS Maroc (Bir Rami, Kenitra)</strong> - Latitude: 34.2900, Longitude: -6.5700</p>
 
 <div class="row mb-3">
@@ -32,7 +32,7 @@
             </div>
         </div>
 
-        <div class="card">
+        <div class="card mb-3">
             <div class="card-header bg-info text-white">
                 <h5>🤖 Génération IA</h5>
             </div>
@@ -47,23 +47,36 @@
                 <div id="infoPanel" class="mt-3"></div>
             </div>
         </div>
+
+        <div class="card">
+            <div class="card-header bg-warning text-dark">
+                <h5>🤖 Assignation IA globale</h5>
+            </div>
+            <div class="card-body">
+                <button id="autoAssignAllBtn" class="btn btn-warning w-100">
+                    🚀 Assigner tous les personnels au point le plus proche
+                </button>
+                <small class="text-muted d-block mt-2">Assigne automatiquement chaque personnel non assigné au point de ramassage le plus proche.</small>
+            </div>
+        </div>
     </div>
     
     <div class="col-md-8">
         <div class="card">
             <div class="card-header bg-success text-white">
-                <h5>🗺️ Carte - Cliquez pour ajouter un point | 🏭 SEWS (vert) | 🟠 Points existants | 🟣 Points suggérés par IA</h5>
+                <h5>🗺️ Carte - 🏭 SEWS (vert) | 🟠 Points existants | 🟣 Points suggérés</h5>
             </div>
             <div class="card-body">
-                <div id="map" style="height: 550px; border-radius: 10px;"></div>
+                <div id="map" style="height: 500px; border-radius: 10px;"></div>
             </div>
         </div>
     </div>
 </div>
 
 <div class="card mt-3">
-    <div class="card-header bg-secondary text-white">
-        <h5>📋 Liste des points de ramassage</h5>
+    <div class="card-header bg-secondary text-white d-flex justify-content-between align-items-center">
+        <h5 class="mb-0">📋 Tableau des points de ramassage</h5>
+        <button id="refreshTableBtn" class="btn btn-sm btn-light">🔄 Rafraîchir</button>
     </div>
     <div class="card-body">
         <div class="table-responsive">
@@ -80,9 +93,93 @@
                     </tr>
                 </thead>
                 <tbody id="stopsTableBody">
-                    <tr><td colspan="7" class="text-center">Chargement......</td</tr>
+                    <tr><td colspan="7" class="text-center">Chargement...</td</tr>
                 </tbody>
             </table>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Voir personnels avec bouton Désassigner -->
+<div class="modal fade" id="viewWorkersModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header bg-info text-white">
+                <h5 class="modal-title">👥 Personnels assignés à l'arrêt</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div id="workersList"></div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fermer</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="assignWorkerModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header bg-success text-white">
+                <h5 class="modal-title">➕ Assigner un personnel à l'arrêt</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <input type="hidden" id="assignStopId" />
+                <input type="hidden" id="assignStopNameHidden" />
+                <div class="mb-3">
+                    <label>Arrêt</label>
+                    <input type="text" id="assignStopNameDisplay" class="form-control" readonly />
+                </div>
+                <div class="mb-3">
+                    <label>Personnel non assigné</label>
+                    <select id="workerSelect" class="form-control"></select>
+                </div>
+                <div class="mt-3">
+                    <button id="autoAssignToStopBtn" class="btn btn-primary w-100">🤖 IA: Assigner automatiquement les personnels proches</button>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
+                <button type="button" class="btn btn-primary" id="confirmAssignBtn">Assigner</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="editStopModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-warning">
+                <h5 class="modal-title">✏️ Modifier l'arrêt</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <input type="hidden" id="editStopId" />
+                <div class="mb-3">
+                    <label>Nom de l'arrêt</label>
+                    <input type="text" id="editStopName" class="form-control" />
+                </div>
+                <div class="row">
+                    <div class="col-md-6">
+                        <label>Latitude</label>
+                        <input type="text" id="editStopLat" class="form-control" />
+                    </div>
+                    <div class="col-md-6">
+                        <label>Longitude</label>
+                        <input type="text" id="editStopLng" class="form-control" />
+                    </div>
+                </div>
+                <div class="mt-3">
+                    <label>Ordre</label>
+                    <input type="number" id="editStopOrder" class="form-control" />
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
+                <button type="button" class="btn btn-primary" id="saveStopChanges">Enregistrer</button>
+            </div>
         </div>
     </div>
 </div>
@@ -176,19 +273,28 @@
             z-index: 1000;
             pointer-events: none;
         }
+        .worker-item {
+            border-left: 3px solid #28a745;
+            margin-bottom: 8px;
+            padding: 10px;
+            background: #f8f9fa;
+            border-radius: 5px;
+        }
+        .remove-worker-btn {
+            margin-top: 5px;
+        }
     </style>
 
     <script>
         let map;
         let currentMarkers = { existing: [], suggested: [], sews: [] };
-        let tempClickLat = null;
-        let tempClickLng = null;
+        let currentTrajectoryId = 1;
         
         const SEWS_LAT = 34.2900;
         const SEWS_LNG = -6.5700;
         const KENITRA_CENTER_LAT = 34.2610;
         const KENITRA_CENTER_LNG = -6.5800;
-        const DEFAULT_TRAJECTORY_ID = 1; // Utiliser un ID de trajectoire existant
+        const DEFAULT_TRAJECTORY_ID = 1;
 
         function showNotification(message, isError = false) {
             const div = document.createElement('div');
@@ -224,9 +330,10 @@
                         Ordre: ${stop.tS_OrderIndex}<br>
                         👥 Personnels: ${workerCount}<br>
                         📍 ${stop.tS_Latitude}, ${stop.tS_Longitude}<br>
-                        <button class="btn btn-sm btn-primary mt-2" onclick="editStop(${stop.tS_Id}, '${stop.tS_Name}', ${stop.tS_Latitude}, ${stop.tS_Longitude}, ${stop.tS_OrderIndex})">✏️ Modifier</button>
-                        <button class="btn btn-sm btn-danger mt-2" onclick="deleteStop(${stop.tS_Id}, '${stop.tS_Name}')">🗑️ Supprimer</button>
-                        <button class="btn btn-sm btn-success mt-2" onclick="assignWorkers(${stop.tS_Id}, '${stop.tS_Name}', ${DEFAULT_TRAJECTORY_ID})">👥 Assigner personnels</button>
+                        <button class="btn btn-sm btn-primary mt-1" onclick="editStop(${stop.tS_Id}, '${stop.tS_Name}', ${stop.tS_Latitude}, ${stop.tS_Longitude}, ${stop.tS_OrderIndex})">✏️ Modifier</button>
+                        <button class="btn btn-sm btn-danger mt-1" onclick="deleteStop(${stop.tS_Id}, '${stop.tS_Name}')">🗑️ Supprimer</button>
+                        <button class="btn btn-sm btn-success mt-1" onclick="openAssignModal(${stop.tS_Id}, '${stop.tS_Name}')">👥 Assigner</button>
+                        <button class="btn btn-sm btn-info mt-1" onclick="viewWorkers(${stop.tS_Id}, '${stop.tS_Name}')">📋 Voir</button>
                     `;
                     
                     const marker = L.marker([stop.tS_Latitude, stop.tS_Longitude], { icon })
@@ -247,7 +354,7 @@
             tbody.innerHTML = '';
             
             if (!stops || stops.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="7" class="text-center">Aucun point de ramassage</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="7" class="text-center">Aucun point de ramassage</td</tr>';
                 return;
             }
             
@@ -263,7 +370,8 @@
                 row.insertCell(6).innerHTML = `
                     <button class="btn btn-sm btn-primary" onclick="editStop(${stop.tS_Id}, '${escapeHtml(stop.tS_Name)}', ${stop.tS_Latitude}, ${stop.tS_Longitude}, ${stop.tS_OrderIndex})">✏️</button>
                     <button class="btn btn-sm btn-danger" onclick="deleteStop(${stop.tS_Id}, '${escapeHtml(stop.tS_Name)}')">🗑️</button>
-                    <button class="btn btn-sm btn-success" onclick="assignWorkers(${stop.tS_Id}, '${escapeHtml(stop.tS_Name)}', ${DEFAULT_TRAJECTORY_ID})">👥</button>
+                    <button class="btn btn-sm btn-success" onclick="openAssignModal(${stop.tS_Id}, '${escapeHtml(stop.tS_Name)}')">👥</button>
+                    <button class="btn btn-sm btn-info" onclick="viewWorkers(${stop.tS_Id}, '${escapeHtml(stop.tS_Name)}')">📋</button>
                 `;
             });
         }
@@ -273,27 +381,67 @@
             return text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
         }
 
-        window.editStop = async function(id, name, lat, lng, order) {
-            const newName = prompt("Nouveau nom:", name);
-            if (!newName) return;
-            const newOrder = prompt("Nouvel ordre:", order);
-            if (!newOrder) return;
-            
+        window.viewWorkers = async function(stopId, stopName) {
             try {
-                const response = await fetch('/Clustering/UpdateStop', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ id: id, name: newName, latitude: lat, longitude: lng, orderIndex: parseInt(newOrder) })
-                });
-                if (response.ok) {
-                    showNotification("✅ Point modifié avec succès !");
-                    loadExistingStops();
+                const response = await fetch('/Clustering/GetWorkersByStop?stopId=' + stopId);
+                const data = await response.json();
+                const workersListDiv = document.getElementById('workersList');
+                if (data.workers && data.workers.length > 0) {
+                    let html = '<h5>Arrêt: ' + data.stopName + '</h5><hr>';
+                    data.workers.forEach(worker => {
+                        html += `
+                            <div class="worker-item">
+                                <strong>${worker.personnel_FirstName} ${worker.personnel_LastName}</strong><br>
+                                <small>📞 ${worker.personnel_PhoneNumber || 'Non renseigné'}</small><br>
+                                <small>📧 ${worker.personnel_Email || 'Non renseigné'}</small><br>
+                                <small>🏠 ${worker.homeAddress || 'Adresse non renseignée'}</small><br>
+                                <button class="btn btn-sm btn-danger remove-worker-btn" onclick="removeWorkerFromStop(${worker.personnel_Id}, ${stopId}, '${worker.personnel_FirstName} ${worker.personnel_LastName}')">
+                                    ❌ Désassigner
+                                </button>
+                            </div>
+                        `;
+                    });
+                    workersListDiv.innerHTML = html;
                 } else {
-                    showNotification("❌ Erreur lors de la modification.", true);
+                    workersListDiv.innerHTML = '<div class="alert alert-info">Aucun personnel assigné à cet arrêt.</div>';
                 }
-            } catch (err) {
-                showNotification("❌ Erreur réseau.", true);
+                new bootstrap.Modal(document.getElementById('viewWorkersModal')).show();
+            } catch (error) {
+                showNotification('Erreur lors du chargement des personnels.', true);
             }
+        };
+
+        window.removeWorkerFromStop = async function(workerId, stopId, workerName) {
+            if (confirm(`Retirer ${workerName} de ce point de ramassage ?`)) {
+                try {
+                    const response = await fetch('/Clustering/RemoveWorkerFromStop', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ workerId: workerId })
+                    });
+                    const result = await response.json();
+                    if (result.success) {
+                        showNotification(`✅ ${workerName} a été désassigné.`);
+                        // Fermer le modal
+                        bootstrap.Modal.getInstance(document.getElementById('viewWorkersModal')).hide();
+                        // Recharger les données
+                        loadExistingStops();
+                    } else {
+                        showNotification('❌ Erreur: ' + result.message, true);
+                    }
+                } catch (err) {
+                    showNotification('❌ Erreur réseau.', true);
+                }
+            }
+        };
+
+        window.editStop = async function(id, name, lat, lng, order) {
+            document.getElementById('editStopId').value = id;
+            document.getElementById('editStopName').value = name;
+            document.getElementById('editStopLat').value = lat;
+            document.getElementById('editStopLng').value = lng;
+            document.getElementById('editStopOrder').value = order;
+            new bootstrap.Modal(document.getElementById('editStopModal')).show();
         };
 
         window.deleteStop = async function(id, name) {
@@ -313,9 +461,127 @@
             }
         };
 
-        window.assignWorkers = function(stopId, stopName, trajectoryId) {
-            window.location.href = `/Clustering/DispatcherView?stopId=${stopId}&trajectoryId=${trajectoryId}`;
+        window.openAssignModal = async function(stopId, stopName) {
+            document.getElementById('assignStopId').value = stopId;
+            document.getElementById('assignStopNameDisplay').value = stopName;
+            document.getElementById('assignStopNameHidden').value = stopName;
+            
+            const workerSelect = document.getElementById('workerSelect');
+            workerSelect.innerHTML = '<option value="">-- Chargement... --</option>';
+            
+            try {
+                const response = await fetch('/Clustering/GetUnassignedWorkers');
+                const workers = await response.json();
+                if (workers.length > 0) {
+                    workerSelect.innerHTML = '<option value="">-- Sélectionner un personnel --</option>';
+                    workers.forEach(w => {
+                        workerSelect.innerHTML += `<option value="${w.personnel_Id}">${w.personnel_FirstName} ${w.personnel_LastName} - ${w.homeAddress || 'Adresse inconnue'}</option>`;
+                    });
+                } else {
+                    workerSelect.innerHTML = '<option value="">Aucun personnel non assigné disponible</option>';
+                }
+            } catch (err) {
+                workerSelect.innerHTML = '<option value="">Erreur de chargement</option>';
+            }
+            
+            new bootstrap.Modal(document.getElementById('assignWorkerModal')).show();
         };
+
+        async function confirmAssign() {
+            const stopId = document.getElementById('assignStopId').value;
+            const workerId = document.getElementById('workerSelect').value;
+            
+            if (!workerId) {
+                showNotification('Veuillez sélectionner un personnel.', true);
+                return;
+            }
+            
+            try {
+                const response = await fetch('/Clustering/AssignWorkerToStop', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ workerId: parseInt(workerId), stopId: parseInt(stopId) })
+                });
+                const result = await response.json();
+                if (result.success) {
+                    showNotification(result.message);
+                    bootstrap.Modal.getInstance(document.getElementById('assignWorkerModal')).hide();
+                    loadExistingStops();
+                } else {
+                    showNotification('Erreur: ' + result.message, true);
+                }
+            } catch (err) {
+                showNotification('Erreur réseau.', true);
+            }
+        }
+
+        async function autoAssignToStop() {
+            const stopId = document.getElementById('assignStopId').value;
+            const stopName = document.getElementById('assignStopNameDisplay').value;
+            
+            if (confirm(`Assigner automatiquement les personnels proches à l'arrêt ${stopName} ?`)) {
+                try {
+                    const response = await fetch(`/Clustering/AutoAssignWorkersToStop?stopId=${stopId}`, { method: 'POST' });
+                    const result = await response.json();
+                    if (result.success) {
+                        showNotification(result.message);
+                        bootstrap.Modal.getInstance(document.getElementById('assignWorkerModal')).hide();
+                        loadExistingStops();
+                    } else {
+                        showNotification('Erreur: ' + result.message, true);
+                    }
+                } catch (err) {
+                    showNotification('Erreur réseau.', true);
+                }
+            }
+        }
+
+        async function autoAssignAll() {
+            if (confirm('Assigner automatiquement TOUS les personnels non assignés à l\'arrêt le plus proche ?')) {
+                try {
+                    const response = await fetch(`/Clustering/AutoAssignAllWorkersToNearestStop?trajectoryId=${DEFAULT_TRAJECTORY_ID}`, { method: 'POST' });
+                    const result = await response.json();
+                    if (result.success) {
+                        showNotification(result.message);
+                        loadExistingStops();
+                    } else {
+                        showNotification('Erreur: ' + result.message, true);
+                    }
+                } catch (err) {
+                    showNotification('Erreur réseau.', true);
+                }
+            }
+        }
+
+        async function saveStopChanges() {
+            const id = document.getElementById('editStopId').value;
+            const name = document.getElementById('editStopName').value;
+            const lat = parseFloat(document.getElementById('editStopLat').value);
+            const lng = parseFloat(document.getElementById('editStopLng').value);
+            const order = parseInt(document.getElementById('editStopOrder').value);
+            
+            if (!name || isNaN(lat) || isNaN(lng) || isNaN(order)) {
+                showNotification('Veuillez remplir tous les champs correctement.', true);
+                return;
+            }
+            
+            try {
+                const response = await fetch('/Clustering/UpdateStop', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ id: parseInt(id), name: name, latitude: lat, longitude: lng, orderIndex: order })
+                });
+                if (response.ok) {
+                    showNotification('✅ Arrêt modifié avec succès !');
+                    bootstrap.Modal.getInstance(document.getElementById('editStopModal')).hide();
+                    loadExistingStops();
+                } else {
+                    showNotification('❌ Erreur lors de la modification.', true);
+                }
+            } catch (err) {
+                showNotification('❌ Erreur réseau.', true);
+            }
+        }
 
         function clearSuggestedMarkers() {
             if (currentMarkers.suggested) {
@@ -469,6 +735,11 @@
 
         document.getElementById('btnAddStop').addEventListener('click', addManualStop);
         document.getElementById('btnCompute').addEventListener('click', loadPickupPoints);
+        document.getElementById('autoAssignAllBtn').addEventListener('click', autoAssignAll);
+        document.getElementById('confirmAssignBtn').addEventListener('click', confirmAssign);
+        document.getElementById('autoAssignToStopBtn').addEventListener('click', autoAssignToStop);
+        document.getElementById('saveStopChanges').addEventListener('click', saveStopChanges);
+        document.getElementById('refreshTableBtn').addEventListener('click', loadExistingStops);
         
         initMap();
         loadExistingStops();
