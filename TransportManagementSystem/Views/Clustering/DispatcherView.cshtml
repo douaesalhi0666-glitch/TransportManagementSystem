@@ -20,9 +20,14 @@
                     🤖 IA: Assigner tous au plus proche
                 </button>
                 <label>Génération des trajets</label>
-                <button id="generateRoutesBtn" class="btn btn-success w-100">
-                    🚀 Générer les trajets
-                </button>
+                <div class="d-flex gap-2">
+                    <button id="generateRoutesBtn" class="btn btn-success flex-grow-1">
+                        🚀 Générer les trajets
+                    </button>
+                    <button id="aiGenTraj" class="btn btn-primary flex-grow-1">
+                        🤖 IA évolutionnaire
+                    </button>
+                </div>
                 <small class="text-muted">Crée des trajets optimisés basés sur les points et la capacité des bus</small>
             </div>
         </div>
@@ -65,7 +70,7 @@
     </div>
 </div>
 
-<!-- Modal Voir personnels -->
+<!-- Modals -->
 <div class="modal fade" id="viewWorkersModal" tabindex="-1">
     <div class="modal-dialog modal-lg">
         <div class="modal-content">
@@ -79,7 +84,6 @@
     </div>
 </div>
 
-<!-- Modal Assigner personnel -->
 <div class="modal fade" id="assignWorkerModal" tabindex="-1">
     <div class="modal-dialog modal-lg">
         <div class="modal-content">
@@ -101,7 +105,6 @@
     </div>
 </div>
 
-<!-- Modal Modifier arrêt -->
 <div class="modal fade" id="editStopModal" tabindex="-1">
     <div class="modal-dialog">
         <div class="modal-content">
@@ -123,7 +126,6 @@
     </div>
 </div>
 
-<!-- Modal Résultat des trajets -->
 <div class="modal fade" id="routesResultModal" tabindex="-1">
     <div class="modal-dialog modal-xl">
         <div class="modal-content">
@@ -168,7 +170,10 @@
             let response = await fetch('/Clustering/GetFilteredStops');
             let stops = await response.json();
             
-            if (!map) { map = L.map('map').setView([KENITRA_CENTER_LAT, KENITRA_CENTER_LNG], 12); L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', { attribution: '&copy; OSM' }).addTo(map); }
+            if (!map) {
+                map = L.map('map').setView([KENITRA_CENTER_LAT, KENITRA_CENTER_LNG], 12);
+                L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', { attribution: '&copy; OSM' }).addTo(map);
+            }
             
             map.eachLayer(layer => { if (layer instanceof L.Marker) map.removeLayer(layer); });
             currentMarkers = [];
@@ -338,8 +343,25 @@
             else showNotification('❌ ' + data.message, true);
         };
 
+        window.generateSmartTrajectories = async () => {
+            showNotification('🔄 Calcul IA en cours...');
+            try {
+                let res = await fetch('/Clustering/GenerateSmartTrajectories', { method: 'POST' });
+                let data = await res.json();
+                if (data.success) {
+                    showNotification(`✅ ${data.count} trajets générés avec succès.`);
+                    location.reload();
+                } else {
+                    showNotification('❌ ' + data.message, true);
+                }
+            } catch (err) {
+                showNotification('❌ Erreur réseau', true);
+            }
+        };
+
         document.getElementById('autoAssignAllBtn').onclick = autoAssignAll;
         document.getElementById('generateRoutesBtn').onclick = generateRoutes;
+        document.getElementById('aiGenTraj').onclick = generateSmartTrajectories;
         document.getElementById('confirmAssignBtn').onclick = confirmAssign;
         document.getElementById('autoAssignToStopBtn').onclick = autoAssignToStop;
         document.getElementById('saveStopChanges').onclick = saveStopChanges;
