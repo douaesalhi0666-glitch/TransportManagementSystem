@@ -80,7 +80,7 @@
                     </tr>
                 </thead>
                 <tbody id="stopsTableBody">
-                    <tr><td colspan="7" class="text-center">Chargement......</td></tr>
+                    <tr><td colspan="7" class="text-center">Chargement......</td</tr>
                 </tbody>
             </table>
         </div>
@@ -95,92 +95,86 @@
 
     <style>
         .existing-stop-marker {
-        background-color: #ff8c00;
-        color: white;
-        border-radius: 50%;
-        text-align: center;
-        font-size: 12px;
-        font-weight: bold;
-        width: 28px;
-        height: 28px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        border: 2px solid white;
-        box-shadow: 0 2px 6px rgba(0,0,0,0.3);
-        cursor: pointer;
+            background-color: #ff8c00;
+            color: white;
+            border-radius: 50%;
+            text-align: center;
+            font-size: 12px;
+            font-weight: bold;
+            width: 28px;
+            height: 28px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border: 2px solid white;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+            cursor: pointer;
         }
-
         .existing-stop-marker:hover {
-        transform: scale(1.1);
-        transition: transform 0.2s;
+            transform: scale(1.1);
+            transition: transform 0.2s;
         }
-
         .suggested-marker {
-        background-color: #9b59b6;
-        color: white;
-        border-radius: 50%;
-        text-align: center;
-        font-size: 12px;
-        font-weight: bold;
-        width: 28px;
-        height: 28px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        border: 2px solid white;
-        box-shadow: 0 2px 6px rgba(0,0,0,0.3);
-        cursor: pointer;
+            background-color: #9b59b6;
+            color: white;
+            border-radius: 50%;
+            text-align: center;
+            font-size: 12px;
+            font-weight: bold;
+            width: 28px;
+            height: 28px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border: 2px solid white;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+            cursor: pointer;
         }
-
         .sews-marker {
-        background-color: #2ecc71;
-        color: white;
-        border-radius: 50%;
-        text-align: center;
-        font-size: 18px;
-        font-weight: bold;
-        width: 40px;
-        height: 40px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        border: 3px solid white;
-        box-shadow: 0 2px 8px rgba(0,0,0,0.3);
-        cursor: pointer;
+            background-color: #2ecc71;
+            color: white;
+            border-radius: 50%;
+            text-align: center;
+            font-size: 18px;
+            font-weight: bold;
+            width: 40px;
+            height: 40px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border: 3px solid white;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+            cursor: pointer;
         }
-
         .toast-notification {
-        position: fixed;
-        bottom: 20px;
-        right: 20px;
-        background-color: #28a745;
-        color: white;
-        padding: 12px 20px;
-        border-radius: 8px;
-        box-shadow: 0 4px 12px rgba(0,0,0,0.2);
-        z-index: 10000;
-        font-size: 16px;
-        font-weight: bold;
-        transition: opacity 0.5s ease;
-        opacity: 1;
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            background-color: #28a745;
+            color: white;
+            padding: 12px 20px;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+            z-index: 10000;
+            font-size: 16px;
+            font-weight: bold;
+            transition: opacity 0.5s ease;
+            opacity: 1;
         }
-
         .toast-notification.error {
-        background-color: #dc3545;
+            background-color: #dc3545;
         }
-
         .click-instruction {
-        position: absolute;
-        bottom: 20px;
-        left: 20px;
-        background: rgba(0,0,0,0.7);
-        color: white;
-        padding: 8px 12px;
-        border-radius: 5px;
-        font-size: 12px;
-        z-index: 1000;
-        pointer-events: none;
+            position: absolute;
+            bottom: 20px;
+            left: 20px;
+            background: rgba(0,0,0,0.7);
+            color: white;
+            padding: 8px 12px;
+            border-radius: 5px;
+            font-size: 12px;
+            z-index: 1000;
+            pointer-events: none;
         }
     </style>
 
@@ -194,281 +188,283 @@
         const SEWS_LNG = -6.5700;
         const KENITRA_CENTER_LAT = 34.2610;
         const KENITRA_CENTER_LNG = -6.5800;
+        const DEFAULT_TRAJECTORY_ID = 1; // Utiliser un ID de trajectoire existant
 
         function showNotification(message, isError = false) {
-        const div = document.createElement('div');
-        div.className = 'toast-notification' + (isError ? ' error' : '');
-        div.innerText = message;
-        document.body.appendChild(div);
-        setTimeout(() => {
-        div.style.opacity = '0';
-        setTimeout(() => div.remove(), 500);
-        }, 3000);
+            const div = document.createElement('div');
+            div.className = 'toast-notification' + (isError ? ' error' : '');
+            div.innerText = message;
+            document.body.appendChild(div);
+            setTimeout(() => {
+                div.style.opacity = '0';
+                setTimeout(() => div.remove(), 500);
+            }, 3000);
         }
 
         async function loadExistingStops() {
-        try {
-        // Récupérer TOUS les points (trajectoryId = 0)
-        const response = await fetch(`/Clustering/GetFilteredStops?trajectoryId=0`);
-        const stops = await response.json();
+            try {
+                const response = await fetch(`/Clustering/GetFilteredStops?trajectoryId=${DEFAULT_TRAJECTORY_ID}`);
+                const stops = await response.json();
                 
-        if (currentMarkers.existing) {
-        currentMarkers.existing.forEach(m => map.removeLayer(m));
-        }
-        currentMarkers.existing = [];
+                if (currentMarkers.existing) {
+                    currentMarkers.existing.forEach(m => map.removeLayer(m));
+                }
+                currentMarkers.existing = [];
                 
-        stops.forEach(stop => {
-        const icon = L.divIcon({
-        html: stop.tS_OrderIndex.toString(),
-        iconSize: [28, 28],
-        className: 'existing-stop-marker'
-        });
+                stops.forEach(stop => {
+                    const icon = L.divIcon({
+                        html: stop.tS_OrderIndex.toString(),
+                        iconSize: [28, 28],
+                        className: 'existing-stop-marker'
+                    });
                     
-        const workerCount = stop.workers ? stop.workers.length : 0;
-        const popupContent = `
-        <strong>${stop.tS_Name}</strong><br>
-        Ordre: ${stop.tS_OrderIndex}<br>
-        👥 Personnels: ${workerCount}<br>
-        📍 ${stop.tS_Latitude}, ${stop.tS_Longitude}<br>
-        <button class="btn btn-sm btn-primary mt-2" onclick="editStop(${stop.tS_Id}, '${stop.tS_Name}', ${stop.tS_Latitude}, ${stop.tS_Longitude}, ${stop.tS_OrderIndex})">✏️ Modifier</button>
-        <button class="btn btn-sm btn-danger mt-2" onclick="deleteStop(${stop.tS_Id}, '${stop.tS_Name}')">🗑️ Supprimer</button>
-        <button class="btn btn-sm btn-success mt-2" onclick="assignWorkers(${stop.tS_Id}, '${stop.tS_Name}', 0)">👥 Assigner personnels</button>
-        `;
+                    const workerCount = stop.workers ? stop.workers.length : 0;
+                    const popupContent = `
+                        <strong>${stop.tS_Name}</strong><br>
+                        Ordre: ${stop.tS_OrderIndex}<br>
+                        👥 Personnels: ${workerCount}<br>
+                        📍 ${stop.tS_Latitude}, ${stop.tS_Longitude}<br>
+                        <button class="btn btn-sm btn-primary mt-2" onclick="editStop(${stop.tS_Id}, '${stop.tS_Name}', ${stop.tS_Latitude}, ${stop.tS_Longitude}, ${stop.tS_OrderIndex})">✏️ Modifier</button>
+                        <button class="btn btn-sm btn-danger mt-2" onclick="deleteStop(${stop.tS_Id}, '${stop.tS_Name}')">🗑️ Supprimer</button>
+                        <button class="btn btn-sm btn-success mt-2" onclick="assignWorkers(${stop.tS_Id}, '${stop.tS_Name}', ${DEFAULT_TRAJECTORY_ID})">👥 Assigner personnels</button>
+                    `;
                     
-        const marker = L.marker([stop.tS_Latitude, stop.tS_Longitude], { icon })
-        .bindPopup(popupContent);
-        marker.addTo(map);
-        currentMarkers.existing.push(marker);
-        });
+                    const marker = L.marker([stop.tS_Latitude, stop.tS_Longitude], { icon })
+                        .bindPopup(popupContent);
+                    marker.addTo(map);
+                    currentMarkers.existing.push(marker);
+                });
                 
-        updateTable(stops);
-        } catch (err) {
-        console.error(err);
-        }
+                updateTable(stops);
+            } catch (err) {
+                console.error(err);
+                showNotification("Erreur lors du chargement des points", true);
+            }
         }
 
         function updateTable(stops) {
-        const tbody = document.getElementById('stopsTableBody');
-        tbody.innerHTML = '';
+            const tbody = document.getElementById('stopsTableBody');
+            tbody.innerHTML = '';
             
-        if (!stops || stops.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="7" class="text-center">Aucun point de ramassage</td></td>';
-        return;
-        }
+            if (!stops || stops.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="7" class="text-center">Aucun point de ramassage</td></tr>';
+                return;
+            }
             
-        stops.forEach(stop => {
-        const row = tbody.insertRow();
-        const workerCount = stop.workers ? stop.workers.length : 0;
-        row.insertCell(0).innerHTML = stop.tS_Id;
-        row.insertCell(1).innerHTML = escapeHtml(stop.tS_Name);
-        row.insertCell(2).innerHTML = stop.tS_Latitude;
-        row.insertCell(3).innerHTML = stop.tS_Longitude;
-        row.insertCell(4).innerHTML = stop.tS_OrderIndex;
-        row.insertCell(5).innerHTML = `<span class="badge bg-info">${workerCount} personnels</span>`;
-        row.insertCell(6).innerHTML = `
-        <button class="btn btn-sm btn-primary" onclick="editStop(${stop.tS_Id}, '${escapeHtml(stop.tS_Name)}', ${stop.tS_Latitude}, ${stop.tS_Longitude}, ${stop.tS_OrderIndex})">✏️</button>
-        <button class="btn btn-sm btn-danger" onclick="deleteStop(${stop.tS_Id}, '${escapeHtml(stop.tS_Name)}')">🗑️</button>
-        <button class="btn btn-sm btn-success" onclick="assignWorkers(${stop.tS_Id}, '${escapeHtml(stop.tS_Name)}', 0)">👥</button>
-        `;
-        });
+            stops.forEach(stop => {
+                const row = tbody.insertRow();
+                const workerCount = stop.workers ? stop.workers.length : 0;
+                row.insertCell(0).innerHTML = stop.tS_Id;
+                row.insertCell(1).innerHTML = escapeHtml(stop.tS_Name);
+                row.insertCell(2).innerHTML = stop.tS_Latitude;
+                row.insertCell(3).innerHTML = stop.tS_Longitude;
+                row.insertCell(4).innerHTML = stop.tS_OrderIndex;
+                row.insertCell(5).innerHTML = `<span class="badge bg-info">${workerCount} personnels</span>`;
+                row.insertCell(6).innerHTML = `
+                    <button class="btn btn-sm btn-primary" onclick="editStop(${stop.tS_Id}, '${escapeHtml(stop.tS_Name)}', ${stop.tS_Latitude}, ${stop.tS_Longitude}, ${stop.tS_OrderIndex})">✏️</button>
+                    <button class="btn btn-sm btn-danger" onclick="deleteStop(${stop.tS_Id}, '${escapeHtml(stop.tS_Name)}')">🗑️</button>
+                    <button class="btn btn-sm btn-success" onclick="assignWorkers(${stop.tS_Id}, '${escapeHtml(stop.tS_Name)}', ${DEFAULT_TRAJECTORY_ID})">👥</button>
+                `;
+            });
         }
 
         function escapeHtml(text) {
-        if (!text) return '';
-        return text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+            if (!text) return '';
+            return text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
         }
 
         window.editStop = async function(id, name, lat, lng, order) {
-        const newName = prompt("Nouveau nom:", name);
-        if (!newName) return;
-        const newOrder = prompt("Nouvel ordre:", order);
-        if (!newOrder) return;
+            const newName = prompt("Nouveau nom:", name);
+            if (!newName) return;
+            const newOrder = prompt("Nouvel ordre:", order);
+            if (!newOrder) return;
             
-        try {
-        const response = await fetch('/Clustering/UpdateStop', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ id: id, name: newName, latitude: lat, longitude: lng, orderIndex: parseInt(newOrder) })
-        });
-        if (response.ok) {
-        showNotification("✅ Point modifié avec succès !");
-        loadExistingStops();
-        } else {
-        showNotification("❌ Erreur lors de la modification.", true);
-        }
-        } catch (err) {
-        showNotification("❌ Erreur réseau.", true);
-        }
+            try {
+                const response = await fetch('/Clustering/UpdateStop', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ id: id, name: newName, latitude: lat, longitude: lng, orderIndex: parseInt(newOrder) })
+                });
+                if (response.ok) {
+                    showNotification("✅ Point modifié avec succès !");
+                    loadExistingStops();
+                } else {
+                    showNotification("❌ Erreur lors de la modification.", true);
+                }
+            } catch (err) {
+                showNotification("❌ Erreur réseau.", true);
+            }
         };
 
         window.deleteStop = async function(id, name) {
-        if (confirm(`Supprimer le point "${name}" ?`)) {
-        try {
-        const response = await fetch(`/Clustering/DeleteStop?id=${id}`, { method: 'DELETE' });
-        if (response.ok) {
-        showNotification(`✅ Point "${name}" supprimé !`);
-        loadExistingStops();
-        } else {
-        const errorData = await response.json();
-        showNotification("❌ " + (errorData.message || "Erreur lors de la suppression."), true);
-        }
-        } catch (err) {
-        showNotification("❌ Erreur réseau.", true);
-        }
-        }
+            if (confirm(`Supprimer le point "${name}" ?`)) {
+                try {
+                    const response = await fetch(`/Clustering/DeleteStop?id=${id}`, { method: 'DELETE' });
+                    if (response.ok) {
+                        showNotification(`✅ Point "${name}" supprimé !`);
+                        loadExistingStops();
+                    } else {
+                        const errorData = await response.json();
+                        showNotification("❌ " + (errorData.message || "Erreur lors de la suppression."), true);
+                    }
+                } catch (err) {
+                    showNotification("❌ Erreur réseau.", true);
+                }
+            }
         };
 
         window.assignWorkers = function(stopId, stopName, trajectoryId) {
-        // Rediriger vers DispatcherView
-        window.location.href = `/Clustering/DispatcherView?stopId=${stopId}&trajectoryId=${trajectoryId}`;
+            window.location.href = `/Clustering/DispatcherView?stopId=${stopId}&trajectoryId=${trajectoryId}`;
         };
 
         function clearSuggestedMarkers() {
-        if (currentMarkers.suggested) {
-        currentMarkers.suggested.forEach(m => map.removeLayer(m));
-        }
-        currentMarkers.suggested = [];
+            if (currentMarkers.suggested) {
+                currentMarkers.suggested.forEach(m => map.removeLayer(m));
+            }
+            currentMarkers.suggested = [];
         }
 
         function addSEWSMarker() {
-        const sewsIcon = L.divIcon({
-        html: '🏭',
-        iconSize: [40, 40],
-        className: 'sews-marker'
-        });
-        const marker = L.marker([SEWS_LAT, SEWS_LNG], { icon: sewsIcon })
-        .bindPopup('<strong>🏭 SEWS Maroc</strong><br>Point de départ');
-        marker.addTo(map);
-        currentMarkers.sews.push(marker);
+            const sewsIcon = L.divIcon({
+                html: '🏭',
+                iconSize: [40, 40],
+                className: 'sews-marker'
+            });
+            const marker = L.marker([SEWS_LAT, SEWS_LNG], { icon: sewsIcon })
+                .bindPopup('<strong>🏭 SEWS Maroc</strong><br>Point de départ');
+            marker.addTo(map);
+            currentMarkers.sews.push(marker);
         }
 
         async function loadPickupPoints() {
-        const k = document.getElementById('kValue').value;
+            const k = document.getElementById('kValue').value;
             
-        const response = await fetch('/Clustering/SuggestPickupPoints', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ trajectoryId: 0, numberOfClusters: parseInt(k) })
-        });
-        const data = await response.json();
+            const response = await fetch('/Clustering/SuggestPickupPoints', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ trajectoryId: DEFAULT_TRAJECTORY_ID, numberOfClusters: parseInt(k) })
+            });
+            const data = await response.json();
 
-        clearSuggestedMarkers();
+            clearSuggestedMarkers();
 
-        if (data.clusters && data.clusters.length > 0) {
-        data.clusters.forEach((c, idx) => {
-        const icon = L.divIcon({
-        html: (idx+1).toString(),
-        iconSize: [28, 28],
-        className: 'suggested-marker'
-        });
-        let popupContent = `<strong>Point suggéré ${idx+1}</strong><br>${c.count} personnes proches<br>`;
-        if (c.exists) {
-        popupContent += '<span class="text-muted">✅ Existe déjà</span>';
-        } else {
-        popupContent += `<button onclick="createSuggestedStop(${c.lat}, ${c.lng}, 'Point ${idx+1}')" class="btn btn-sm btn-success mt-2">✅ Créer cet arrêt</button>`;
-        }
-        const marker = L.marker([c.lat, c.lng], { icon }).bindPopup(popupContent);
-        marker.addTo(map);
-        currentMarkers.suggested.push(marker);
-        });
+            if (data.clusters && data.clusters.length > 0) {
+                data.clusters.forEach((c, idx) => {
+                    const icon = L.divIcon({ 
+                        html: (idx+1).toString(), 
+                        iconSize: [28, 28], 
+                        className: 'suggested-marker' 
+                    });
+                    let popupContent = `<strong>Point suggéré ${idx+1}</strong><br>${c.count} personnes proches<br>`;
+                    if (c.exists) {
+                        popupContent += '<span class="text-muted">✅ Existe déjà</span>';
+                    } else {
+                        popupContent += `<button onclick="createSuggestedStop(${c.lat}, ${c.lng}, 'Point ${idx+1}')" class="btn btn-sm btn-success mt-2">✅ Créer cet arrêt</button>`;
+                    }
+                    const marker = L.marker([c.lat, c.lng], { icon }).bindPopup(popupContent);
+                    marker.addTo(map);
+                    currentMarkers.suggested.push(marker);
+                });
                 
-        document.getElementById('infoPanel').innerHTML = `<div class="alert alert-success">✅ ${data.clusters.length} points suggérés. Cliquez sur un marqueur violet pour créer l'arrêt.</div>`;
-        } else {
-        document.getElementById('infoPanel').innerHTML = '<div class="alert alert-warning">Aucun point suggéré.</div>';
-        }
+                document.getElementById('infoPanel').innerHTML = `<div class="alert alert-success">✅ ${data.clusters.length} points suggérés. Cliquez sur un marqueur violet pour créer l'arrêt.</div>`;
+            } else {
+                document.getElementById('infoPanel').innerHTML = '<div class="alert alert-warning">Aucun point suggéré.</div>';
+            }
         }
 
         window.createSuggestedStop = async (lat, lng, defaultName) => {
-        const name = prompt("Nom du point de ramassage:", defaultName);
-        if (!name) return;
+            const name = prompt("Nom du point de ramassage:", defaultName);
+            if (!name) return;
             
-        try {
-        const response = await fetch('/Clustering/CreateStopForTrajectory', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ trajectoryId: 0, name: name, latitude: lat, longitude: lng })
-        });
-        if (response.ok) {
-        showNotification("✅ Point créé avec succès !");
-        loadExistingStops();
-        loadPickupPoints();
-        } else {
-        showNotification("❌ Erreur lors de la création.", true);
-        }
-        } catch (err) {
-        showNotification("❌ Erreur réseau.", true);
-        }
+            try {
+                const response = await fetch('/Clustering/CreateStopForTrajectory', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ trajectoryId: DEFAULT_TRAJECTORY_ID, name: name, latitude: lat, longitude: lng })
+                });
+                if (response.ok) {
+                    showNotification("✅ Point créé avec succès !");
+                    loadExistingStops();
+                    loadPickupPoints();
+                } else {
+                    const error = await response.json();
+                    showNotification("❌ " + (error.message || "Erreur lors de la création."), true);
+                }
+            } catch (err) {
+                showNotification("❌ Erreur réseau.", true);
+            }
         };
 
         async function addManualStop() {
-        const name = document.getElementById('stopName').value;
-        const lat = document.getElementById('stopLat').value;
-        const lng = document.getElementById('stopLng').value;
+            const name = document.getElementById('stopName').value;
+            const lat = document.getElementById('stopLat').value;
+            const lng = document.getElementById('stopLng').value;
             
-        if (!name) {
-        showNotification("Entrez un nom pour le point.", true);
-        return;
-        }
-        if (!lat || !lng) {
-        showNotification("Cliquez d'abord sur la carte pour placer le point.", true);
-        return;
-        }
+            if (!name) {
+                showNotification("Entrez un nom pour le point.", true);
+                return;
+            }
+            if (!lat || !lng) {
+                showNotification("Cliquez d'abord sur la carte pour placer le point.", true);
+                return;
+            }
             
-        try {
-        const response = await fetch('/Clustering/CreateStopForTrajectory', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-        trajectoryId: 0,
-        name: name,
-        latitude: parseFloat(lat),
-        longitude: parseFloat(lng)
-        })
-        });
-        if (response.ok) {
-        showNotification("✅ Point ajouté manuellement !");
-        document.getElementById('stopName').value = '';
-        document.getElementById('stopLat').value = '';
-        document.getElementById('stopLng').value = '';
-        loadExistingStops();
-        } else {
-        const error = await response.json();
-        showNotification("❌ " + (error.message || "Erreur lors de l'ajout."), true);
-        }
-        } catch (err) {
-        showNotification("❌ Erreur réseau.", true);
-        }
+            try {
+                const response = await fetch('/Clustering/CreateStopForTrajectory', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        trajectoryId: DEFAULT_TRAJECTORY_ID,
+                        name: name,
+                        latitude: parseFloat(lat),
+                        longitude: parseFloat(lng)
+                    })
+                });
+                const result = await response.json();
+                
+                if (response.ok && result.success) {
+                    showNotification("✅ Point ajouté manuellement !");
+                    document.getElementById('stopName').value = '';
+                    document.getElementById('stopLat').value = '';
+                    document.getElementById('stopLng').value = '';
+                    loadExistingStops();
+                } else {
+                    showNotification("❌ " + (result.message || "Erreur lors de l'ajout."), true);
+                }
+            } catch (err) {
+                console.error(err);
+                showNotification("❌ Erreur réseau.", true);
+            }
         }
 
-        // Initialisation de la carte
         function initMap() {
-        map = L.map('map').setView([KENITRA_CENTER_LAT, KENITRA_CENTER_LNG], 12);
-        L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
-        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a> & CartoDB'
-        }).addTo(map);
+            map = L.map('map').setView([KENITRA_CENTER_LAT, KENITRA_CENTER_LNG], 12);
+            L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
+                attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a> & CartoDB'
+            }).addTo(map);
             
-        addSEWSMarker();
+            addSEWSMarker();
             
-        const instructionDiv = document.createElement('div');
-        instructionDiv.className = 'click-instruction';
-        instructionDiv.innerHTML = '📍 Cliquez sur la carte pour ajouter un point de ramassage';
-        document.getElementById('map').appendChild(instructionDiv);
+            const instructionDiv = document.createElement('div');
+            instructionDiv.className = 'click-instruction';
+            instructionDiv.innerHTML = '📍 Cliquez sur la carte pour ajouter un point de ramassage';
+            document.getElementById('map').appendChild(instructionDiv);
             
-        map.on('click', function(e) {
-        const lat = e.latlng.lat.toFixed(6);
-        const lng = e.latlng.lng.toFixed(6);
-        document.getElementById('stopLat').value = lat;
-        document.getElementById('stopLng').value = lng;
-        document.getElementById('btnAddStop').disabled = false;
-        document.getElementById('btnAddStop').innerHTML = '📌 Ajouter ce point';
-        showNotification(`Position sélectionnée: ${lat}, ${lng}`);
+            map.on('click', function(e) {
+                const lat = e.latlng.lat.toFixed(6);
+                const lng = e.latlng.lng.toFixed(6);
+                document.getElementById('stopLat').value = lat;
+                document.getElementById('stopLng').value = lng;
+                document.getElementById('btnAddStop').disabled = false;
+                document.getElementById('btnAddStop').innerHTML = '📌 Ajouter ce point';
+                showNotification(`Position sélectionnée: ${lat}, ${lng}`);
                 
-        if (window.tempMarker) map.removeLayer(window.tempMarker);
-        const tempIcon = L.divIcon({ html: '➕', iconSize: [24, 24], className: 'existing-stop-marker' });
-        window.tempMarker = L.marker([lat, lng], { icon: tempIcon })
-        .bindPopup('Nouveau point à ajouter')
-        .addTo(map);
-        });
+                if (window.tempMarker) map.removeLayer(window.tempMarker);
+                const tempIcon = L.divIcon({ html: '➕', iconSize: [24, 24], className: 'existing-stop-marker' });
+                window.tempMarker = L.marker([lat, lng], { icon: tempIcon })
+                    .bindPopup('Nouveau point à ajouter')
+                    .addTo(map);
+            });
         }
 
         document.getElementById('btnAddStop').addEventListener('click', addManualStop);
