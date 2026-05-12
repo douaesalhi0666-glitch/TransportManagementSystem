@@ -66,7 +66,6 @@ namespace TransportManagementSystem.Controllers
 
             var driver = await _context.Drivers
                 .Include(d => d.AssignedBus)
-                    .ThenInclude(b => b != null ? b.AssignedFragment : null)
                 .FirstOrDefaultAsync(d => d.Driver_id == id);
 
             if (driver == null)
@@ -155,7 +154,6 @@ namespace TransportManagementSystem.Controllers
 
             var driver = await _context.Drivers
                 .Include(d => d.AssignedBus)
-                    .ThenInclude(b => b != null ? b.AssignedFragment : null)
                 .FirstOrDefaultAsync(m => m.Driver_id == id);
             if (driver == null)
             {
@@ -290,7 +288,6 @@ namespace TransportManagementSystem.Controllers
         }
 
         [HttpGet]
-        [HttpGet]
         public async Task<IActionResult> GetDashboardData()
         {
             var driverIdStr = HttpContext.Session.GetString("DriverId");
@@ -302,76 +299,16 @@ namespace TransportManagementSystem.Controllers
                 .Include(d => d.AssignedBus)
                 .FirstOrDefaultAsync(d => d.Driver_id == driverId);
 
-            // DEBUG: Check what we have
             if (driver?.AssignedBus == null)
             {
                 return Ok(new
                 {
                     hasBus = false,
-                    message = $"Driver {driverId} has no assigned bus",
-                    driverId = driverId,
-                    driverFound = driver != null,
-                    assignedBusId = driver?.Driver_AssignedBusId
+                    message = "Aucun bus assigné"
                 });
             }
 
             var bus = driver.AssignedBus;
-
-            // DEBUG: Check bus fragment
-            if (!bus.Bus_CurrentFragmentId.HasValue)
-            {
-                return Ok(new
-                {
-                    hasBus = true,
-                    busInfo = new
-                    {
-                        bus.Bus_Id,
-                        bus.Bus_Code,
-                        bus.Bus_PlateNumber
-                    },
-                    message = "Bus has no fragment assigned",
-                    fragmentId = bus.Bus_CurrentFragmentId
-                });
-            }
-
-            TrajectoryFragment? fragment = null;
-            Trajectory? trajectory = null;
-            List<object> stops = new List<object>();
-
-            fragment = await _context.TrajectoryFragments
-                .Include(f => f.Trajectory)
-                .Include(f => f.FragmentStops)
-                    .ThenInclude(fs => fs.TrajectoryStop)
-                .FirstOrDefaultAsync(f => f.Fragment_Id == bus.Bus_CurrentFragmentId.Value);
-
-            if (fragment == null)
-            {
-                return Ok(new
-                {
-                    hasBus = true,
-                    busInfo = new { bus.Bus_Code },
-                    message = "Fragment not found in database",
-                    fragmentId = bus.Bus_CurrentFragmentId
-                });
-            }
-
-            trajectory = fragment.Trajectory;
-
-            if (fragment.FragmentStops != null)
-            {
-                stops = fragment.FragmentStops
-                    .OrderBy(fs => fs.Stop_Order)
-                    .Select(fs => new
-                    {
-                        fs.TS_Id,
-                        fs.TrajectoryStop.TS_Name,
-                        fs.TrajectoryStop.TS_OrderIndex,
-                        fs.TrajectoryStop.TS_Latitude,
-                        fs.TrajectoryStop.TS_Longitude,
-                        fs.Workers_At_Stop
-                    })
-                    .ToList<object>();
-            }
 
             return Ok(new
             {
@@ -384,30 +321,8 @@ namespace TransportManagementSystem.Controllers
                     bus.Bus_Brand,
                     bus.Bus_Model,
                     bus.Bus_Status,
-                    bus.Bus_CurrentLatitude,
-                    bus.Bus_CurrentLongitude,
                     currentLatitude = bus.Bus_CurrentLatitude ?? 0,
                     currentLongitude = bus.Bus_CurrentLongitude ?? 0
-                },
-                trajectory = trajectory != null ? new
-                {
-                    trajectory.Trajectory_Id,
-                    trajectory.Trajectory_Name,
-                    trajectory.Trajectory_Code
-                } : null,
-                fragment = fragment != null ? new
-                {
-                    fragment.Fragment_Id,
-                    fragment.Fragment_Code,
-                    fragment.Fragment_Name,
-                    fragment.Total_Workers
-                } : null,
-                stops = stops,
-                debug = new
-                {
-                    stopCount = stops.Count,
-                    fragmentFound = fragment != null,
-                    trajectoryFound = trajectory != null
                 }
             });
         }
