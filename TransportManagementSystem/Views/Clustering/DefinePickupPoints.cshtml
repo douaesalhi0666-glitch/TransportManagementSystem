@@ -343,6 +343,9 @@
                 });
                 
                 updateTable(stops);
+                
+                // Recharger les suggestions après avoir chargé les points existants
+                await loadPickupPoints();
             } catch (err) {
                 console.error(err);
                 showNotification("Erreur lors du chargement des points", true);
@@ -354,7 +357,7 @@
             tbody.innerHTML = '';
             
             if (!stops || stops.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="7" class="text-center">Aucun point de ramassage</td</tr>';
+                tbody.innerHTML = '<table><td colspan="7" class="text-center">Aucun point de ramassage</td></tr>';
                 return;
             }
             
@@ -422,10 +425,8 @@
                     const result = await response.json();
                     if (result.success) {
                         showNotification(`✅ ${workerName} a été désassigné.`);
-                        // Fermer le modal
                         bootstrap.Modal.getInstance(document.getElementById('viewWorkersModal')).hide();
-                        // Recharger les données
-                        loadExistingStops();
+                        await loadExistingStops();
                     } else {
                         showNotification('❌ Erreur: ' + result.message, true);
                     }
@@ -450,7 +451,7 @@
                     const response = await fetch(`/Clustering/DeleteStop?id=${id}`, { method: 'DELETE' });
                     if (response.ok) {
                         showNotification(`✅ Point "${name}" supprimé !`);
-                        loadExistingStops();
+                        await loadExistingStops();
                     } else {
                         const errorData = await response.json();
                         showNotification("❌ " + (errorData.message || "Erreur lors de la suppression."), true);
@@ -506,7 +507,7 @@
                 if (result.success) {
                     showNotification(result.message);
                     bootstrap.Modal.getInstance(document.getElementById('assignWorkerModal')).hide();
-                    loadExistingStops();
+                    await loadExistingStops();
                 } else {
                     showNotification('Erreur: ' + result.message, true);
                 }
@@ -526,7 +527,7 @@
                     if (result.success) {
                         showNotification(result.message);
                         bootstrap.Modal.getInstance(document.getElementById('assignWorkerModal')).hide();
-                        loadExistingStops();
+                        await loadExistingStops();
                     } else {
                         showNotification('Erreur: ' + result.message, true);
                     }
@@ -543,7 +544,7 @@
                     const result = await response.json();
                     if (result.success) {
                         showNotification(result.message);
-                        loadExistingStops();
+                        await loadExistingStops();
                     } else {
                         showNotification('Erreur: ' + result.message, true);
                     }
@@ -574,7 +575,7 @@
                 if (response.ok) {
                     showNotification('✅ Arrêt modifié avec succès !');
                     bootstrap.Modal.getInstance(document.getElementById('editStopModal')).hide();
-                    loadExistingStops();
+                    await loadExistingStops();
                 } else {
                     showNotification('❌ Erreur lors de la modification.', true);
                 }
@@ -615,24 +616,43 @@
             clearSuggestedMarkers();
 
             if (data.clusters && data.clusters.length > 0) {
-                data.clusters.forEach((c, idx) => {
+                for (const c of data.clusters) {
+                    // Vérifier si ce point existe déjà dans les marqueurs existants
+                    let alreadyExists = false;
+                    if (currentMarkers.existing) {
+                        for (const marker of currentMarkers.existing) {
+                            const latLng = marker.getLatLng();
+                            const distance = Math.sqrt(Math.pow(latLng.lat - c.lat, 2) + Math.pow(latLng.lng - c.lng, 2));
+                            if (distance < 0.001) {
+                                alreadyExists = true;
+                                break;
+                            }
+                        }
+                    }
+                    
+                    // Ne pas afficher si le point existe déjà
+                    if (alreadyExists || c.exists) {
+                        continue;
+                    }
+                    
+                    const idx = currentMarkers.suggested.length + 1;
                     const icon = L.divIcon({ 
-                        html: (idx+1).toString(), 
+                        html: idx.toString(), 
                         iconSize: [28, 28], 
                         className: 'suggested-marker' 
                     });
-                    let popupContent = `<strong>Point suggéré ${idx+1}</strong><br>${c.count} personnes proches<br>`;
-                    if (c.exists) {
-                        popupContent += '<span class="text-muted">✅ Existe déjà</span>';
-                    } else {
-                        popupContent += `<button onclick="createSuggestedStop(${c.lat}, ${c.lng}, 'Point ${idx+1}')" class="btn btn-sm btn-success mt-2">✅ Créer cet arrêt</button>`;
-                    }
+                    let popupContent = `<strong>Point suggéré ${idx}</strong><br>${c.count} personnes proches<br>`;
+                    popupContent += `<button onclick="createSuggestedStop(${c.lat}, ${c.lng}, 'Point ${idx}')" class="btn btn-sm btn-success mt-2">✅ Créer cet arrêt</button>`;
                     const marker = L.marker([c.lat, c.lng], { icon }).bindPopup(popupContent);
                     marker.addTo(map);
                     currentMarkers.suggested.push(marker);
-                });
+                }
                 
-                document.getElementById('infoPanel').innerHTML = `<div class="alert alert-success">✅ ${data.clusters.length} points suggérés. Cliquez sur un marqueur violet pour créer l'arrêt.</div>`;
+                if (currentMarkers.suggested.length > 0) {
+                    document.getElementById('infoPanel').innerHTML = `<div class="alert alert-success">✅ ${currentMarkers.suggested.length} points suggérés. Cliquez sur un marqueur violet pour créer l'arrêt.</div>`;
+                } else {
+                    document.getElementById('infoPanel').innerHTML = '<div class="alert alert-info">ℹ️ Tous les points suggérés existent déjà.</div>';
+                }
             } else {
                 document.getElementById('infoPanel').innerHTML = '<div class="alert alert-warning">Aucun point suggéré.</div>';
             }
@@ -650,8 +670,7 @@
                 });
                 if (response.ok) {
                     showNotification("✅ Point créé avec succès !");
-                    loadExistingStops();
-                    loadPickupPoints();
+                    await loadExistingStops();
                 } else {
                     const error = await response.json();
                     showNotification("❌ " + (error.message || "Erreur lors de la création."), true);
@@ -693,7 +712,7 @@
                     document.getElementById('stopName').value = '';
                     document.getElementById('stopLat').value = '';
                     document.getElementById('stopLng').value = '';
-                    loadExistingStops();
+                    await loadExistingStops();
                 } else {
                     showNotification("❌ " + (result.message || "Erreur lors de l'ajout."), true);
                 }
