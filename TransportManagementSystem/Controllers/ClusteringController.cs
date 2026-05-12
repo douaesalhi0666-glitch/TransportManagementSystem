@@ -236,115 +236,125 @@ namespace TransportManagementSystem.Controllers
         [HttpPost]
         public async Task<IActionResult> AutoAssignWorkersToStop(int stopId)
         {
-            var stop = await _context.TrajectoryStops.FindAsync(stopId);
-            if (stop == null)
-                return BadRequest(new { success = false, message = "Arrêt non trouvé" });
-
-            var trajectoryId = stop.TS_TrajectoryId;
-
-            // Get workers assigned to this trajectory (either directly or via PersonnelTrajectoryAssignments)
-            var unassignedWorkers = await _context.Personnel
-                .Where(p => (p.AssignedTrajectoryId == trajectoryId ||
-                             _context.PersonnelTrajectoryAssignments.Any(pta => pta.PTA_PersonnelId == p.Personnel_Id && pta.PTA_TrajectoryId == trajectoryId))
-                            && p.IsAssigned == true
-                            && p.AssignedStopId == null
-                            && p.Personnel_Latitude != null
-                            && p.Personnel_Longitude != null)
-                .ToListAsync();
-
-            if (!unassignedWorkers.Any())
+            try
             {
-                return Ok(new { success = true, message = "Aucun personnel non assigné trouvé pour cette trajectoire." });
-            }
+                var stop = await _context.TrajectoryStops.FindAsync(stopId);
+                if (stop == null)
+                    return BadRequest(new { success = false, message = "Arrêt non trouvé" });
 
-            int assignedCount = 0;
-            foreach (var worker in unassignedWorkers)
-            {
-                double distance = CalculateDistance(
-                    (double)stop.TS_Latitude,
-                    (double)stop.TS_Longitude,
-                    (double)worker.Personnel_Latitude.Value,
-                    (double)worker.Personnel_Longitude.Value
-                );
+                var trajectoryId = stop.TS_TrajectoryId;
 
-                if (distance <= 5.0)
+                var unassignedWorkers = await _context.Personnel
+                    .Where(p => p.AssignedTrajectoryId == trajectoryId
+                                && p.IsAssigned == true
+                                && p.AssignedStopId == null
+                                && p.Personnel_Latitude != null
+                                && p.Personnel_Longitude != null)
+                    .ToListAsync();
+
+                if (!unassignedWorkers.Any())
                 {
-                    worker.AssignedStopId = stopId;
-                    assignedCount++;
+                    return Ok(new { success = true, message = "Aucun personnel non assigné trouvé pour cette trajectoire." });
                 }
+
+                int assignedCount = 0;
+                foreach (var worker in unassignedWorkers)
+                {
+                    double distance = CalculateDistance(
+                        (double)stop.TS_Latitude,
+                        (double)stop.TS_Longitude,
+                        (double)worker.Personnel_Latitude!.Value,
+                        (double)worker.Personnel_Longitude!.Value
+                    );
+
+                    if (distance <= 5.0) // 5 km
+                    {
+                        worker.AssignedStopId = stopId;
+                        assignedCount++;
+                    }
+                }
+
+                await _context.SaveChangesAsync();
+
+                return Ok(new
+                {
+                    success = true,
+                    message = $"{assignedCount} travailleurs assignés automatiquement à l'arrêt {stop.TS_Name}"
+                });
             }
-
-            await _context.SaveChangesAsync();
-
-            return Ok(new
+            catch (Exception ex)
             {
-                success = true,
-                message = $"{assignedCount} travailleurs assignés automatiquement à l'arrêt {stop.TS_Name}"
-            });
+                return StatusCode(500, new { success = false, message = ex.Message });
+            }
         }
 
         [HttpPost]
         public async Task<IActionResult> AutoAssignAllWorkersToNearestStop(int trajectoryId)
         {
-            var stops = await _context.TrajectoryStops
-                .Where(s => s.TS_TrajectoryId == trajectoryId)
-                .OrderBy(s => s.TS_OrderIndex)
-                .ToListAsync();
-
-            if (!stops.Any())
-                return BadRequest(new { success = false, message = "Aucun arrêt trouvé pour cette trajectoire" });
-
-            // Get workers assigned to this trajectory (either directly or via PersonnelTrajectoryAssignments)
-            var unassignedWorkers = await _context.Personnel
-                .Where(p => (p.AssignedTrajectoryId == trajectoryId ||
-                             _context.PersonnelTrajectoryAssignments.Any(pta => pta.PTA_PersonnelId == p.Personnel_Id && pta.PTA_TrajectoryId == trajectoryId))
-                            && p.IsAssigned == true
-                            && p.AssignedStopId == null
-                            && p.Personnel_Latitude != null
-                            && p.Personnel_Longitude != null)
-                .ToListAsync();
-
-            if (!unassignedWorkers.Any())
+            try
             {
-                return Ok(new { success = true, message = "Aucun personnel non assigné trouvé pour cette trajectoire." });
-            }
+                var stops = await _context.TrajectoryStops
+                    .Where(s => s.TS_TrajectoryId == trajectoryId)
+                    .OrderBy(s => s.TS_OrderIndex)
+                    .ToListAsync();
 
-            int assignedCount = 0;
-            foreach (var worker in unassignedWorkers)
-            {
-                TrajectoryStop nearestStop = null;
-                double minDistance = double.MaxValue;
+                if (!stops.Any())
+                    return BadRequest(new { success = false, message = "Aucun arrêt trouvé pour cette trajectoire" });
 
-                foreach (var stop in stops)
+                var unassignedWorkers = await _context.Personnel
+                    .Where(p => p.AssignedTrajectoryId == trajectoryId
+                                && p.IsAssigned == true
+                                && p.AssignedStopId == null
+                                && p.Personnel_Latitude != null
+                                && p.Personnel_Longitude != null)
+                    .ToListAsync();
+
+                if (!unassignedWorkers.Any())
                 {
-                    double distance = CalculateDistance(
-                        (double)stop.TS_Latitude,
-                        (double)stop.TS_Longitude,
-                        (double)worker.Personnel_Latitude.Value,
-                        (double)worker.Personnel_Longitude.Value
-                    );
+                    return Ok(new { success = true, message = "Aucun personnel non assigné trouvé pour cette trajectoire." });
+                }
 
-                    if (distance < minDistance)
+                int assignedCount = 0;
+                foreach (var worker in unassignedWorkers)
+                {
+                    TrajectoryStop? nearestStop = null;
+                    double minDistance = double.MaxValue;
+
+                    foreach (var stop in stops)
                     {
-                        minDistance = distance;
-                        nearestStop = stop;
+                        double distance = CalculateDistance(
+                            (double)stop.TS_Latitude,
+                            (double)stop.TS_Longitude,
+                            (double)worker.Personnel_Latitude!.Value,
+                            (double)worker.Personnel_Longitude!.Value
+                        );
+
+                        if (distance < minDistance)
+                        {
+                            minDistance = distance;
+                            nearestStop = stop;
+                        }
+                    }
+
+                    if (nearestStop != null)
+                    {
+                        worker.AssignedStopId = nearestStop.TS_Id;
+                        assignedCount++;
                     }
                 }
 
-                if (nearestStop != null)
+                await _context.SaveChangesAsync();
+
+                return Ok(new
                 {
-                    worker.AssignedStopId = nearestStop.TS_Id;
-                    assignedCount++;
-                }
+                    success = true,
+                    message = $"{assignedCount} travailleurs assignés automatiquement à l'arrêt le plus proche"
+                });
             }
-
-            await _context.SaveChangesAsync();
-
-            return Ok(new
+            catch (Exception ex)
             {
-                success = true,
-                message = $"{assignedCount} travailleurs assignés automatiquement à l'arrêt le plus proche"
-            });
+                return StatusCode(500, new { success = false, message = ex.Message });
+            }
         }
 
         private double CalculateDistance(double lat1, double lon1, double lat2, double lon2)
@@ -538,25 +548,30 @@ namespace TransportManagementSystem.Controllers
                 return BadRequest(new { success = false, message = "Nom invalide" });
             }
 
-            // Accepter trajectoryId = 0 (point sans trajectoire)
-            int maxOrder = await _context.TrajectoryStops
-                .Where(s => s.TS_TrajectoryId == model.TrajectoryId)
-                .MaxAsync(s => (int?)s.TS_OrderIndex) ?? 0;
-
-            var stop = new TrajectoryStop
-            {
-                TS_TrajectoryId = model.TrajectoryId, // Peut être 0
-                TS_Name = model.Name.Trim(),
-                TS_OrderIndex = maxOrder + 1,
-                TS_Latitude = model.Latitude,
-                TS_Longitude = model.Longitude
-            };
-
             try
             {
+                int maxOrder = await _context.TrajectoryStops
+                    .Where(s => s.TS_TrajectoryId == model.TrajectoryId)
+                    .MaxAsync(s => (int?)s.TS_OrderIndex) ?? 0;
+
+                var stop = new TrajectoryStop
+                {
+                    TS_TrajectoryId = model.TrajectoryId,
+                    TS_Name = model.Name.Trim(),
+                    TS_OrderIndex = maxOrder + 1,
+                    TS_Latitude = model.Latitude,
+                    TS_Longitude = model.Longitude
+                };
+
                 _context.TrajectoryStops.Add(stop);
                 await _context.SaveChangesAsync();
+
                 return Ok(new { success = true, stopId = stop.TS_Id, message = "Point créé avec succès" });
+            }
+            catch (DbUpdateException ex)
+            {
+                var innerException = ex.InnerException?.Message ?? ex.Message;
+                return StatusCode(500, new { success = false, message = innerException });
             }
             catch (Exception ex)
             {
@@ -574,49 +589,56 @@ namespace TransportManagementSystem.Controllers
 
         [HttpDelete]
         [HttpDelete]
+        [HttpDelete]
         public async Task<IActionResult> DeleteStop(int id)
         {
-            var stop = await _context.TrajectoryStops.FindAsync(id);
-            if (stop == null)
-                return NotFound(new { success = false, message = "Arrêt non trouvé" });
-
-            int trajectoryId = stop.TS_TrajectoryId;
-
-            // 1. Supprimer les références dans FragmentStop (liaison avec les fragments)
-            var fragmentStops = await _context.FragmentStops
-                .Where(fs => fs.TS_Id == id)
-                .ToListAsync();
-            if (fragmentStops.Any())
+            try
             {
-                _context.FragmentStops.RemoveRange(fragmentStops);
-            }
+                var stop = await _context.TrajectoryStops.FindAsync(id);
+                if (stop == null)
+                    return NotFound(new { success = false, message = "Arrêt non trouvé" });
 
-            // 2. Désassigner les personnels assignés à cet arrêt
-            var workersAtStop = await _context.Personnel
-                .Where(p => p.AssignedStopId == id)
-                .ToListAsync();
-            foreach (var worker in workersAtStop)
+                int trajectoryId = stop.TS_TrajectoryId;
+
+                // 1. Supprimer les références dans FragmentStop
+                var fragmentStops = await _context.FragmentStops
+                    .Where(fs => fs.TS_Id == id)
+                    .ToListAsync();
+                if (fragmentStops.Any())
+                {
+                    _context.FragmentStops.RemoveRange(fragmentStops);
+                }
+
+                // 2. Désassigner les personnels
+                var workersAtStop = await _context.Personnel
+                    .Where(p => p.AssignedStopId == id)
+                    .ToListAsync();
+                foreach (var worker in workersAtStop)
+                {
+                    worker.AssignedStopId = null;
+                }
+
+                // 3. Supprimer l'arrêt
+                _context.TrajectoryStops.Remove(stop);
+                await _context.SaveChangesAsync();
+
+                // 4. Réordonner les arrêts restants
+                var remainingStops = await _context.TrajectoryStops
+                    .Where(s => s.TS_TrajectoryId == trajectoryId)
+                    .OrderBy(s => s.TS_OrderIndex)
+                    .ToListAsync();
+                for (int i = 0; i < remainingStops.Count; i++)
+                {
+                    remainingStops[i].TS_OrderIndex = i + 1;
+                }
+                await _context.SaveChangesAsync();
+
+                return Ok(new { success = true, message = "Arrêt supprimé avec succès" });
+            }
+            catch (Exception ex)
             {
-                worker.AssignedStopId = null;
-                worker.IsAssigned = false; // Optionnel : remettre à false
+                return StatusCode(500, new { success = false, message = ex.InnerException?.Message ?? ex.Message });
             }
-
-            // 3. Supprimer l'arrêt
-            _context.TrajectoryStops.Remove(stop);
-            await _context.SaveChangesAsync();
-
-            // 4. Réordonner les arrêts restants de la même trajectoire
-            var remainingStops = await _context.TrajectoryStops
-                .Where(s => s.TS_TrajectoryId == trajectoryId)
-                .OrderBy(s => s.TS_OrderIndex)
-                .ToListAsync();
-            for (int i = 0; i < remainingStops.Count; i++)
-            {
-                remainingStops[i].TS_OrderIndex = i + 1;
-            }
-            await _context.SaveChangesAsync();
-
-            return Ok(new { success = true, message = "Arrêt supprimé avec succès" });
         }
 
         [HttpPost]
