@@ -137,7 +137,7 @@ namespace TransportManagementSystem.Controllers
             });
         }
 
-        // ========== WORKER ASSIGNMENT METHODS ==========
+        // ========== WORKER ASSIGNMENT METHODS (CORRIGÉS - EXCLUENT LES MOTORISÉS) ==========
         [HttpGet]
         public async Task<IActionResult> GetUnassignedWorkers()
         {
@@ -146,7 +146,8 @@ namespace TransportManagementSystem.Controllers
                             && p.AssignedStopId == null
                             && p.Personnel_Status == "Active"
                             && p.Personnel_Latitude != null
-                            && p.Personnel_Longitude != null)
+                            && p.Personnel_Longitude != null
+                            && p.IsMotorized == false)  // ← EXCLURE LES MOTORISÉS
                 .Select(p => new
                 {
                     p.Personnel_Id,
@@ -218,7 +219,8 @@ namespace TransportManagementSystem.Controllers
             var unassignedWorkers = await _context.Personnel
                 .Where(p => p.IsAssigned == false && p.AssignedStopId == null
                             && p.Personnel_Status == "Active"
-                            && p.Personnel_Latitude != null && p.Personnel_Longitude != null)
+                            && p.Personnel_Latitude != null && p.Personnel_Longitude != null
+                            && p.IsMotorized == false)  // ← EXCLURE LES MOTORISÉS
                 .ToListAsync();
 
             if (!unassignedWorkers.Any())
@@ -232,7 +234,7 @@ namespace TransportManagementSystem.Controllers
                     (double)stop.TS_Longitude,
                     (double)worker.Personnel_Latitude!.Value,
                     (double)worker.Personnel_Longitude!.Value);
-                if (distance <= 5.0) // 5 km
+                if (distance <= 50.0) // 50 km
                 {
                     worker.AssignedStopId = stopId;
                     worker.IsAssigned = true;
@@ -258,14 +260,16 @@ namespace TransportManagementSystem.Controllers
             if (!stops.Any())
                 return BadRequest(new { success = false, message = "Aucun arrêt trouvé" });
 
+            // EXCLURE LES MOTORISÉS ICI AUSSI !
             var unassignedWorkers = await _context.Personnel
                 .Where(p => p.IsAssigned == false && p.AssignedStopId == null
                             && p.Personnel_Status == "Active"
-                            && p.Personnel_Latitude != null && p.Personnel_Longitude != null)
+                            && p.Personnel_Latitude != null && p.Personnel_Longitude != null
+                            && p.IsMotorized == false)  // ← EXCLURE LES MOTORISÉS
                 .ToListAsync();
 
             if (!unassignedWorkers.Any())
-                return Ok(new { success = true, message = "Aucun personnel non assigné" });
+                return Ok(new { success = true, message = "Aucun personnel non assigné trouvé." });
 
             int assignedCount = 0;
             foreach (var worker in unassignedWorkers)
@@ -305,7 +309,6 @@ namespace TransportManagementSystem.Controllers
 
             try
             {
-                // Vérifier que la trajectoire existe
                 var trajectory = await _context.Trajectories.FindAsync(model.TrajectoryId);
                 if (trajectory == null)
                     return BadRequest(new { success = false, message = $"Trajectoire ID {model.TrajectoryId} n'existe pas." });
@@ -344,25 +347,21 @@ namespace TransportManagementSystem.Controllers
             if (stop == null)
                 return NotFound(new { success = false, message = "Arrêt non trouvé" });
 
-            var workers = await _context.Personnel.Where(p => p.AssignedStopId == id).ToListAsync();
-            foreach (var w in workers)
+            // 1. Désassigner tous les personnels attachés à cet arrêt
+            var personnel = await _context.Personnel
+                .Where(p => p.AssignedStopId == id)
+                .ToListAsync();
+            foreach (var p in personnel)
             {
-                w.AssignedStopId = null;
-                w.IsAssigned = false;
+                p.AssignedStopId = null;
+                p.IsAssigned = false;
             }
+
+            // 2. Supprimer l'arrêt
             _context.TrajectoryStops.Remove(stop);
             await _context.SaveChangesAsync();
 
-            // Réordonner les arrêts de la même trajectoire
-            var remaining = await _context.TrajectoryStops
-                .Where(s => s.TS_TrajectoryId == stop.TS_TrajectoryId)
-                .OrderBy(s => s.TS_OrderIndex)
-                .ToListAsync();
-            for (int i = 0; i < remaining.Count; i++)
-                remaining[i].TS_OrderIndex = i + 1;
-            await _context.SaveChangesAsync();
-
-            return Ok(new { success = true, message = "Arrêt supprimé" });
+            return Ok(new { success = true, message = "Arrêt supprimé avec succès" });
         }
 
         [HttpPost]
@@ -403,11 +402,11 @@ namespace TransportManagementSystem.Controllers
             if (request.TrajectoryId <= 0)
                 return BadRequest("Trajectoire invalide");
 
-            // Récupérer les personnels avec coordonnées
             var personnelPoints = await _context.Personnel
                 .Where(p => p.Personnel_Status == "Active"
                             && p.Personnel_Latitude != null
-                            && p.Personnel_Longitude != null)
+                            && p.Personnel_Longitude != null
+                            && p.IsMotorized == false)  // ← EXCLURE LES MOTORISÉS
                 .Select(p => new ClusterPoint
                 {
                     X = (double)p.Personnel_Latitude!.Value,
@@ -417,14 +416,13 @@ namespace TransportManagementSystem.Controllers
                 .ToListAsync();
 
             if (personnelPoints.Count == 0)
-                return Ok(new { clusters = new List<object>(), points = new List<object>(), message = "Aucun personnel avec coordonnées." });
+                return Ok(new { clusters = new List<object>(), points = new List<object>(), message = "Aucun personnel non motorisé avec coordonnées." });
 
             int k = request.NumberOfClusters;
             k = Math.Max(1, Math.Min(k, personnelPoints.Count));
 
             var clusters = KMeansDeterministic(personnelPoints, k);
 
-            // Récupérer les arrêts existants pour éviter les doublons
             var existingStops = await _context.TrajectoryStops
                 .Where(s => s.TS_TrajectoryId == request.TrajectoryId)
                 .Select(s => new { s.TS_Latitude, s.TS_Longitude })
@@ -451,7 +449,7 @@ namespace TransportManagementSystem.Controllers
                                 (double)centerLng,
                                 (double)stop.TS_Latitude,
                                 (double)stop.TS_Longitude);
-                            return dist < 0.1; // moins de 100 mètres
+                            return dist < 0.1;
                         });
                         uniqueClusters.Add(new
                         {
@@ -550,7 +548,7 @@ namespace TransportManagementSystem.Controllers
                         int take = Math.Min(remaining, maxCapacity);
                         var virtualStop = new TrajectoryStop
                         {
-                            TS_Id = -stop.TS_Id - splitCounter, // ID négatif temporaire
+                            TS_Id = -stop.TS_Id - splitCounter,
                             TS_Name = $"{stop.TS_Name} (Bus {busNumber})",
                             TS_Latitude = stop.TS_Latitude,
                             TS_Longitude = stop.TS_Longitude,
@@ -568,133 +566,7 @@ namespace TransportManagementSystem.Controllers
         }
 
         // ================================================
-        // GÉNÉRATION DE TRAJETS (ALGORITHME GLOUTON AVEC DÉCOUPAGE)
-        // ================================================
-        [HttpPost]
-        public async Task<IActionResult> GenerateSmartTrajectories(int maxTimeMinutes = 60, int busCapacity = 20, double speedKmh = 30)
-        {
-            try
-            {
-                var stopsData = await _context.TrajectoryStops
-                    .Where(s => s.TS_Latitude != 0 && s.TS_Longitude != 0)
-                    .Select(s => new
-                    {
-                        Stop = s,
-                        Workers = _context.Personnel.Count(p => p.AssignedStopId == s.TS_Id && p.IsAssigned == true)
-                    })
-                    .ToListAsync();
-
-                var validStops = stopsData.Where(s => s.Workers > 0).ToList();
-                if (!validStops.Any())
-                    return BadRequest("Aucun point de ramassage avec personnels assignés.");
-
-                // Étape 1 : découper les arrêts en sous-arrêts virtuels
-                var stopsWithWorkers = validStops.Select(s => (Stop: s.Stop, Workers: s.Workers)).ToList();
-                var expandedStops = SplitOverloadedStops(stopsWithWorkers, busCapacity);
-
-                const double startLat = 34.2900, startLng = -6.5700;
-                var items = expandedStops.Select(s => new
-                {
-                    Stop = s.Stop,
-                    Workers = s.Workers,
-                    TravelTime = HaversineDistance(startLat, startLng, (double)s.Stop.TS_Latitude, (double)s.Stop.TS_Longitude) / 1000.0 / speedKmh * 60.0
-                }).OrderBy(x => x.TravelTime).ToList();
-
-                // Étape 2 : regroupement glouton
-                var clusters = new List<List<TrajectoryStop>>();
-                bool[] used = new bool[items.Count];
-
-                for (int i = 0; i < items.Count; i++)
-                {
-                    if (used[i]) continue;
-                    var cluster = new List<TrajectoryStop>();
-                    int currentWorkers = 0;
-                    double currentMaxTime = 0;
-
-                    for (int j = 0; j < items.Count; j++)
-                    {
-                        if (used[j]) continue;
-                        int newWorkers = currentWorkers + items[j].Workers;
-                        double newMaxTime = Math.Max(currentMaxTime, items[j].TravelTime);
-                        if (newWorkers <= busCapacity && newMaxTime <= maxTimeMinutes)
-                        {
-                            cluster.Add(items[j].Stop);
-                            currentWorkers = newWorkers;
-                            currentMaxTime = newMaxTime;
-                            used[j] = true;
-                        }
-                    }
-                    if (cluster.Any())
-                        clusters.Add(cluster);
-                }
-
-                var createdTrajs = new List<Trajectory>();
-                int counter = 1;
-
-                foreach (var cluster in clusters)
-                {
-                    var orderedStops = cluster
-                        .OrderBy(s => HaversineDistance(startLat, startLng, (double)s.TS_Latitude, (double)s.TS_Longitude))
-                        .ToList();
-
-                    if (!orderedStops.Any()) continue;
-
-                    double maxDist = orderedStops.Max(s => HaversineDistance(startLat, startLng, (double)s.TS_Latitude, (double)s.TS_Longitude) / 1000.0);
-                    double maxTime = orderedStops.Max(s => HaversineDistance(startLat, startLng, (double)s.TS_Latitude, (double)s.TS_Longitude) / 1000.0 / speedKmh * 60.0);
-
-                    // 🔥 Correction : utiliser FirstOrDefault() et vérifier null
-                    int totalWorkers = 0;
-                    foreach (var s in cluster)
-                    {
-                        var match = items.FirstOrDefault(i => i.Stop.TS_Id == s.TS_Id);
-                        if (match != null)
-                            totalWorkers += match.Workers;
-                    }
-
-                    var traj = new Trajectory
-                    {
-                        Trajectory_Name = $"Trajet IA-{DateTime.Now:yyyyMMddHHmmss}-{counter}",
-                        Trajectory_Code = $"IA-{counter}",
-                        Trajectory_Description = $"{orderedStops.Count} arrêts, {totalWorkers} pers",
-                        Trajectory_StartLatitude = (decimal)startLat,
-                        Trajectory_StartLongitude = (decimal)startLng,
-                        Trajectory_EndLatitude = (decimal)orderedStops.Last().TS_Latitude,
-                        Trajectory_EndLongitude = (decimal)orderedStops.Last().TS_Longitude,
-                        Trajectory_DistanceKm = (decimal)Math.Round(maxDist, 2),
-                        Trajectory_EstimatedDurationMinutes = (int)Math.Ceiling(maxTime),
-                        Trajectory_Status = "Active",
-                        Trajectory_CreatedAt = DateTime.Now,
-                        Trajectory_UpdatedAt = DateTime.Now
-                    };
-                    _context.Trajectories.Add(traj);
-                    await _context.SaveChangesAsync();
-
-                    int order = 1;
-                    foreach (var s in orderedStops)
-                    {
-                        // Ne mettre à jour que les arrêts réels (ID > 0)
-                        if (s.TS_Id > 0)
-                        {
-                            s.TS_TrajectoryId = traj.Trajectory_Id;
-                            s.TS_OrderIndex = order++;
-                            _context.TrajectoryStops.Update(s);
-                        }
-                    }
-                    await _context.SaveChangesAsync();
-                    createdTrajs.Add(traj);
-                    counter++;
-                }
-
-                return Ok(new { success = true, count = createdTrajs.Count });
-            }
-            catch (Exception ex)
-            {
-                return StatusCode(500, new { success = false, message = ex.ToString() });
-            }
-        }
-
-        // ================================================
-        // GÉNÉRATION DE TRAJETS (AFFICHAGE MODAL) - BOUTON "Générer les trajets"
+        // GÉNÉRATION DE TRAJETS (AFFICHAGE MODAL)
         // ================================================
         [HttpPost]
         public async Task<IActionResult> GenerateRoutesFromPickupPoints([FromBody] GenerateRoutesRequest request)
@@ -709,13 +581,13 @@ namespace TransportManagementSystem.Controllers
                     .Select(s => new
                     {
                         Stop = s,
-                        Workers = _context.Personnel.Count(p => p.AssignedStopId == s.TS_Id && p.IsAssigned == true)
+                        Workers = _context.Personnel.Count(p => p.AssignedStopId == s.TS_Id && p.IsAssigned == true && p.IsMotorized == false)
                     })
                     .ToListAsync();
 
                 var validStops = stopsData.Where(s => s.Workers > 0).ToList();
                 if (!validStops.Any())
-                    return BadRequest(new { success = false, message = "Aucun point de ramassage avec personnels assignés." });
+                    return BadRequest(new { success = false, message = "Aucun point de ramassage avec personnels non motorisés assignés." });
 
                 const double startLat = 34.2900, startLng = -6.5700;
                 var items = validStops.Select(s => new
@@ -758,7 +630,7 @@ namespace TransportManagementSystem.Controllers
                     }).ToList();
 
                     var passengers = cluster.SelectMany(c => _context.Personnel
-                        .Where(p => p.AssignedStopId == c.Stop.TS_Id && p.IsAssigned == true)
+                        .Where(p => p.AssignedStopId == c.Stop.TS_Id && p.IsAssigned == true && p.IsMotorized == false)
                         .Select(p => new { FirstName = p.Personnel_FirstName, LastName = p.Personnel_LastName })
                     ).ToList();
 
@@ -779,7 +651,7 @@ namespace TransportManagementSystem.Controllers
         }
 
         // ================================================
-        // SAUVEGARDE DES TRAJETS (depuis modal)
+        // SAUVEGARDE DES TRAJETS
         // ================================================
         [HttpPost]
         public async Task<IActionResult> SaveGeneratedRoutes([FromBody] SaveRoutesRequest request)
@@ -795,13 +667,13 @@ namespace TransportManagementSystem.Controllers
                     .Select(s => new
                     {
                         Stop = s,
-                        Workers = _context.Personnel.Count(p => p.AssignedStopId == s.TS_Id && p.IsAssigned == true)
+                        Workers = _context.Personnel.Count(p => p.AssignedStopId == s.TS_Id && p.IsAssigned == true && p.IsMotorized == false)
                     })
                     .ToListAsync();
 
                 var validStops = stopsData.Where(s => s.Workers > 0).ToList();
                 if (!validStops.Any())
-                    return BadRequest(new { success = false, message = "Aucun point de ramassage avec personnels assignés." });
+                    return BadRequest(new { success = false, message = "Aucun point de ramassage avec personnels non motorisés assignés." });
 
                 var items = validStops.Select(s => new
                 {
@@ -849,7 +721,7 @@ namespace TransportManagementSystem.Controllers
                     {
                         Trajectory_Name = $"Trajet-{DateTime.Now:yyyyMMddHHmmss}-{counter}",
                         Trajectory_Code = $"T-{counter}",
-                        Trajectory_Description = $"{orderedStops.Count} arrêts, {totalWorkers} pers",
+                        Trajectory_Description = $"{orderedStops.Count} arrêts, {totalWorkers} pers non motorisés",
                         Trajectory_StartLatitude = (decimal)startLat,
                         Trajectory_StartLongitude = (decimal)startLng,
                         Trajectory_EndLatitude = (decimal)orderedStops.Last().TS_Latitude,
@@ -888,7 +760,7 @@ namespace TransportManagementSystem.Controllers
         // ================================================
         private double HaversineDistance(double lat1, double lon1, double lat2, double lon2)
         {
-            const double R = 6371e3; // mètres
+            const double R = 6371e3;
             var φ1 = lat1 * Math.PI / 180;
             var φ2 = lat2 * Math.PI / 180;
             var Δφ = (lat2 - lat1) * Math.PI / 180;
@@ -913,7 +785,7 @@ namespace TransportManagementSystem.Controllers
         }
 
         // ================================================
-        // CLASSES AUXILIAIRES POUR LE CLUSTERING
+        // CLASSES AUXILIAIRES
         // ================================================
         private class ClusterPoint
         {

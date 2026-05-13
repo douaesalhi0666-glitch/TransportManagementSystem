@@ -131,8 +131,7 @@
     <div class="card-body">
         <div id="motorizationStatus">Chargement...</div>
         <div id="motorizationRequestForm" class="mt-3">
-            <button id="requestMotorizedBtn" class="btn btn-primary">📢 Devenir motorisé (véhicule personnel)</button>
-            <button id="requestNonMotorizedBtn" class="btn btn-info">📢 Devenir non motorisé (utiliser les bus SEWS)</button>
+            <button id="requestMotorizationBtn" class="btn btn-primary">📝 Chargement...</button>
         </div>
         <div id="motorizationRequestMessage" class="mt-2"></div>
     </div>
@@ -160,6 +159,7 @@
         let checkInterval;
         let currentRefLat = null;
         let currentRefLng = null;
+        let currentMotorizedStatus = false;
         const SPEED_KMH = 30;
 
         function haversine(lat1, lon1, lat2, lon2) {
@@ -215,19 +215,58 @@
                 const response = await fetch('/Dashboard/GetNotifications');
                 const notifications = await response.json();
                 if (notifications.length > 0) {
+                    let statusChanged = false;
                     notifications.forEach(notif => {
                         if (notif.type === "Motorization") {
                             const isSuccess = notif.title.includes("acceptée");
                             showToast(notif.title, notif.message, isSuccess ? "success" : "danger");
+                            statusChanged = true;
                         }
                     });
-                    // Après affichage, on recharge les données pour mettre à jour l'interface
-                    await loadPersonnelData();
-                    // On vide le fichier des notifications
+                    if (statusChanged) {
+                        await loadPersonnelData();
+                        await updateMotorizationButton();
+                    }
                     await fetch('/Dashboard/ClearNotifications', { method: 'POST' });
                 }
             } catch (err) {
                 console.error(err);
+            }
+        }
+
+        async function updateMotorizationButton() {
+            try {
+                const response = await fetch('/Buses/GetPersonnelDashboardData');
+                if (!response.ok) return;
+                const data = await response.json();
+                const btn = document.getElementById('requestMotorizationBtn');
+                
+                currentMotorizedStatus = data.isMotorized === true;
+                
+                if (currentMotorizedStatus) {
+                    btn.innerHTML = '📝 Demander à devenir non motorisé';
+                    btn.setAttribute('data-request-type', 'nonMotorized');
+                    btn.className = 'btn btn-info';
+                } else {
+                    btn.innerHTML = '📝 Demander à devenir motorisé';
+                    btn.setAttribute('data-request-type', 'motorized');
+                    btn.className = 'btn btn-primary';
+                }
+                btn.disabled = false;
+                
+                const statusDiv = document.getElementById('motorizationStatus');
+                if (currentMotorizedStatus) {
+                    statusDiv.innerHTML = '<span class="badge bg-success">🚗 Vous êtes motorisé (vous utilisez votre véhicule personnel)</span>';
+                } else {
+                    statusDiv.innerHTML = '<span class="badge bg-warning">🚶 Vous êtes non motorisé (vous utilisez les bus SEWS)</span>';
+                }
+            } catch (err) {
+                console.error('Erreur updateMotorizationButton:', err);
+                const btn = document.getElementById('requestMotorizationBtn');
+                if (btn) {
+                    btn.innerHTML = '📝 Recharger...';
+                    btn.disabled = false;
+                }
             }
         }
 
@@ -240,28 +279,18 @@
                 }
                 const data = await response.json();
 
-                // ========== MOTORISÉ ==========
+                await updateMotorizationButton();
+
                 if (data.isMotorized === true) {
-                    // Masquer complètement les cartes et la carte
                     document.getElementById('cardsRow').style.display = 'none';
                     document.getElementById('map').style.display = 'none';
                     document.getElementById('assignmentInfo').innerHTML = '<div class="alert alert-warning">Vous êtes motorisé. Vous n\'utilisez pas les bus SEWS. Vous pouvez demander à redevenir non motorisé via le bouton ci-dessous.</div>';
-                    // Mettre à jour la section statut
-                    const statusDiv = document.getElementById('motorizationStatus');
-                    const motorizedBtn = document.getElementById('requestMotorizedBtn');
-                    const nonMotorizedBtn = document.getElementById('requestNonMotorizedBtn');
-                    statusDiv.innerHTML = '<span class="badge bg-success">🚗 Vous êtes motorisé (vous utilisez votre véhicule personnel)</span>';
-                    motorizedBtn.style.display = 'none';
-                    nonMotorizedBtn.style.display = 'inline-block';
-                    return; // Ne pas continuer le chargement de la carte, des bus, etc.
+                    return;
                 }
 
-                // ========== NON MOTORISÉ ==========
-                // Réafficher au cas où ils auraient été masqués (après changement de statut)
                 document.getElementById('cardsRow').style.display = '';
                 document.getElementById('map').style.display = '';
 
-                // Remplir les cartes
                 document.getElementById('trajectoryInfo').innerHTML = `
                     <strong>${data.trajectory.trajectory_Name}</strong><br/>
                     Code: ${data.trajectory.trajectory_Code}<br/>
@@ -282,7 +311,6 @@
 
                 document.getElementById('driverInfo').innerHTML = `<strong>${data.assignedDriver}</strong>`;
 
-                // Coordonnées de référence
                 if (data.personnelStop) {
                     currentRefLat = data.personnelStop.tS_Latitude;
                     currentRefLng = data.personnelStop.tS_Longitude;
@@ -304,7 +332,6 @@
 
                 currentTrajectoryId = data.trajectory.trajectory_Id;
 
-                // Initialiser la carte si nécessaire
                 if (!map) {
                     map = L.map('map').setView([34.0, -6.8], 10);
                     L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
@@ -327,7 +354,6 @@
                     legend.addTo(map);
                 }
 
-                // Nettoyer les anciens calques
                 if (window.busLayer) map.removeLayer(window.busLayer);
                 if (personStopMarker) map.removeLayer(personStopMarker);
                 if (personLocationMarker) map.removeLayer(personLocationMarker);
@@ -335,12 +361,10 @@
                 fragmentMarkers.forEach(m => map.removeLayer(m));
                 fragmentMarkers = [];
 
-                // Marqueur SEWS
                 L.marker([34.2900, -6.5700], { icon: L.divIcon({ html: '🏭', iconSize: [36, 36], className: 'sews-marker' }) })
                     .bindPopup('<b>🏭 SEWS Maroc</b><br>Bir Rami, Kénitra<br>Point de départ')
                     .addTo(map);
 
-                // Fragment
                 if (data.fragmentStops && data.fragmentStops.length > 0) {
                     const fragmentPoints = [[34.2900, -6.5700]];
                     data.fragmentStops.forEach(s => fragmentPoints.push([s.lat, s.lng]));
@@ -353,7 +377,6 @@
                     });
                 }
 
-                // Arrêt personnel
                 if (data.personnelStop) {
                     let nearestBus = null;
                     let minDistance = Infinity;
@@ -379,7 +402,6 @@
                         .addTo(map);
                 }
 
-                // Buses
                 window.busLayer = L.layerGroup().addTo(map);
                 busMarkers = {};
                 (data.buses || []).forEach(bus => {
@@ -394,7 +416,6 @@
                     busMarkers[bus.bus_Id] = marker;
                 });
 
-                // Centrer la carte
                 if (data.personnelStop) {
                     map.setView([data.personnelStop.tS_Latitude, data.personnelStop.tS_Longitude], 14);
                 } else if (data.fragmentStops && data.fragmentStops.length > 0) {
@@ -460,7 +481,6 @@
             }
         }
 
-        // Géolocalisation
         if (navigator.geolocation) {
             navigator.geolocation.getCurrentPosition(pos => {
                 if (!map) return;
@@ -476,66 +496,47 @@
             Notification.requestPermission();
         }
 
-        async function checkMotorizationStatus() {
-            try {
-                const res = await fetch('/Buses/GetPersonnelDashboardData');
-                const data = await res.json();
-                const statusDiv = document.getElementById('motorizationStatus');
-                const motorizedBtn = document.getElementById('requestMotorizedBtn');
-                const nonMotorizedBtn = document.getElementById('requestNonMotorizedBtn');
-                if (data.isMotorized === true) {
-                    statusDiv.innerHTML = '<span class="badge bg-success">🚗 Vous êtes motorisé</span>';
-                    if (motorizedBtn) motorizedBtn.style.display = 'none';
-                    if (nonMotorizedBtn) nonMotorizedBtn.style.display = 'inline-block';
-                } else if (data.isMotorized === false) {
-                    statusDiv.innerHTML = '<span class="badge bg-warning">🚶 Vous êtes non motorisé</span>';
-                    if (motorizedBtn) motorizedBtn.style.display = 'inline-block';
-                    if (nonMotorizedBtn) nonMotorizedBtn.style.display = 'none';
-                } else {
-                    statusDiv.innerHTML = '<span class="badge bg-secondary">Statut inconnu</span>';
+        document.getElementById('requestMotorizationBtn')?.addEventListener('click', async () => {
+            const btn = document.getElementById('requestMotorizationBtn');
+            const requestType = btn.getAttribute('data-request-type');
+            const isMotorized = (requestType === 'motorized');
+            const message = isMotorized ? 'devenir motorisé' : 'devenir non motorisé';
+            
+            if (confirm(`Êtes-vous sûr de vouloir demander à ${message} ?`)) {
+                btn.disabled = true;
+                btn.innerHTML = '⏳ Envoi en cours...';
+                
+                try {
+                    const response = await fetch(`/Dashboard/RequestMotorizationChange?isMotorized=${isMotorized}`, { method: 'POST' });
+                    const result = await response.json();
+                    const msgDiv = document.getElementById('motorizationRequestMessage');
+                    
+                    if (response.ok && result.success) {
+                        msgDiv.innerHTML = `<div class="alert alert-success">${result.message}</div>`;
+                        setTimeout(() => msgDiv.innerHTML = '', 5000);
+                        await updateMotorizationButton();
+                    } else {
+                        msgDiv.innerHTML = `<div class="alert alert-danger">${result.message || 'Erreur'}</div>`;
+                        btn.disabled = false;
+                        await updateMotorizationButton();
+                    }
+                } catch (err) {
+                    const msgDiv = document.getElementById('motorizationRequestMessage');
+                    msgDiv.innerHTML = `<div class="alert alert-danger">Erreur réseau. Veuillez réessayer.</div>`;
+                    btn.disabled = false;
+                    await updateMotorizationButton();
                 }
-            } catch (err) {
-                console.error(err);
-            }
-        }
-
-        document.getElementById('requestMotorizedBtn')?.addEventListener('click', async () => {
-            const response = await fetch('/Dashboard/RequestMotorizationChange?isMotorized=true', { method: 'POST' });
-            const result = await response.json();
-            const msgDiv = document.getElementById('motorizationRequestMessage');
-            if (response.ok && result.success) {
-                msgDiv.innerHTML = `<div class="alert alert-success">${result.message}</div>`;
-                document.getElementById('requestMotorizedBtn').disabled = true;
-                document.getElementById('requestNonMotorizedBtn').disabled = true;
-                setTimeout(() => msgDiv.innerHTML = '', 5000);
-                checkMotorizationStatus();
-                // Recharger les données pour mettre à jour l'affichage (si la demande est acceptée plus tard, cela se fera via notification)
-            } else {
-                msgDiv.innerHTML = `<div class="alert alert-danger">${result.message || 'Erreur'}</div>`;
             }
         });
 
-        document.getElementById('requestNonMotorizedBtn')?.addEventListener('click', async () => {
-            const response = await fetch('/Dashboard/RequestMotorizationChange?isMotorized=false', { method: 'POST' });
-            const result = await response.json();
-            const msgDiv = document.getElementById('motorizationRequestMessage');
-            if (response.ok && result.success) {
-                msgDiv.innerHTML = `<div class="alert alert-success">${result.message}</div>`;
-                document.getElementById('requestMotorizedBtn').disabled = true;
-                document.getElementById('requestNonMotorizedBtn').disabled = true;
-                setTimeout(() => msgDiv.innerHTML = '', 5000);
-                checkMotorizationStatus();
-            } else {
-                msgDiv.innerHTML = `<div class="alert alert-danger">${result.message || 'Erreur'}</div>`;
-            }
-        });
-
-        checkMotorizationStatus();
+        updateMotorizationButton();
         loadPersonnelData();
         loadNotifications();
-        setInterval(() => {
-            loadPersonnelData();
-            loadNotifications();
+        
+        setInterval(async () => {
+            await loadPersonnelData();
+            await loadNotifications();
+            await updateMotorizationButton();
         }, 30000);
     </script>
 }
