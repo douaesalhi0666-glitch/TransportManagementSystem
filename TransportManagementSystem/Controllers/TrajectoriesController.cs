@@ -37,35 +37,57 @@ namespace TransportManagementSystem.Controllers
             return View(trajectory);
         }
 
-        public async Task<IActionResult> Edit(int? id)
+        // API: GET /Trajectories/GetTrajectoryData/{id}
+        [HttpGet]
+        public async Task<IActionResult> GetTrajectoryData(int id)
         {
-            if (id == null) return NotFound();
             var trajectory = await _context.Trajectories.FindAsync(id);
             if (trajectory == null) return NotFound();
-            return View(trajectory);
+
+            return Ok(new
+            {
+                trajectory.Trajectory_Id,
+                trajectory.Trajectory_Name,
+                trajectory.Trajectory_Code,
+                trajectory.Trajectory_Description,
+                trajectory.Trajectory_DistanceKm,
+                trajectory.Trajectory_EstimatedDurationMinutes,
+                trajectory.Trajectory_StartLatitude,
+                trajectory.Trajectory_StartLongitude,
+                trajectory.Trajectory_EndLatitude,
+                trajectory.Trajectory_EndLongitude,
+                trajectory.Trajectory_Status
+            });
         }
 
+        // API: POST /Trajectories/UpdateTrajectory
         [HttpPost]
-        [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Edit(int id, Trajectory trajectory)
+        public async Task<IActionResult> UpdateTrajectory([FromBody] TrajectoryUpdateModel model)
         {
-            if (id != trajectory.Trajectory_Id) return NotFound();
-            if (ModelState.IsValid)
-            {
-                try
-                {
-                    trajectory.Trajectory_UpdatedAt = DateTime.Now;
-                    _context.Update(trajectory);
-                    await _context.SaveChangesAsync();
-                }
-                catch (DbUpdateConcurrencyException)
-                {
-                    if (!TrajectoryExists(trajectory.Trajectory_Id)) return NotFound();
-                    else throw;
-                }
-                return RedirectToAction(nameof(Index));
-            }
-            return View(trajectory);
+            if (model == null || model.Trajectory_Id == 0)
+                return BadRequest(new { success = false, message = "Données invalides" });
+
+            var trajectory = await _context.Trajectories.FindAsync(model.Trajectory_Id);
+            if (trajectory == null)
+                return NotFound(new { success = false, message = "Trajet non trouvé" });
+
+            trajectory.Trajectory_Name = model.Trajectory_Name;
+            trajectory.Trajectory_Code = model.Trajectory_Code;
+            trajectory.Trajectory_Description = model.Trajectory_Description;
+            trajectory.Trajectory_DistanceKm = model.Trajectory_DistanceKm;
+            trajectory.Trajectory_EstimatedDurationMinutes = model.Trajectory_EstimatedDurationMinutes;
+            trajectory.Trajectory_StartLatitude = model.Trajectory_StartLatitude;
+            trajectory.Trajectory_StartLongitude = model.Trajectory_StartLongitude;
+            trajectory.Trajectory_EndLatitude = model.Trajectory_EndLatitude;
+            trajectory.Trajectory_EndLongitude = model.Trajectory_EndLongitude;
+            trajectory.Trajectory_Status = model.Trajectory_Status;
+            trajectory.Trajectory_UpdatedAt = DateTime.Now;
+
+            await _context.SaveChangesAsync();
+
+            DashboardController.AddNotification("info", "Trajet modifié", $"Le trajet '{trajectory.Trajectory_Name}' a été modifié.");
+
+            return Ok(new { success = true, message = "Trajet mis à jour avec succès" });
         }
 
         [HttpGet]
@@ -98,11 +120,13 @@ namespace TransportManagementSystem.Controllers
                 stops = stops
             });
         }
+
         [HttpGet]
         public async Task<IActionResult> GetPersonnelByTrajectory(int id)
         {
             var personnel = await _context.Personnel
-                .Where(p => p.AssignedStopId != null && _context.TrajectoryStops.Any(s => s.TS_Id == p.AssignedStopId && s.TS_TrajectoryId == id))
+                .Include(p => p.AssignedBus)
+                .Where(p => p.AssignedTrajectoryId == id && p.IsAssigned == true)
                 .Select(p => new
                 {
                     p.Personnel_Id,
@@ -114,11 +138,13 @@ namespace TransportManagementSystem.Controllers
                     p.Personnel_EmployeeCode,
                     p.Personnel_Department,
                     p.HomeAddress,
+                    AssignedBusCode = p.AssignedBus != null ? p.AssignedBus.Bus_Code : "Non assigné",
                     p.Personnel_Status
                 })
                 .ToListAsync();
 
-            var trajectory = await _context.Trajectories.Where(t => t.Trajectory_Id == id)
+            var trajectory = await _context.Trajectories
+                .Where(t => t.Trajectory_Id == id)
                 .Select(t => new { t.Trajectory_Name, t.Trajectory_Code })
                 .FirstOrDefaultAsync();
 
@@ -131,6 +157,7 @@ namespace TransportManagementSystem.Controllers
                 personnel = personnel
             });
         }
+
         public async Task<IActionResult> Delete(int? id)
         {
             if (id == null) return NotFound();
@@ -223,6 +250,8 @@ namespace TransportManagementSystem.Controllers
                 _context.Trajectories.Remove(trajectory);
                 await _context.SaveChangesAsync();
 
+                DashboardController.AddNotification("delete", "Trajet supprimé", $"Le trajet '{trajectoryName}' a été supprimé.");
+
                 TempData["Success"] = $"✅ Trajectoire '{trajectoryName}' supprimée avec succès!";
             }
             catch (Exception ex)
@@ -235,5 +264,20 @@ namespace TransportManagementSystem.Controllers
         }
 
         private bool TrajectoryExists(int id) => _context.Trajectories.Any(e => e.Trajectory_Id == id);
+    }
+
+    public class TrajectoryUpdateModel
+    {
+        public int Trajectory_Id { get; set; }
+        public string Trajectory_Name { get; set; } = string.Empty;
+        public string Trajectory_Code { get; set; } = string.Empty;
+        public string? Trajectory_Description { get; set; }
+        public decimal? Trajectory_DistanceKm { get; set; }
+        public int? Trajectory_EstimatedDurationMinutes { get; set; }
+        public decimal? Trajectory_StartLatitude { get; set; }
+        public decimal? Trajectory_StartLongitude { get; set; }
+        public decimal? Trajectory_EndLatitude { get; set; }
+        public decimal? Trajectory_EndLongitude { get; set; }
+        public string Trajectory_Status { get; set; } = "Active";
     }
 }
