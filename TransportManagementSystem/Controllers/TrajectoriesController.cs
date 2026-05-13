@@ -237,7 +237,7 @@ namespace TransportManagementSystem.Controllers
                     _context.DriverPerformance_tbl.RemoveRange(driverPerformances);
                 }
 
-                // 7. Supprimer les stops (points de ramassage)
+                // 7. Supprimer les stops (points de ramassage) liés à cette trajectoire
                 var stops = await _context.TrajectoryStops
                     .Where(s => s.TS_TrajectoryId == id)
                     .ToListAsync();
