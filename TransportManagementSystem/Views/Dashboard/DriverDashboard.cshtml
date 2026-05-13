@@ -21,10 +21,6 @@
         margin-right: 5px;
         vertical-align: middle;
     }
-    .fragment-card {
-        background: #f8f9fa;
-        border-left: 4px solid #ffc107;
-    }
 </style>
 
 <h2>Bonjour, @ViewBag.UserName</h2>
@@ -76,7 +72,7 @@
 </div>
 
 <div class="row mb-4">
-    <div class="col-md-6">
+    <div class="col-md-12">
         <div class="card">
             <div class="card-header bg-info text-white">
                 <h5>📍 Mon trajet</h5>
@@ -84,18 +80,7 @@
             <div class="card-body">
                 <p><strong>Nom :</strong> <span id="trajName">-</span></p>
                 <p><strong>Code :</strong> <span id="trajCode">-</span></p>
-            </div>
-        </div>
-    </div>
-    <div class="col-md-6">
-        <div class="card fragment-card">
-            <div class="card-header bg-warning text-dark">
-                <h5>🧩 Mon fragment assigné</h5>
-            </div>
-            <div class="card-body">
-                <p><strong>Code fragment :</strong> <span id="fragmentCode">-</span></p>
-                <p><strong>Nom fragment :</strong> <span id="fragmentName">-</span></p>
-                <p><strong>Personnels à transporter :</strong> <span id="fragmentWorkers">-</span></p>
+                <p><strong>Arrêts à desservir :</strong> <span id="stopCount">-</span></p>
             </div>
         </div>
     </div>
@@ -173,18 +158,11 @@
                     if (data.trajectory) {
                         document.getElementById('trajName').innerHTML = data.trajectory.trajectory_Name || '-';
                         document.getElementById('trajCode').innerHTML = data.trajectory.trajectory_Code || '-';
+                        document.getElementById('stopCount').innerHTML = (data.stops?.length || 0).toString();
                     } else {
                         document.getElementById('trajName').innerHTML = '<span class="text-muted">Aucun trajet assigné</span>';
-                    }
-                    
-                    if (data.fragment) {
-                        document.getElementById('fragmentCode').innerHTML = data.fragment.fragment_Code || '-';
-                        document.getElementById('fragmentName').innerHTML = data.fragment.fragment_Name || '-';
-                        document.getElementById('fragmentWorkers').innerHTML = data.fragment.total_Workers || '0';
-                    } else {
-                        document.getElementById('fragmentCode').innerHTML = '<span class="text-muted">Aucun fragment assigné</span>';
-                        document.getElementById('fragmentName').innerHTML = '<span class="text-muted">-</span>';
-                        document.getElementById('fragmentWorkers').innerHTML = '0';
+                        document.getElementById('trajCode').innerHTML = '-';
+                        document.getElementById('stopCount').innerHTML = '0';
                     }
                     
                     const busLat = parseFloat(data.bus.currentLatitude);
@@ -203,7 +181,7 @@
                             div.innerHTML = `
                                 <div><i style="background:#dc3545; border-radius:50%;"></i> Ma position (bus)</div>
                                 <div><i style="background:#28a745; border-radius:50%;"></i> Points de ramassage</div>
-                                <div><i style="background:#3388ff; width:20px; height:4px;"></i> Trajectoire</div>
+                                <div><i style="background:#3388ff; width:20px; height:4px;"></i> Trajet</div>
                             `;
                             return div;
                         };
@@ -218,7 +196,6 @@
                     
                     if (trajectoryLine) map.removeLayer(trajectoryLine);
                     if (data.stops && data.stops.length > 0) {
-                        // Utiliser les bons noms de propriétés (minuscules)
                         const validStops = data.stops.filter(s => !isNaN(parseFloat(s.tS_Latitude)) && !isNaN(parseFloat(s.tS_Longitude)));
                         if (validStops.length > 0) {
                             const points = validStops.map(s => [parseFloat(s.tS_Latitude), parseFloat(s.tS_Longitude)]);

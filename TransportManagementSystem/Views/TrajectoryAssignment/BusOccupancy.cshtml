@@ -26,9 +26,6 @@
                 <div class="row">
                     <div class="col-md-6">
                         <p><strong>Chauffeur:</strong> @(item.Bus.CurrentDriver?.Driver_FirstName ?? "Non assigné") @(item.Bus.CurrentDriver?.Driver_LastName ?? "")</p>
-                        <p><strong>Fragment assigné:</strong> @(item.Bus.AssignedFragment?.Fragment_Name ?? "Non assigné")</p>
-                        <p><strong>Code fragment:</strong> @(item.Bus.AssignedFragment?.Fragment_Code ?? "-")</p>
-                        <p><strong>Trajet parent:</strong> @(item.Bus.AssignedFragment?.Trajectory?.Trajectory_Name ?? "-")</p>
                         <p><strong>Capacité:</strong> @item.Capacity places</p>
                         <p><strong>Occupation actuelle:</strong> @item.Occupancy / @item.Capacity</p>
                         <div class="progress mb-3">
@@ -66,7 +63,6 @@
                                             <td>@p.Personnel_Id</td>
                                             <td>@p.Personnel_LastName</td>
                                             <td>@p.Personnel_FirstName</td>
-                                            <td>@(p.AssignedFragment?.Fragment_Name ?? "-")</td>
                                             <td>
                                                 <form method="post" asp-action="RemovePersonnelFromBus" style="display:inline;">
                                                     <input type="hidden" name="personnelId" value="@p.Personnel_Id" />
