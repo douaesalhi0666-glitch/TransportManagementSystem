@@ -575,6 +575,7 @@ namespace TransportManagementSystem.Controllers
         {
             try
             {
+                // Récupérer TOUS les points de ramassage (sans condition sur TS_TrajectoryId)
                 var stopsData = await _context.TrajectoryStops
                     .Where(s => s.TS_Latitude != 0 && s.TS_Longitude != 0)
                     .Select(s => new
@@ -588,7 +589,7 @@ namespace TransportManagementSystem.Controllers
                 if (!validStops.Any())
                     return BadRequest("Aucun point de ramassage avec personnels assignés.");
 
-                // Étape 1 : découper les arrêts en sous-arrêts virtuels
+                // Découper les points surchargés
                 var stopsWithWorkers = validStops.Select(s => (Stop: s.Stop, Workers: s.Workers)).ToList();
                 var expandedStops = SplitOverloadedStops(stopsWithWorkers, busCapacity);
 
@@ -600,17 +601,15 @@ namespace TransportManagementSystem.Controllers
                     TravelTime = HaversineDistance(startLat, startLng, (double)s.Stop.TS_Latitude, (double)s.Stop.TS_Longitude) / 1000.0 / speedKmh * 60.0
                 }).OrderBy(x => x.TravelTime).ToList();
 
-                // Étape 2 : regroupement glouton
+                // Algorithme glouton de regroupement
                 var clusters = new List<List<TrajectoryStop>>();
                 bool[] used = new bool[items.Count];
-
                 for (int i = 0; i < items.Count; i++)
                 {
                     if (used[i]) continue;
                     var cluster = new List<TrajectoryStop>();
                     int currentWorkers = 0;
                     double currentMaxTime = 0;
-
                     for (int j = 0; j < items.Count; j++)
                     {
                         if (used[j]) continue;
@@ -628,6 +627,7 @@ namespace TransportManagementSystem.Controllers
                         clusters.Add(cluster);
                 }
 
+                // Créer les trajectoires et assigner les points
                 var createdTrajs = new List<Trajectory>();
                 int counter = 1;
 
@@ -641,9 +641,9 @@ namespace TransportManagementSystem.Controllers
 
                     double maxDist = orderedStops.Max(s => HaversineDistance(startLat, startLng, (double)s.TS_Latitude, (double)s.TS_Longitude) / 1000.0);
                     double maxTime = orderedStops.Max(s => HaversineDistance(startLat, startLng, (double)s.TS_Latitude, (double)s.TS_Longitude) / 1000.0 / speedKmh * 60.0);
-                    int totalWorkers = cluster.Sum(s => validStops.FirstOrDefault(v => v.Stop.TS_Id == s.TS_Id)?.Workers ?? 0);
+                    int totalWorkers = cluster.Sum(s => validStops.First(v => v.Stop.TS_Id == s.TS_Id).Workers);
 
-                    var traj = new Trajectory
+                    var newTraj = new Trajectory
                     {
                         Trajectory_Name = $"Trajet IA-{DateTime.Now:yyyyMMddHHmmss}-{counter}",
                         Trajectory_Code = $"IA-{counter}",
@@ -658,18 +658,19 @@ namespace TransportManagementSystem.Controllers
                         Trajectory_CreatedAt = DateTime.Now,
                         Trajectory_UpdatedAt = DateTime.Now
                     };
-                    _context.Trajectories.Add(traj);
+                    _context.Trajectories.Add(newTraj);
                     await _context.SaveChangesAsync();
 
+                    // Mettre à jour les points avec la nouvelle trajectoire et l'ordre
                     int order = 1;
-                    foreach (var s in orderedStops)
+                    foreach (var stop in orderedStops)
                     {
-                        s.TS_TrajectoryId = traj.Trajectory_Id;
-                        s.TS_OrderIndex = order++;
-                        _context.TrajectoryStops.Update(s);
+                        stop.TS_TrajectoryId = newTraj.Trajectory_Id;
+                        stop.TS_OrderIndex = order++;
+                        _context.TrajectoryStops.Update(stop);
                     }
                     await _context.SaveChangesAsync();
-                    createdTrajs.Add(traj);
+                    createdTrajs.Add(newTraj);
                     counter++;
                 }
 

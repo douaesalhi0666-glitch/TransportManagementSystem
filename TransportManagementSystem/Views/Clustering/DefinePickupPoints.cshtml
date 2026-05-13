@@ -309,7 +309,7 @@
 
         async function loadExistingStops() {
             try {
-                const response = await fetch(`/Clustering/GetFilteredStops?trajectoryId=${DEFAULT_TRAJECTORY_ID}`);
+                const response = await fetch('/Clustering/GetFilteredStops');
                 const stops = await response.json();
                 
                 if (currentMarkers.existing) {
@@ -345,7 +345,7 @@
                 updateTable(stops);
                 
                 // Recharger les suggestions après avoir chargé les points existants
-                await loadPickupPoints();
+               // await loadPickupPoints();
             } catch (err) {
                 console.error(err);
                 showNotification("Erreur lors du chargement des points", true);
