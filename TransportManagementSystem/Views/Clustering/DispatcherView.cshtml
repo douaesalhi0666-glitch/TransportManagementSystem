@@ -15,6 +15,10 @@
     <div class="col-md-4">
         <div class="card">
             <div class="card-body">
+                <label>Filtrer par trajectoire</label>
+                <select id="trajectoryFilter" class="form-control mb-2">
+                    <option value="all">-- Toutes les trajectoires --</option>
+                </select>
                 <label>Assignation automatique IA</label>
                 <button id="autoAssignAllBtn" class="btn btn-primary w-100 mb-2">
                     🤖 IA: Assigner tous au plus proche
@@ -63,14 +67,13 @@
                         <th>Actions</th>
                     </tr>
                 </thead>
-                <tbody id="stopsTableBody">
-                </tbody>
+                <tbody id="stopsTableBody"></tbody>
             </table>
         </div>
     </div>
 </div>
 
-<!-- Modals (inchangés) -->
+<!-- Modals -->
 <div class="modal fade" id="viewWorkersModal" tabindex="-1">
     <div class="modal-dialog modal-lg">
         <div class="modal-content">
@@ -154,7 +157,8 @@
     </style>
 
     <script>
-        let map, currentMarkers = [];
+        let map, currentMarkers = [], currentPolylines = [];
+        let currentTrajectoryId = null;
         const SEWS_LAT = 34.2900, SEWS_LNG = -6.5700;
         const KENITRA_CENTER_LAT = 34.2610, KENITRA_CENTER_LNG = -6.5800;
 
@@ -166,57 +170,63 @@
             setTimeout(() => { div.style.opacity = '0'; setTimeout(() => div.remove(), 500); }, 3000);
         }
 
-        async function loadData() {
-            try {
-                const response = await fetch('/Clustering/GetFilteredStops');
-                if (!response.ok) {
-                    showNotification('Erreur chargement des arrêts', true);
-                    return;
+        // Chargement du filtre des trajectoires
+        async function loadTrajectoriesFilter() {
+            const response = await fetch('/Clustering/GetTrajectoriesForPickup');
+            const trajectories = await response.json();
+            const filter = document.getElementById('trajectoryFilter');
+            filter.innerHTML = '<option value="all">-- Toutes les trajectoires --</option>';
+            trajectories.forEach(t => {
+                const option = document.createElement('option');
+                option.value = t.trajectory_Id;
+                option.textContent = `${t.trajectory_Name} (${t.trajectory_Code})`;
+                filter.appendChild(option);
+            });
+        }
+
+        // Affichage des lignes des trajectoires sur la carte
+        async function loadAndDisplayTrajectories() {
+            const selectedTrajId = document.getElementById('trajectoryFilter').value;
+            currentTrajectoryId = selectedTrajId === 'all' ? null : parseInt(selectedTrajId);
+
+            currentPolylines.forEach(poly => map.removeLayer(poly));
+            currentPolylines = [];
+
+            const response = await fetch('/Clustering/GetTrajectoriesWithStops');
+            const trajectories = await response.json();
+
+            trajectories.forEach(traj => {
+                if (currentTrajectoryId && traj.trajectory_Id !== currentTrajectoryId) return;
+                if (traj.stops && traj.stops.length >= 1) {
+                    const points = [[SEWS_LAT, SEWS_LNG]];
+                    traj.stops.forEach(s => points.push([s.tS_Latitude, s.tS_Longitude]));
+                    const polyline = L.polyline(points, { color: '#3388ff', weight: 4, opacity: 0.8 })
+                        .bindPopup(`<strong>${traj.trajectory_Name}</strong><br>${traj.trajectory_Code}<br>${traj.stops.length} arrêts`);
+                    polyline.addTo(map);
+                    currentPolylines.push(polyline);
                 }
-                const stops = await response.json();
-                console.log('Stops chargées:', stops); // DEBUG
+            });
+        }
 
-                if (!map) {
-                    map = L.map('map').setView([KENITRA_CENTER_LAT, KENITRA_CENTER_LNG], 12);
-                    L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
-                        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a> & CartoDB'
-                    }).addTo(map);
-                }
+        // Chargement des arrêts (points de ramassage)
+        async function loadStops() {
+            const response = await fetch('/Clustering/GetFilteredStops');
+            const stops = await response.json();
+            currentMarkers.forEach(m => map.removeLayer(m));
+            currentMarkers = [];
 
-                // Supprimer les anciens marqueurs
-                currentMarkers.forEach(m => map.removeLayer(m));
-                currentMarkers = [];
-
-                // Ajouter le marqueur SEWS
-                const sewsIcon = L.divIcon({ html: '🏭', iconSize: [40, 40], className: 'sews-marker' });
-                L.marker([SEWS_LAT, SEWS_LNG], { icon: sewsIcon }).bindPopup('<strong>🏭 SEWS Maroc</strong>').addTo(map);
-
-                // Ajouter les points de ramassage (arrêts)
-                if (stops && stops.length > 0) {
-                    stops.forEach(stop => {
-                        const icon = L.divIcon({ html: stop.tS_OrderIndex.toString(), iconSize: [24, 24], className: 'stop-marker' });
-                        const popupContent = `
-                            <strong>${stop.tS_Name}</strong><br/>
-                            Ordre: ${stop.tS_OrderIndex}<br/>
-                            👥 ${stop.workers?.length || 0} pers.<br/>
-                            <button class="btn btn-sm btn-success mt-1" onclick="openAssignModal(${stop.tS_Id}, '${stop.tS_Name}')">➕ Assigner</button>
-                            <button class="btn btn-sm btn-info mt-1" onclick="viewWorkers(${stop.tS_Id}, '${stop.tS_Name}')">👥 Voir</button>
-                            <button class="btn btn-sm btn-warning mt-1" onclick="editStop(${stop.tS_Id}, '${stop.tS_Name}', ${stop.tS_Latitude}, ${stop.tS_Longitude}, ${stop.tS_OrderIndex})">✏️</button>
-                            <button class="btn btn-sm btn-danger mt-1" onclick="deleteStop(${stop.tS_Id}, '${stop.tS_Name}')">🗑️</button>
-                        `;
-                        const marker = L.marker([stop.tS_Latitude, stop.tS_Longitude], { icon }).bindPopup(popupContent);
-                        marker.addTo(map);
-                        currentMarkers.push(marker);
-                    });
-                } else {
-                    showNotification('Aucun arrêt trouvé.', true);
-                }
-
-                updateTable(stops);
-            } catch (error) {
-                console.error('Erreur loadData:', error);
-                showNotification('Erreur chargement des données', true);
-            }
+            stops.forEach(stop => {
+                const icon = L.divIcon({ html: (stop.tS_OrderIndex ?? 0).toString(), iconSize: [24, 24], className: 'stop-marker' });
+                const popupContent = `<strong>${stop.tS_Name}</strong><br/>Ordre: ${stop.tS_OrderIndex}<br/>👥 ${stop.workers?.length || 0} pers.<br/>
+                    <button class="btn btn-sm btn-success mt-1" onclick="openAssignModal(${stop.tS_Id}, '${stop.tS_Name}')">➕ Assigner</button>
+                    <button class="btn btn-sm btn-info mt-1" onclick="viewWorkers(${stop.tS_Id}, '${stop.tS_Name}')">👥 Voir</button>
+                    <button class="btn btn-sm btn-warning mt-1" onclick="editStop(${stop.tS_Id}, '${stop.tS_Name}', ${stop.tS_Latitude}, ${stop.tS_Longitude}, ${stop.tS_OrderIndex})">✏️</button>
+                    <button class="btn btn-sm btn-danger mt-1" onclick="deleteStop(${stop.tS_Id}, '${stop.tS_Name}')">🗑️</button>`;
+                const marker = L.marker([stop.tS_Latitude, stop.tS_Longitude], { icon }).bindPopup(popupContent);
+                marker.addTo(map);
+                currentMarkers.push(marker);
+            });
+            updateTable(stops);
         }
 
         function updateTable(stops) {
@@ -231,16 +241,14 @@
                 row.insertCell(3).innerHTML = s.tS_Longitude;
                 row.insertCell(4).innerHTML = s.tS_OrderIndex;
                 row.insertCell(5).innerHTML = `<span class="badge bg-info">${s.workers?.length || 0}</span>`;
-                row.insertCell(6).innerHTML = `
-                    <button class="btn btn-sm btn-success" onclick="openAssignModal(${s.tS_Id}, '${s.tS_Name}')">➕</button>
+                row.insertCell(6).innerHTML = `<button class="btn btn-sm btn-success" onclick="openAssignModal(${s.tS_Id}, '${s.tS_Name}')">➕</button>
                     <button class="btn btn-sm btn-info" onclick="viewWorkers(${s.tS_Id}, '${s.tS_Name}')">👥</button>
                     <button class="btn btn-sm btn-warning" onclick="editStop(${s.tS_Id}, '${s.tS_Name}', ${s.tS_Latitude}, ${s.tS_Longitude}, ${s.tS_OrderIndex})">✏️</button>
-                    <button class="btn btn-sm btn-danger" onclick="deleteStop(${s.tS_Id}, '${s.tS_Name}')">🗑️</button>
-                `;
+                    <button class="btn btn-sm btn-danger" onclick="deleteStop(${s.tS_Id}, '${s.tS_Name}')">🗑️</button>`;
             });
         }
 
-        // Fonctions globales pour les modals (doivent être accessibles)
+        // --- Fonctions des modals (assignation, suppression, etc.) ---
         window.viewWorkers = async (stopId, stopName) => {
             try {
                 const res = await fetch('/Clustering/GetWorkersByStop?stopId=' + stopId);
@@ -273,7 +281,8 @@
                 const result = await res.json();
                 if (result.success) {
                     showNotification(`${name} désassigné`);
-                    loadData();
+                    loadStops();
+                    loadAndDisplayTrajectories();
                 } else showNotification('Erreur', true);
             }
         };
@@ -307,7 +316,8 @@
             if (result.success) {
                 showNotification(result.message);
                 bootstrap.Modal.getInstance(document.getElementById('assignWorkerModal')).hide();
-                loadData();
+                loadStops();
+                loadAndDisplayTrajectories();
             } else showNotification('Erreur', true);
         };
 
@@ -320,7 +330,8 @@
                 if (result.success) {
                     showNotification(result.message);
                     bootstrap.Modal.getInstance(document.getElementById('assignWorkerModal')).hide();
-                    loadData();
+                    loadStops();
+                    loadAndDisplayTrajectories();
                 } else showNotification('Erreur', true);
             }
         };
@@ -331,7 +342,8 @@
                 const result = await res.json();
                 if (result.success) {
                     showNotification(result.message);
-                    loadData();
+                    loadStops();
+                    loadAndDisplayTrajectories();
                 } else showNotification('Erreur', true);
             }
         };
@@ -350,7 +362,8 @@
                 const res = await fetch(`/Clustering/DeleteStop?id=${id}`, { method: 'DELETE' });
                 if (res.ok) {
                     showNotification('✅ Supprimé');
-                    loadData();
+                    loadStops();
+                    loadAndDisplayTrajectories();
                 } else showNotification('❌ Erreur', true);
             }
         };
@@ -373,10 +386,12 @@
             if (res.ok) {
                 showNotification('✅ Modifié');
                 bootstrap.Modal.getInstance(document.getElementById('editStopModal')).hide();
-                loadData();
+                loadStops();
+                loadAndDisplayTrajectories();
             } else showNotification('❌ Erreur', true);
         };
 
+        // Génération des trajets (affichage modal)
         window.generateRoutes = async () => {
             const capacity = document.getElementById('busCapacity').value;
             showNotification('🔄 Génération...');
@@ -429,6 +444,7 @@
             if (data.success) {
                 showNotification('✅ Trajets sauvegardés');
                 bootstrap.Modal.getInstance(document.getElementById('routesResultModal')).hide();
+                loadAndDisplayTrajectories(); // Rafraîchir l'affichage des lignes
             } else showNotification('❌ ' + data.message, true);
         };
 
@@ -448,7 +464,7 @@
             }
         };
 
-        // Attacher les événements après chargement du DOM
+        // Attacher les événements
         document.getElementById('autoAssignAllBtn').onclick = autoAssignAll;
         document.getElementById('generateRoutesBtn').onclick = generateRoutes;
         document.getElementById('aiGenTraj').onclick = generateSmartTrajectories;
@@ -456,8 +472,21 @@
         document.getElementById('autoAssignToStopBtn').onclick = autoAssignToStop;
         document.getElementById('saveStopChanges').onclick = saveStopChanges;
         document.getElementById('saveRoutesBtn').onclick = saveRoutes;
+        document.getElementById('trajectoryFilter').addEventListener('change', () => loadAndDisplayTrajectories());
 
-        // Chargement initial
-        loadData();
+        // Initialisation de la carte et chargement des données
+        async function init() {
+            if (!map) {
+                map = L.map('map').setView([KENITRA_CENTER_LAT, KENITRA_CENTER_LNG], 12);
+                L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', { attribution: '&copy; OSM' }).addTo(map);
+                L.control.scale({ metric: true, imperial: false }).addTo(map);
+                const sewsIcon = L.divIcon({ html: '🏭', iconSize: [40, 40], className: 'sews-marker' });
+                L.marker([SEWS_LAT, SEWS_LNG], { icon: sewsIcon }).bindPopup('<strong>🏭 SEWS Maroc</strong>').addTo(map);
+            }
+            await loadTrajectoriesFilter();
+            await loadStops();
+            await loadAndDisplayTrajectories();
+        }
+        init();
     </script>
 }

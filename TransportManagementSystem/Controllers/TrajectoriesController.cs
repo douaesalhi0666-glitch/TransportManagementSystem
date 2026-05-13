@@ -98,13 +98,11 @@ namespace TransportManagementSystem.Controllers
                 stops = stops
             });
         }
-
         [HttpGet]
         public async Task<IActionResult> GetPersonnelByTrajectory(int id)
         {
             var personnel = await _context.Personnel
-                .Include(p => p.AssignedBus)
-                .Where(p => p.AssignedTrajectoryId == id && p.IsAssigned == true)
+                .Where(p => p.AssignedStopId != null && _context.TrajectoryStops.Any(s => s.TS_Id == p.AssignedStopId && s.TS_TrajectoryId == id))
                 .Select(p => new
                 {
                     p.Personnel_Id,
@@ -116,13 +114,11 @@ namespace TransportManagementSystem.Controllers
                     p.Personnel_EmployeeCode,
                     p.Personnel_Department,
                     p.HomeAddress,
-                    AssignedBusCode = p.AssignedBus != null ? p.AssignedBus.Bus_Code : "Non assigné",
                     p.Personnel_Status
                 })
                 .ToListAsync();
 
-            var trajectory = await _context.Trajectories
-                .Where(t => t.Trajectory_Id == id)
+            var trajectory = await _context.Trajectories.Where(t => t.Trajectory_Id == id)
                 .Select(t => new { t.Trajectory_Name, t.Trajectory_Code })
                 .FirstOrDefaultAsync();
 
@@ -135,7 +131,6 @@ namespace TransportManagementSystem.Controllers
                 personnel = personnel
             });
         }
-
         public async Task<IActionResult> Delete(int? id)
         {
             if (id == null) return NotFound();

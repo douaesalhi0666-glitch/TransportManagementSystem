@@ -31,6 +31,11 @@ namespace TransportManagementSystem.Controllers
             return View(stops);
         }
 
+        public IActionResult DefinePickupPoints()
+        {
+            return View();
+        }
+
         // ================================================
         // API : Récupérer tous les arrêts (avec personnels)
         // ================================================
@@ -300,6 +305,11 @@ namespace TransportManagementSystem.Controllers
 
             try
             {
+                // Vérifier que la trajectoire existe
+                var trajectory = await _context.Trajectories.FindAsync(model.TrajectoryId);
+                if (trajectory == null)
+                    return BadRequest(new { success = false, message = $"Trajectoire ID {model.TrajectoryId} n'existe pas." });
+
                 int maxOrder = await _context.TrajectoryStops
                     .Where(s => s.TS_TrajectoryId == model.TrajectoryId)
                     .MaxAsync(s => (int?)s.TS_OrderIndex) ?? 0;
@@ -315,6 +325,11 @@ namespace TransportManagementSystem.Controllers
                 _context.TrajectoryStops.Add(stop);
                 await _context.SaveChangesAsync();
                 return Ok(new { success = true, stopId = stop.TS_Id, message = "Point créé" });
+            }
+            catch (DbUpdateException ex)
+            {
+                var inner = ex.InnerException?.Message ?? ex.Message;
+                return StatusCode(500, new { success = false, message = inner });
             }
             catch (Exception ex)
             {
@@ -370,7 +385,190 @@ namespace TransportManagementSystem.Controllers
         }
 
         // ================================================
-        // GÉNÉRATION DE TRAJETS (ALGORITHME GLOUTON SIMPLIFIÉ)
+        // SUGGESTION DE POINTS PAR IA (KMEANS)
+        // ================================================
+        [HttpGet]
+        public async Task<IActionResult> GetTrajectoriesForPickup()
+        {
+            var trajectories = await _context.Trajectories
+                .Where(t => t.Trajectory_Status == "Active")
+                .Select(t => new { t.Trajectory_Id, t.Trajectory_Name, t.Trajectory_Code })
+                .ToListAsync();
+            return Ok(trajectories);
+        }
+
+        [HttpPost]
+        public async Task<IActionResult> SuggestPickupPoints([FromBody] PickupRequest request)
+        {
+            if (request.TrajectoryId <= 0)
+                return BadRequest("Trajectoire invalide");
+
+            // Récupérer les personnels avec coordonnées
+            var personnelPoints = await _context.Personnel
+                .Where(p => p.Personnel_Status == "Active"
+                            && p.Personnel_Latitude != null
+                            && p.Personnel_Longitude != null)
+                .Select(p => new ClusterPoint
+                {
+                    X = (double)p.Personnel_Latitude!.Value,
+                    Y = (double)p.Personnel_Longitude!.Value,
+                    Data = new { p.Personnel_Id, p.Personnel_FirstName, p.Personnel_LastName }
+                })
+                .ToListAsync();
+
+            if (personnelPoints.Count == 0)
+                return Ok(new { clusters = new List<object>(), points = new List<object>(), message = "Aucun personnel avec coordonnées." });
+
+            int k = request.NumberOfClusters;
+            k = Math.Max(1, Math.Min(k, personnelPoints.Count));
+
+            var clusters = KMeansDeterministic(personnelPoints, k);
+
+            // Récupérer les arrêts existants pour éviter les doublons
+            var existingStops = await _context.TrajectoryStops
+                .Where(s => s.TS_TrajectoryId == request.TrajectoryId)
+                .Select(s => new { s.TS_Latitude, s.TS_Longitude })
+                .ToListAsync();
+
+            var uniqueClusters = new List<object>();
+            var seenKeys = new HashSet<string>();
+
+            foreach (var cluster in clusters)
+            {
+                if (cluster.Points.Count > 0)
+                {
+                    decimal centerLat = Math.Round((decimal)cluster.CenterX, 6);
+                    decimal centerLng = Math.Round((decimal)cluster.CenterY, 6);
+                    string key = $"{centerLat},{centerLng}";
+
+                    if (!seenKeys.Contains(key))
+                    {
+                        seenKeys.Add(key);
+                        bool exists = existingStops.Any(stop =>
+                        {
+                            double dist = HaversineDistance(
+                                (double)centerLat,
+                                (double)centerLng,
+                                (double)stop.TS_Latitude,
+                                (double)stop.TS_Longitude);
+                            return dist < 0.1; // moins de 100 mètres
+                        });
+                        uniqueClusters.Add(new
+                        {
+                            lat = centerLat,
+                            lng = centerLng,
+                            count = cluster.Points.Count,
+                            exists = exists
+                        });
+                    }
+                }
+            }
+
+            var result = new
+            {
+                clusters = uniqueClusters,
+                points = personnelPoints.Select(p => new
+                {
+                    lat = Math.Round((decimal)p.X, 6),
+                    lng = Math.Round((decimal)p.Y, 6)
+                })
+            };
+            return Ok(result);
+        }
+
+        // ================================================
+        // ALGORITHMES KMEANS ET UTILITAIRES
+        // ================================================
+        private List<Cluster> KMeansDeterministic(List<ClusterPoint> points, int k, int maxIterations = 100)
+        {
+            if (points.Count == 0) return new List<Cluster>();
+            if (k > points.Count) k = points.Count;
+
+            Random rand = new Random(42);
+            var distinctPoints = points.Select(p => new { p.X, p.Y }).Distinct().ToList();
+            var centers = distinctPoints.OrderBy(x => rand.Next()).Take(k)
+                .Select(p => new { X = p.X, Y = p.Y }).ToList();
+            var clusters = new List<Cluster>();
+
+            for (int iter = 0; iter < maxIterations; iter++)
+            {
+                clusters = new List<Cluster>();
+                for (int i = 0; i < centers.Count; i++)
+                    clusters.Add(new Cluster { CenterX = centers[i].X, CenterY = centers[i].Y });
+
+                foreach (var point in points)
+                {
+                    double minDist = double.MaxValue;
+                    int bestCluster = 0;
+                    for (int i = 0; i < centers.Count; i++)
+                    {
+                        double dist = Distance(point.X, point.Y, centers[i].X, centers[i].Y);
+                        if (dist < minDist) { minDist = dist; bestCluster = i; }
+                    }
+                    clusters[bestCluster].Points.Add(point);
+                }
+
+                bool changed = false;
+                for (int i = 0; i < centers.Count; i++)
+                {
+                    if (clusters[i].Points.Count == 0) continue;
+                    double newX = clusters[i].Points.Average(p => p.X);
+                    double newY = clusters[i].Points.Average(p => p.Y);
+                    if (Math.Abs(newX - centers[i].X) > 0.00001 || Math.Abs(newY - centers[i].Y) > 0.00001)
+                        changed = true;
+                    centers[i] = new { X = newX, Y = newY };
+                    clusters[i].CenterX = newX;
+                    clusters[i].CenterY = newY;
+                }
+                if (!changed) break;
+            }
+            return clusters.Where(c => c.Points.Count > 0).ToList();
+        }
+
+        private double Distance(double x1, double y1, double x2, double y2) =>
+            Math.Sqrt(Math.Pow(x1 - x2, 2) + Math.Pow(y1 - y2, 2));
+
+        // ================================================
+        // DÉCOUPAGE DES ARRÊTS SURCHARGÉS
+        // ================================================
+        private List<(TrajectoryStop Stop, int Workers)> SplitOverloadedStops(List<(TrajectoryStop Stop, int Workers)> stops, int maxCapacity)
+        {
+            var result = new List<(TrajectoryStop Stop, int Workers)>();
+            int splitCounter = 0;
+            foreach (var (stop, workers) in stops)
+            {
+                if (workers <= maxCapacity)
+                {
+                    result.Add((stop, workers));
+                }
+                else
+                {
+                    int remaining = workers;
+                    int busNumber = 1;
+                    while (remaining > 0)
+                    {
+                        int take = Math.Min(remaining, maxCapacity);
+                        var virtualStop = new TrajectoryStop
+                        {
+                            TS_Id = -stop.TS_Id - splitCounter, // ID négatif temporaire
+                            TS_Name = $"{stop.TS_Name} (Bus {busNumber})",
+                            TS_Latitude = stop.TS_Latitude,
+                            TS_Longitude = stop.TS_Longitude,
+                            TS_TrajectoryId = stop.TS_TrajectoryId,
+                            TS_OrderIndex = stop.TS_OrderIndex
+                        };
+                        result.Add((virtualStop, take));
+                        remaining -= take;
+                        busNumber++;
+                        splitCounter++;
+                    }
+                }
+            }
+            return result;
+        }
+
+        // ================================================
+        // GÉNÉRATION DE TRAJETS (ALGORITHME GLOUTON AVEC DÉCOUPAGE)
         // ================================================
         [HttpPost]
         public async Task<IActionResult> GenerateSmartTrajectories(int maxTimeMinutes = 60, int busCapacity = 20, double speedKmh = 30)
@@ -390,15 +588,19 @@ namespace TransportManagementSystem.Controllers
                 if (!validStops.Any())
                     return BadRequest("Aucun point de ramassage avec personnels assignés.");
 
-                const double startLat = 34.2900, startLng = -6.5700;
+                // Étape 1 : découper les arrêts en sous-arrêts virtuels
+                var stopsWithWorkers = validStops.Select(s => (Stop: s.Stop, Workers: s.Workers)).ToList();
+                var expandedStops = SplitOverloadedStops(stopsWithWorkers, busCapacity);
 
-                var items = validStops.Select(s => new
+                const double startLat = 34.2900, startLng = -6.5700;
+                var items = expandedStops.Select(s => new
                 {
-                    s.Stop,
-                    s.Workers,
+                    Stop = s.Stop,
+                    Workers = s.Workers,
                     TravelTime = HaversineDistance(startLat, startLng, (double)s.Stop.TS_Latitude, (double)s.Stop.TS_Longitude) / 1000.0 / speedKmh * 60.0
                 }).OrderBy(x => x.TravelTime).ToList();
 
+                // Étape 2 : regroupement glouton
                 var clusters = new List<List<TrajectoryStop>>();
                 bool[] used = new bool[items.Count];
 
@@ -439,7 +641,7 @@ namespace TransportManagementSystem.Controllers
 
                     double maxDist = orderedStops.Max(s => HaversineDistance(startLat, startLng, (double)s.TS_Latitude, (double)s.TS_Longitude) / 1000.0);
                     double maxTime = orderedStops.Max(s => HaversineDistance(startLat, startLng, (double)s.TS_Latitude, (double)s.TS_Longitude) / 1000.0 / speedKmh * 60.0);
-                    int totalWorkers = cluster.Sum(s => validStops.First(v => v.Stop.TS_Id == s.TS_Id).Workers);
+                    int totalWorkers = cluster.Sum(s => validStops.FirstOrDefault(v => v.Stop.TS_Id == s.TS_Id)?.Workers ?? 0);
 
                     var traj = new Trajectory
                     {
@@ -475,7 +677,7 @@ namespace TransportManagementSystem.Controllers
             }
             catch (Exception ex)
             {
-                return StatusCode(500, new { success = false, message = ex.Message });
+                return StatusCode(500, new { success = false, message = ex.ToString() });
             }
         }
 
@@ -560,7 +762,7 @@ namespace TransportManagementSystem.Controllers
             }
             catch (Exception ex)
             {
-                return StatusCode(500, new { success = false, message = ex.Message });
+                return StatusCode(500, new { success = false, message = ex.ToString() });
             }
         }
 
@@ -596,19 +798,19 @@ namespace TransportManagementSystem.Controllers
                     TravelTime = HaversineDistance(startLat, startLng, (double)s.Stop.TS_Latitude, (double)s.Stop.TS_Longitude) / 1000.0 / speedKmh * 60.0
                 }).OrderBy(x => x.TravelTime).ToList();
 
-                var clusters = new List<List<dynamic>>();
+                var clusters = new List<List<(TrajectoryStop Stop, int Workers)>>();
                 var used = new bool[items.Count];
                 for (int i = 0; i < items.Count; i++)
                 {
                     if (used[i]) continue;
-                    var cluster = new List<dynamic>();
+                    var cluster = new List<(TrajectoryStop Stop, int Workers)>();
                     int currentWorkers = 0;
                     for (int j = 0; j < items.Count; j++)
                     {
                         if (used[j]) continue;
                         if (currentWorkers + items[j].Workers <= busCapacity)
                         {
-                            cluster.Add(items[j]);
+                            cluster.Add((items[j].Stop, items[j].Workers));
                             currentWorkers += items[j].Workers;
                             used[j] = true;
                         }
@@ -665,7 +867,7 @@ namespace TransportManagementSystem.Controllers
             }
             catch (Exception ex)
             {
-                return StatusCode(500, new { success = false, message = ex.Message });
+                return StatusCode(500, new { success = false, message = ex.ToString() });
             }
         }
 
@@ -674,7 +876,7 @@ namespace TransportManagementSystem.Controllers
         // ================================================
         private double HaversineDistance(double lat1, double lon1, double lat2, double lon2)
         {
-            const double R = 6371e3;
+            const double R = 6371e3; // mètres
             var φ1 = lat1 * Math.PI / 180;
             var φ2 = lat2 * Math.PI / 180;
             var Δφ = (lat2 - lat1) * Math.PI / 180;
@@ -696,6 +898,23 @@ namespace TransportManagementSystem.Controllers
                     Math.Sin(dLon / 2) * Math.Sin(dLon / 2);
             var c = 2 * Math.Atan2(Math.Sqrt(a), Math.Sqrt(1 - a));
             return R * c;
+        }
+
+        // ================================================
+        // CLASSES AUXILIAIRES POUR LE CLUSTERING
+        // ================================================
+        private class ClusterPoint
+        {
+            public double X { get; set; }
+            public double Y { get; set; }
+            public object? Data { get; set; }
+        }
+
+        private class Cluster
+        {
+            public double CenterX { get; set; }
+            public double CenterY { get; set; }
+            public List<ClusterPoint> Points { get; set; } = new List<ClusterPoint>();
         }
     }
 
@@ -738,5 +957,11 @@ namespace TransportManagementSystem.Controllers
     public class SaveRoutesRequest
     {
         public int BusCapacity { get; set; } = 20;
+    }
+
+    public class PickupRequest
+    {
+        public int TrajectoryId { get; set; }
+        public int NumberOfClusters { get; set; } = 5;
     }
 }
