@@ -23,13 +23,18 @@ namespace TransportManagementSystem.Controllers
                 .Include(p => p.AssignedStop)
                 .ToListAsync();
 
-            ViewBag.Trajectories = await _context.Trajectories.ToListAsync();
-            ViewBag.Buses = await _context.Buses.ToListAsync();
+            // SAFE: Handle null values when getting trajectories
+            ViewBag.Trajectories = await _context.Trajectories.ToListAsync() ?? new List<Trajectory>();
+
+            // SAFE: Handle null values when getting buses
+            ViewBag.Buses = await _context.Buses.ToListAsync() ?? new List<Bus>();
+
+            // SAFE: Handle null values when getting pickup points
             ViewBag.PickupPoints = await _context.TrajectoryStops
                 .OrderBy(s => s.TS_OrderIndex)
-                .ToListAsync();
+                .ToListAsync() ?? new List<TrajectoryStop>();
 
-            return View(personnel);
+            return View(personnel ?? new List<Personnel>());
         }
 
         // GET: Personnel/Details/5
@@ -101,8 +106,10 @@ namespace TransportManagementSystem.Controllers
                 .Include(p => p.AssignedBus)
                 .Include(p => p.AssignedStop)
                 .FirstOrDefaultAsync(p => p.Personnel_Id == id);
+
             if (personnel == null) return NotFound();
 
+            // SAFE: Return null for nullable values instead of throwing error
             return Ok(new
             {
                 personnel.Personnel_Id,
@@ -117,8 +124,8 @@ namespace TransportManagementSystem.Controllers
                 personnel.Personnel_Status,
                 personnel.Personnel_Address,
                 personnel.Personnel_City,
-                personnel.Personnel_Latitude,
-                personnel.Personnel_Longitude,
+                Personnel_Latitude = personnel.Personnel_Latitude ?? 0,
+                Personnel_Longitude = personnel.Personnel_Longitude ?? 0,
                 personnel.HomeAddress,
                 personnel.IsAssigned,
                 AssignedStopId = personnel.AssignedStopId,
