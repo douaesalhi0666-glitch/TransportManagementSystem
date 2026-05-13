@@ -70,7 +70,7 @@
     </div>
 </div>
 
-<!-- Modals -->
+<!-- Modals (inchangés) -->
 <div class="modal fade" id="viewWorkersModal" tabindex="-1">
     <div class="modal-dialog modal-lg">
         <div class="modal-content">
@@ -167,39 +167,64 @@
         }
 
         async function loadData() {
-            let response = await fetch('/Clustering/GetFilteredStops');
-            let stops = await response.json();
-            
-            if (!map) {
-                map = L.map('map').setView([KENITRA_CENTER_LAT, KENITRA_CENTER_LNG], 12);
-                L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', { attribution: '&copy; OSM' }).addTo(map);
+            try {
+                const response = await fetch('/Clustering/GetFilteredStops');
+                if (!response.ok) {
+                    showNotification('Erreur chargement des arrêts', true);
+                    return;
+                }
+                const stops = await response.json();
+                console.log('Stops chargées:', stops); // DEBUG
+
+                if (!map) {
+                    map = L.map('map').setView([KENITRA_CENTER_LAT, KENITRA_CENTER_LNG], 12);
+                    L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
+                        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a> & CartoDB'
+                    }).addTo(map);
+                }
+
+                // Supprimer les anciens marqueurs
+                currentMarkers.forEach(m => map.removeLayer(m));
+                currentMarkers = [];
+
+                // Ajouter le marqueur SEWS
+                const sewsIcon = L.divIcon({ html: '🏭', iconSize: [40, 40], className: 'sews-marker' });
+                L.marker([SEWS_LAT, SEWS_LNG], { icon: sewsIcon }).bindPopup('<strong>🏭 SEWS Maroc</strong>').addTo(map);
+
+                // Ajouter les points de ramassage (arrêts)
+                if (stops && stops.length > 0) {
+                    stops.forEach(stop => {
+                        const icon = L.divIcon({ html: stop.tS_OrderIndex.toString(), iconSize: [24, 24], className: 'stop-marker' });
+                        const popupContent = `
+                            <strong>${stop.tS_Name}</strong><br/>
+                            Ordre: ${stop.tS_OrderIndex}<br/>
+                            👥 ${stop.workers?.length || 0} pers.<br/>
+                            <button class="btn btn-sm btn-success mt-1" onclick="openAssignModal(${stop.tS_Id}, '${stop.tS_Name}')">➕ Assigner</button>
+                            <button class="btn btn-sm btn-info mt-1" onclick="viewWorkers(${stop.tS_Id}, '${stop.tS_Name}')">👥 Voir</button>
+                            <button class="btn btn-sm btn-warning mt-1" onclick="editStop(${stop.tS_Id}, '${stop.tS_Name}', ${stop.tS_Latitude}, ${stop.tS_Longitude}, ${stop.tS_OrderIndex})">✏️</button>
+                            <button class="btn btn-sm btn-danger mt-1" onclick="deleteStop(${stop.tS_Id}, '${stop.tS_Name}')">🗑️</button>
+                        `;
+                        const marker = L.marker([stop.tS_Latitude, stop.tS_Longitude], { icon }).bindPopup(popupContent);
+                        marker.addTo(map);
+                        currentMarkers.push(marker);
+                    });
+                } else {
+                    showNotification('Aucun arrêt trouvé.', true);
+                }
+
+                updateTable(stops);
+            } catch (error) {
+                console.error('Erreur loadData:', error);
+                showNotification('Erreur chargement des données', true);
             }
-            
-            map.eachLayer(layer => { if (layer instanceof L.Marker) map.removeLayer(layer); });
-            currentMarkers = [];
-            
-            let sewsIcon = L.divIcon({ html: '🏭', iconSize: [40, 40], className: 'sews-marker' });
-            L.marker([SEWS_LAT, SEWS_LNG], { icon: sewsIcon }).bindPopup('<strong>🏭 SEWS Maroc</strong>').addTo(map);
-            
-            stops.forEach(stop => {
-                let icon = L.divIcon({ html: stop.tS_OrderIndex.toString(), iconSize: [24, 24], className: 'stop-marker' });
-                let popup = `<strong>${stop.tS_Name}</strong><br>Ordre: ${stop.tS_OrderIndex}<br>👥 ${stop.workers?.length || 0} pers.<br>
-                    <button class="btn btn-sm btn-success mt-1" onclick="openAssignModal(${stop.tS_Id}, '${stop.tS_Name}')">➕ Assigner</button>
-                    <button class="btn btn-sm btn-info mt-1" onclick="viewWorkers(${stop.tS_Id}, '${stop.tS_Name}')">👥 Voir</button>
-                    <button class="btn btn-sm btn-warning mt-1" onclick="editStop(${stop.tS_Id}, '${stop.tS_Name}', ${stop.tS_Latitude}, ${stop.tS_Longitude}, ${stop.tS_OrderIndex})">✏️</button>
-                    <button class="btn btn-sm btn-danger mt-1" onclick="deleteStop(${stop.tS_Id}, '${stop.tS_Name}')">🗑️</button>`;
-                let marker = L.marker([stop.tS_Latitude, stop.tS_Longitude], { icon }).bindPopup(popup).addTo(map);
-                currentMarkers.push(marker);
-            });
-            
-            updateTable(stops);
         }
 
         function updateTable(stops) {
-            let tbody = document.getElementById('stopsTableBody');
+            const tbody = document.getElementById('stopsTableBody');
             tbody.innerHTML = '';
+            if (!stops) return;
             stops.forEach(s => {
-                let row = tbody.insertRow();
+                const row = tbody.insertRow();
                 row.insertCell(0).innerHTML = s.tS_Id;
                 row.insertCell(1).innerHTML = s.tS_Name;
                 row.insertCell(2).innerHTML = s.tS_Latitude;
@@ -210,76 +235,104 @@
                     <button class="btn btn-sm btn-success" onclick="openAssignModal(${s.tS_Id}, '${s.tS_Name}')">➕</button>
                     <button class="btn btn-sm btn-info" onclick="viewWorkers(${s.tS_Id}, '${s.tS_Name}')">👥</button>
                     <button class="btn btn-sm btn-warning" onclick="editStop(${s.tS_Id}, '${s.tS_Name}', ${s.tS_Latitude}, ${s.tS_Longitude}, ${s.tS_OrderIndex})">✏️</button>
-                    <button class="btn btn-sm btn-danger" onclick="deleteStop(${s.tS_Id}, '${s.tS_Name}')">🗑️</button>`;
+                    <button class="btn btn-sm btn-danger" onclick="deleteStop(${s.tS_Id}, '${s.tS_Name}')">🗑️</button>
+                `;
             });
         }
 
+        // Fonctions globales pour les modals (doivent être accessibles)
         window.viewWorkers = async (stopId, stopName) => {
-            let res = await fetch('/Clustering/GetWorkersByStop?stopId=' + stopId);
-            let data = await res.json();
-            let html = `<h5>${data.stopName}</h5><hr>`;
-            if (data.workers?.length) {
-                data.workers.forEach(w => {
-                    html += `<div class="worker-item"><strong>${w.personnel_FirstName} ${w.personnel_LastName}</strong><br>
-                        <small>📞 ${w.personnel_PhoneNumber || '-'}</small><br>
-                        <small>🏠 ${w.homeAddress || '-'}</small><br>
-                        <button class="btn btn-sm btn-danger mt-2" onclick="removeWorker(${w.personnel_Id}, ${stopId}, '${w.personnel_FirstName} ${w.personnel_LastName}')">❌ Désassigner</button></div>`;
-                });
-            } else html += '<div class="alert alert-info">Aucun personnel</div>';
-            document.getElementById('workersList').innerHTML = html;
-            new bootstrap.Modal(document.getElementById('viewWorkersModal')).show();
+            try {
+                const res = await fetch('/Clustering/GetWorkersByStop?stopId=' + stopId);
+                const data = await res.json();
+                let html = `<h5>${data.stopName}</h5><hr>`;
+                if (data.workers && data.workers.length) {
+                    data.workers.forEach(w => {
+                        html += `<div class="worker-item">
+                            <strong>${w.personnel_FirstName} ${w.personnel_LastName}</strong><br>
+                            <small>📞 ${w.personnel_PhoneNumber || '-'}</small><br>
+                            <small>🏠 ${w.homeAddress || '-'}</small><br>
+                            <button class="btn btn-sm btn-danger mt-2" onclick="removeWorker(${w.personnel_Id}, ${stopId}, '${w.personnel_FirstName} ${w.personnel_LastName}')">❌ Désassigner</button>
+                        </div>`;
+                    });
+                } else html += '<div class="alert alert-info">Aucun personnel</div>';
+                document.getElementById('workersList').innerHTML = html;
+                new bootstrap.Modal(document.getElementById('viewWorkersModal')).show();
+            } catch (err) {
+                showNotification('Erreur chargement personnels', true);
+            }
         };
 
         window.removeWorker = async (workerId, stopId, name) => {
-            if (confirm(`Retirer ${name} ?`)) {
-                let res = await fetch('/Clustering/RemoveWorkerFromStop', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ workerId }) });
-                let result = await res.json();
-                if (result.success) { showNotification(`✅ ${name} désassigné`); bootstrap.Modal.getInstance(document.getElementById('viewWorkersModal')).hide(); loadData(); }
-                else showNotification('❌ Erreur', true);
+            if (confirm(`Retirer ${name} de cet arrêt ?`)) {
+                const res = await fetch('/Clustering/RemoveWorkerFromStop', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ workerId })
+                });
+                const result = await res.json();
+                if (result.success) {
+                    showNotification(`${name} désassigné`);
+                    loadData();
+                } else showNotification('Erreur', true);
             }
         };
 
         window.openAssignModal = async (stopId, stopName) => {
             document.getElementById('assignStopId').value = stopId;
             document.getElementById('assignStopName').value = stopName;
-            let select = document.getElementById('workerSelect');
+            const select = document.getElementById('workerSelect');
             select.innerHTML = '<option>-- Chargement --</option>';
-            let res = await fetch('/Clustering/GetUnassignedWorkers');
-            let workers = await res.json();
-            if (workers.length) {
+            const res = await fetch('/Clustering/GetUnassignedWorkers');
+            const workers = await res.json();
+            if (workers && workers.length) {
                 select.innerHTML = '<option value="">-- Sélectionner --</option>';
-                workers.forEach(w => select.innerHTML += `<option value="${w.personnel_Id}">${w.personnel_FirstName} ${w.personnel_LastName} - ${w.homeAddress || '-'}</option>`);
+                workers.forEach(w => {
+                    select.innerHTML += `<option value="${w.personnel_Id}">${w.personnel_FirstName} ${w.personnel_LastName} - ${w.homeAddress || '-'}</option>`;
+                });
             } else select.innerHTML = '<option>Aucun personnel disponible</option>';
             new bootstrap.Modal(document.getElementById('assignWorkerModal')).show();
         };
 
         window.confirmAssign = async () => {
-            let stopId = document.getElementById('assignStopId').value;
-            let workerId = document.getElementById('workerSelect').value;
+            const stopId = document.getElementById('assignStopId').value;
+            const workerId = document.getElementById('workerSelect').value;
             if (!workerId) { showNotification('Sélectionnez un personnel', true); return; }
-            let res = await fetch('/Clustering/AssignWorkerToStop', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ workerId: parseInt(workerId), stopId: parseInt(stopId) }) });
-            let result = await res.json();
-            if (result.success) { showNotification(result.message); bootstrap.Modal.getInstance(document.getElementById('assignWorkerModal')).hide(); loadData(); }
-            else showNotification('Erreur', true);
+            const res = await fetch('/Clustering/AssignWorkerToStop', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ workerId: parseInt(workerId), stopId: parseInt(stopId) })
+            });
+            const result = await res.json();
+            if (result.success) {
+                showNotification(result.message);
+                bootstrap.Modal.getInstance(document.getElementById('assignWorkerModal')).hide();
+                loadData();
+            } else showNotification('Erreur', true);
         };
 
         window.autoAssignToStop = async () => {
-            let stopId = document.getElementById('assignStopId').value;
-            let stopName = document.getElementById('assignStopName').value;
+            const stopId = document.getElementById('assignStopId').value;
+            const stopName = document.getElementById('assignStopName').value;
             if (confirm(`Assigner automatiquement les personnels à ${stopName} ?`)) {
-                let res = await fetch(`/Clustering/AutoAssignWorkersToStop?stopId=${stopId}`, { method: 'POST' });
-                let result = await res.json();
-                if (result.success) { showNotification(result.message); bootstrap.Modal.getInstance(document.getElementById('assignWorkerModal')).hide(); loadData(); }
-                else showNotification('Erreur', true);
+                const res = await fetch(`/Clustering/AutoAssignWorkersToStop?stopId=${stopId}`, { method: 'POST' });
+                const result = await res.json();
+                if (result.success) {
+                    showNotification(result.message);
+                    bootstrap.Modal.getInstance(document.getElementById('assignWorkerModal')).hide();
+                    loadData();
+                } else showNotification('Erreur', true);
             }
         };
 
         window.autoAssignAll = async () => {
             if (confirm('Assigner TOUS les personnels au point le plus proche ?')) {
-                let res = await fetch(`/Clustering/AutoAssignAllWorkersToNearestStop?trajectoryId=1`, { method: 'POST' });
-                let result = await res.json();
-                if (result.success) { showNotification(result.message); loadData(); }
-                else showNotification('Erreur', true);
+                const res = await fetch('/Clustering/AutoAssignAllWorkersToNearestStop?trajectoryId=1', { method: 'POST' });
+                const result = await res.json();
+                if (result.success) {
+                    showNotification(result.message);
+                    loadData();
+                } else showNotification('Erreur', true);
             }
         };
 
@@ -294,60 +347,96 @@
 
         window.deleteStop = async (id, name) => {
             if (confirm(`Supprimer "${name}" ?`)) {
-                let res = await fetch(`/Clustering/DeleteStop?id=${id}`, { method: 'DELETE' });
-                if (res.ok) { showNotification('✅ Supprimé'); loadData(); }
-                else showNotification('❌ Erreur', true);
+                const res = await fetch(`/Clustering/DeleteStop?id=${id}`, { method: 'DELETE' });
+                if (res.ok) {
+                    showNotification('✅ Supprimé');
+                    loadData();
+                } else showNotification('❌ Erreur', true);
             }
         };
 
         window.saveStopChanges = async () => {
-            let id = document.getElementById('editStopId').value;
-            let name = document.getElementById('editStopName').value;
-            let lat = parseFloat(document.getElementById('editStopLat').value);
-            let lng = parseFloat(document.getElementById('editStopLng').value);
-            let order = parseInt(document.getElementById('editStopOrder').value);
-            if (!name || isNaN(lat) || isNaN(lng) || isNaN(order)) { showNotification('Champs invalides', true); return; }
-            let res = await fetch('/Clustering/UpdateStop', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: parseInt(id), name, latitude: lat, longitude: lng, orderIndex: order }) });
-            if (res.ok) { showNotification('✅ Modifié'); bootstrap.Modal.getInstance(document.getElementById('editStopModal')).hide(); loadData(); }
-            else showNotification('❌ Erreur', true);
+            const id = document.getElementById('editStopId').value;
+            const name = document.getElementById('editStopName').value;
+            const lat = parseFloat(document.getElementById('editStopLat').value);
+            const lng = parseFloat(document.getElementById('editStopLng').value);
+            const order = parseInt(document.getElementById('editStopOrder').value);
+            if (!name || isNaN(lat) || isNaN(lng) || isNaN(order)) {
+                showNotification('Champs invalides', true);
+                return;
+            }
+            const res = await fetch('/Clustering/UpdateStop', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ id: parseInt(id), name, latitude: lat, longitude: lng, orderIndex: order })
+            });
+            if (res.ok) {
+                showNotification('✅ Modifié');
+                bootstrap.Modal.getInstance(document.getElementById('editStopModal')).hide();
+                loadData();
+            } else showNotification('❌ Erreur', true);
         };
 
         window.generateRoutes = async () => {
-            let capacity = document.getElementById('busCapacity').value;
+            const capacity = document.getElementById('busCapacity').value;
             showNotification('🔄 Génération...');
-            let res = await fetch('/Clustering/GenerateRoutesFromPickupPoints', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ busCapacity: parseInt(capacity) }) });
-            let data = await res.json();
-            if (data.success) {
-                let html = `<div class="alert alert-success">✅ ${data.message}</div>`;
-                if (data.routes?.length) {
-                    html += `<div class="accordion">`;
-                    data.routes.forEach((r, i) => {
-                        html += `<div class="accordion-item"><h2 class="accordion-header"><button class="accordion-button ${i>0?'collapsed':''}" data-bs-toggle="collapse" data-bs-target="#c${i}">🚌 Trajet ${i+1} - ${r.totalPassengers} pers. (${r.stops.length} arrêts)</button></h2>
-                            <div id="c${i}" class="accordion-collapse collapse ${i==0?'show':''}"><div class="accordion-body">
-                            <ul>${r.stops.map(s=>`<li><strong>${s.stopName}</strong> - ${s.passengerCount} pers.</li>`).join('')}</ul>
-                            <strong>Personnels:</strong><ul>${r.passengers.map(p=>`<li>${p.firstName} ${p.lastName}</li>`).join('')}</ul>
-                            </div></div></div>`;
-                    });
-                    html += `</div>`;
+            try {
+                const res = await fetch('/Clustering/GenerateRoutesFromPickupPoints', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ busCapacity: parseInt(capacity) })
+                });
+                const data = await res.json();
+                if (data.success) {
+                    let html = `<div class="alert alert-success">✅ ${data.message}</div>`;
+                    if (data.routes && data.routes.length) {
+                        html += `<div class="accordion">`;
+                        data.routes.forEach((r, i) => {
+                            html += `<div class="accordion-item">
+                                <h2 class="accordion-header">
+                                    <button class="accordion-button ${i > 0 ? 'collapsed' : ''}" data-bs-toggle="collapse" data-bs-target="#c${i}">
+                                        🚌 Trajet ${i+1} - ${r.totalPassengers} pers. (${r.stops.length} arrêts)
+                                    </button>
+                                </h2>
+                                <div id="c${i}" class="accordion-collapse collapse ${i === 0 ? 'show' : ''}">
+                                    <div class="accordion-body">
+                                        <ul>${r.stops.map(s => `<li><strong>${s.stopName}</strong> - ${s.passengerCount} pers.</li>`).join('')}</ul>
+                                        <strong>Personnels:</strong><ul>${r.passengers.map(p => `<li>${p.firstName} ${p.lastName}</li>`).join('')}</ul>
+                                    </div>
+                                </div>
+                            </div>`;
+                        });
+                        html += `</div>`;
+                    }
+                    document.getElementById('routesResultBody').innerHTML = html;
+                    new bootstrap.Modal(document.getElementById('routesResultModal')).show();
+                } else {
+                    showNotification('❌ ' + data.message, true);
                 }
-                document.getElementById('routesResultBody').innerHTML = html;
-                new bootstrap.Modal(document.getElementById('routesResultModal')).show();
-            } else showNotification('❌ ' + data.message, true);
+            } catch (err) {
+                showNotification('Erreur réseau', true);
+            }
         };
 
         window.saveRoutes = async () => {
-            let capacity = document.getElementById('busCapacity').value;
-            let res = await fetch('/Clustering/SaveGeneratedRoutes', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ busCapacity: parseInt(capacity) }) });
-            let data = await res.json();
-            if (data.success) { showNotification('✅ Trajets sauvegardés'); bootstrap.Modal.getInstance(document.getElementById('routesResultModal')).hide(); }
-            else showNotification('❌ ' + data.message, true);
+            const capacity = document.getElementById('busCapacity').value;
+            const res = await fetch('/Clustering/SaveGeneratedRoutes', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ busCapacity: parseInt(capacity) })
+            });
+            const data = await res.json();
+            if (data.success) {
+                showNotification('✅ Trajets sauvegardés');
+                bootstrap.Modal.getInstance(document.getElementById('routesResultModal')).hide();
+            } else showNotification('❌ ' + data.message, true);
         };
 
         window.generateSmartTrajectories = async () => {
             showNotification('🔄 Calcul IA en cours...');
             try {
-                let res = await fetch('/Clustering/GenerateSmartTrajectories', { method: 'POST' });
-                let data = await res.json();
+                const res = await fetch('/Clustering/GenerateSmartTrajectories', { method: 'POST' });
+                const data = await res.json();
                 if (data.success) {
                     showNotification(`✅ ${data.count} trajets générés avec succès.`);
                     location.reload();
@@ -355,10 +444,11 @@
                     showNotification('❌ ' + data.message, true);
                 }
             } catch (err) {
-                showNotification('❌ Erreur réseau', true);
+                showNotification('Erreur réseau', true);
             }
         };
 
+        // Attacher les événements après chargement du DOM
         document.getElementById('autoAssignAllBtn').onclick = autoAssignAll;
         document.getElementById('generateRoutesBtn').onclick = generateRoutes;
         document.getElementById('aiGenTraj').onclick = generateSmartTrajectories;
@@ -367,6 +457,7 @@
         document.getElementById('saveStopChanges').onclick = saveStopChanges;
         document.getElementById('saveRoutesBtn').onclick = saveRoutes;
 
+        // Chargement initial
         loadData();
     </script>
 }

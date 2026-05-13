@@ -48,13 +48,13 @@
         @foreach (var item in Model)
         {
             <tr id="row-@item.Bus_Id" data-status="@item.Bus_Status">
-                <td>@item.Bus_Id</td
-                <td>@item.Bus_Code</td
-                <td>@item.Bus_PlateNumber</td
-                <td>@item.Bus_Brand</td
-                <td>@item.Bus_Model</td
-                <td>@item.Bus_Year</td
-                <td>@item.Bus_Capacity</td
+                <td>@item.Bus_Id</td>
+                <td>@item.Bus_Code</td>
+                <td>@item.Bus_PlateNumber</td>
+                <td>@item.Bus_Brand</td>
+                <td>@item.Bus_Model</td>
+                <td>@item.Bus_Year</td>
+                <td>@item.Bus_Capacity</td>
                 <td>
                     @if (item.CurrentDriver != null)
                     {
@@ -64,7 +64,7 @@
                     {
                         <span class="text-muted">Non assigné</span>
                     }
-                </td
+                </td>
                 <td>
                     @if (item.Bus_Status == "In Service")
                     {
@@ -78,13 +78,13 @@
                     {
                         <span class="badge bg-danger">Hors service</span>
                     }
-                </td
+                </td>
                 <td>
                     <button class="btn btn-sm btn-warning edit-btn" data-id="@item.Bus_Id">Modifier</button>
                     <form asp-action="Delete" asp-route-id="@item.Bus_Id" method="post" style="display:inline;">
                         <input type="submit" value="Supprimer" class="btn btn-sm btn-danger" onclick="return confirm('Êtes-vous sûr de vouloir supprimer ce bus ?');" />
                     </form>
-                </td
+                </td>
             </tr>
         }
     </tbody>
