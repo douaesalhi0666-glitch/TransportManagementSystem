@@ -370,33 +370,32 @@ namespace TransportManagementSystem.Controllers
         }
 
         // ================================================
-        // ALGORITHMES IA - GÉNÉRATION DE TRAJETS (CORRIGÉ)
+        // GÉNÉRATION DE TRAJETS (ALGORITHME GLOUTON SIMPLIFIÉ)
         // ================================================
         [HttpPost]
         public async Task<IActionResult> GenerateSmartTrajectories(int maxTimeMinutes = 60, int busCapacity = 20, double speedKmh = 30)
         {
             try
             {
-                // Récupérer les arrêts avec des personnels assignés
-                var stops = await _context.TrajectoryStops
+                var stopsData = await _context.TrajectoryStops
                     .Where(s => s.TS_Latitude != 0 && s.TS_Longitude != 0)
-                    .Select(s => new StopWithWorkers
+                    .Select(s => new
                     {
                         Stop = s,
-                        WorkerCount = _context.Personnel.Count(p => p.AssignedStopId == s.TS_Id && p.IsAssigned == true)
+                        Workers = _context.Personnel.Count(p => p.AssignedStopId == s.TS_Id && p.IsAssigned == true)
                     })
                     .ToListAsync();
 
-                if (!stops.Any())
-                    return BadRequest("Aucun point de ramassage avec des personnels assignés.");
+                var validStops = stopsData.Where(s => s.Workers > 0).ToList();
+                if (!validStops.Any())
+                    return BadRequest("Aucun point de ramassage avec personnels assignés.");
 
                 const double startLat = 34.2900, startLng = -6.5700;
 
-                // Calculer le temps de trajet depuis SEWS pour chaque arrêt et stocker dans une liste d'items
-                var items = stops.Select(s => new
+                var items = validStops.Select(s => new
                 {
-                    Stop = s.Stop,
-                    WorkerCount = s.WorkerCount,
+                    s.Stop,
+                    s.Workers,
                     TravelTime = HaversineDistance(startLat, startLng, (double)s.Stop.TS_Latitude, (double)s.Stop.TS_Longitude) / 1000.0 / speedKmh * 60.0
                 }).OrderBy(x => x.TravelTime).ToList();
 
@@ -406,15 +405,14 @@ namespace TransportManagementSystem.Controllers
                 for (int i = 0; i < items.Count; i++)
                 {
                     if (used[i]) continue;
-
                     var cluster = new List<TrajectoryStop>();
                     int currentWorkers = 0;
                     double currentMaxTime = 0;
 
-                    for (int j = i; j < items.Count; j++)
+                    for (int j = 0; j < items.Count; j++)
                     {
                         if (used[j]) continue;
-                        int newWorkers = currentWorkers + items[j].WorkerCount;
+                        int newWorkers = currentWorkers + items[j].Workers;
                         double newMaxTime = Math.Max(currentMaxTime, items[j].TravelTime);
                         if (newWorkers <= busCapacity && newMaxTime <= maxTimeMinutes)
                         {
@@ -424,26 +422,220 @@ namespace TransportManagementSystem.Controllers
                             used[j] = true;
                         }
                     }
-
                     if (cluster.Any())
                         clusters.Add(cluster);
                 }
 
-                // Créer les trajectoires
                 var createdTrajs = new List<Trajectory>();
                 int counter = 1;
+
                 foreach (var cluster in clusters)
                 {
-                    // Ordonner les arrêts par distance croissante depuis le départ
-                    var orderedStops = cluster.OrderBy(s => HaversineDistance(startLat, startLng, (double)s.TS_Latitude, (double)s.TS_Longitude)).ToList();
+                    var orderedStops = cluster
+                        .OrderBy(s => HaversineDistance(startLat, startLng, (double)s.TS_Latitude, (double)s.TS_Longitude))
+                        .ToList();
+
+                    if (!orderedStops.Any()) continue;
+
                     double maxDist = orderedStops.Max(s => HaversineDistance(startLat, startLng, (double)s.TS_Latitude, (double)s.TS_Longitude) / 1000.0);
                     double maxTime = orderedStops.Max(s => HaversineDistance(startLat, startLng, (double)s.TS_Latitude, (double)s.TS_Longitude) / 1000.0 / speedKmh * 60.0);
+                    int totalWorkers = cluster.Sum(s => validStops.First(v => v.Stop.TS_Id == s.TS_Id).Workers);
 
                     var traj = new Trajectory
                     {
                         Trajectory_Name = $"Trajet IA-{DateTime.Now:yyyyMMddHHmmss}-{counter}",
                         Trajectory_Code = $"IA-{counter}",
-                        Trajectory_Description = $"{orderedStops.Count} arrêts, {cluster.Sum(s => stops.First(x => x.Stop.TS_Id == s.TS_Id).WorkerCount)} pers",
+                        Trajectory_Description = $"{orderedStops.Count} arrêts, {totalWorkers} pers",
+                        Trajectory_StartLatitude = (decimal)startLat,
+                        Trajectory_StartLongitude = (decimal)startLng,
+                        Trajectory_EndLatitude = (decimal)orderedStops.Last().TS_Latitude,
+                        Trajectory_EndLongitude = (decimal)orderedStops.Last().TS_Longitude,
+                        Trajectory_DistanceKm = (decimal)Math.Round(maxDist, 2),
+                        Trajectory_EstimatedDurationMinutes = (int)Math.Ceiling(maxTime),
+                        Trajectory_Status = "Active",
+                        Trajectory_CreatedAt = DateTime.Now,
+                        Trajectory_UpdatedAt = DateTime.Now
+                    };
+                    _context.Trajectories.Add(traj);
+                    await _context.SaveChangesAsync();
+
+                    int order = 1;
+                    foreach (var s in orderedStops)
+                    {
+                        s.TS_TrajectoryId = traj.Trajectory_Id;
+                        s.TS_OrderIndex = order++;
+                        _context.TrajectoryStops.Update(s);
+                    }
+                    await _context.SaveChangesAsync();
+                    createdTrajs.Add(traj);
+                    counter++;
+                }
+
+                return Ok(new { success = true, count = createdTrajs.Count });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { success = false, message = ex.Message });
+            }
+        }
+
+        // ================================================
+        // GÉNÉRATION DE TRAJETS (AFFICHAGE MODAL) - BOUTON "Générer les trajets"
+        // ================================================
+        [HttpPost]
+        public async Task<IActionResult> GenerateRoutesFromPickupPoints([FromBody] GenerateRoutesRequest request)
+        {
+            try
+            {
+                int busCapacity = request?.BusCapacity ?? 20;
+                double speedKmh = 30;
+
+                var stopsData = await _context.TrajectoryStops
+                    .Where(s => s.TS_Latitude != 0 && s.TS_Longitude != 0)
+                    .Select(s => new
+                    {
+                        Stop = s,
+                        Workers = _context.Personnel.Count(p => p.AssignedStopId == s.TS_Id && p.IsAssigned == true)
+                    })
+                    .ToListAsync();
+
+                var validStops = stopsData.Where(s => s.Workers > 0).ToList();
+                if (!validStops.Any())
+                    return BadRequest(new { success = false, message = "Aucun point de ramassage avec personnels assignés." });
+
+                const double startLat = 34.2900, startLng = -6.5700;
+                var items = validStops.Select(s => new
+                {
+                    Stop = s.Stop,
+                    Workers = s.Workers,
+                    TravelTime = HaversineDistance(startLat, startLng, (double)s.Stop.TS_Latitude, (double)s.Stop.TS_Longitude) / 1000.0 / speedKmh * 60.0,
+                    Distance = HaversineDistance(startLat, startLng, (double)s.Stop.TS_Latitude, (double)s.Stop.TS_Longitude) / 1000.0
+                }).OrderBy(x => x.TravelTime).ToList();
+
+                var clusters = new List<List<(TrajectoryStop Stop, int Workers)>>();
+                var used = new bool[items.Count];
+                for (int i = 0; i < items.Count; i++)
+                {
+                    if (used[i]) continue;
+                    var cluster = new List<(TrajectoryStop Stop, int Workers)>();
+                    int currentWorkers = 0;
+                    for (int j = 0; j < items.Count; j++)
+                    {
+                        if (used[j]) continue;
+                        if (currentWorkers + items[j].Workers <= busCapacity)
+                        {
+                            cluster.Add((items[j].Stop, items[j].Workers));
+                            currentWorkers += items[j].Workers;
+                            used[j] = true;
+                        }
+                    }
+                    if (cluster.Any())
+                        clusters.Add(cluster);
+                }
+
+                var routes = new List<object>();
+                foreach (var cluster in clusters)
+                {
+                    var stops = cluster.Select(c => new
+                    {
+                        c.Stop.TS_Id,
+                        StopName = c.Stop.TS_Name,
+                        PassengerCount = c.Workers
+                    }).ToList();
+
+                    var passengers = cluster.SelectMany(c => _context.Personnel
+                        .Where(p => p.AssignedStopId == c.Stop.TS_Id && p.IsAssigned == true)
+                        .Select(p => new { FirstName = p.Personnel_FirstName, LastName = p.Personnel_LastName })
+                    ).ToList();
+
+                    routes.Add(new
+                    {
+                        stops = stops,
+                        passengers = passengers,
+                        totalPassengers = stops.Sum(s => s.PassengerCount)
+                    });
+                }
+
+                return Ok(new { success = true, message = $"{routes.Count} trajet(s) généré(s).", routes = routes });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { success = false, message = ex.Message });
+            }
+        }
+
+        // ================================================
+        // SAUVEGARDE DES TRAJETS (depuis modal)
+        // ================================================
+        [HttpPost]
+        public async Task<IActionResult> SaveGeneratedRoutes([FromBody] SaveRoutesRequest request)
+        {
+            try
+            {
+                int busCapacity = request?.BusCapacity ?? 20;
+                double speedKmh = 30;
+                const double startLat = 34.2900, startLng = -6.5700;
+
+                var stopsData = await _context.TrajectoryStops
+                    .Where(s => s.TS_Latitude != 0 && s.TS_Longitude != 0)
+                    .Select(s => new
+                    {
+                        Stop = s,
+                        Workers = _context.Personnel.Count(p => p.AssignedStopId == s.TS_Id && p.IsAssigned == true)
+                    })
+                    .ToListAsync();
+
+                var validStops = stopsData.Where(s => s.Workers > 0).ToList();
+                if (!validStops.Any())
+                    return BadRequest(new { success = false, message = "Aucun point de ramassage avec personnels assignés." });
+
+                var items = validStops.Select(s => new
+                {
+                    Stop = s.Stop,
+                    Workers = s.Workers,
+                    TravelTime = HaversineDistance(startLat, startLng, (double)s.Stop.TS_Latitude, (double)s.Stop.TS_Longitude) / 1000.0 / speedKmh * 60.0
+                }).OrderBy(x => x.TravelTime).ToList();
+
+                var clusters = new List<List<dynamic>>();
+                var used = new bool[items.Count];
+                for (int i = 0; i < items.Count; i++)
+                {
+                    if (used[i]) continue;
+                    var cluster = new List<dynamic>();
+                    int currentWorkers = 0;
+                    for (int j = 0; j < items.Count; j++)
+                    {
+                        if (used[j]) continue;
+                        if (currentWorkers + items[j].Workers <= busCapacity)
+                        {
+                            cluster.Add(items[j]);
+                            currentWorkers += items[j].Workers;
+                            used[j] = true;
+                        }
+                    }
+                    if (cluster.Any())
+                        clusters.Add(cluster);
+                }
+
+                var createdTrajs = new List<Trajectory>();
+                int counter = 1;
+                foreach (var cluster in clusters)
+                {
+                    var orderedStops = cluster.Select(c => c.Stop)
+                        .OrderBy(s => HaversineDistance(startLat, startLng, (double)s.TS_Latitude, (double)s.TS_Longitude))
+                        .ToList();
+
+                    if (!orderedStops.Any()) continue;
+
+                    double maxDist = orderedStops.Max(s => HaversineDistance(startLat, startLng, (double)s.TS_Latitude, (double)s.TS_Longitude) / 1000.0);
+                    double maxTime = orderedStops.Max(s => HaversineDistance(startLat, startLng, (double)s.TS_Latitude, (double)s.TS_Longitude) / 1000.0 / speedKmh * 60.0);
+                    int totalWorkers = cluster.Sum(c => c.Workers);
+
+                    var traj = new Trajectory
+                    {
+                        Trajectory_Name = $"Trajet-{DateTime.Now:yyyyMMddHHmmss}-{counter}",
+                        Trajectory_Code = $"T-{counter}",
+                        Trajectory_Description = $"{orderedStops.Count} arrêts, {totalWorkers} pers",
                         Trajectory_StartLatitude = (decimal)startLat,
                         Trajectory_StartLongitude = (decimal)startLng,
                         Trajectory_EndLatitude = (decimal)orderedStops.Last().TS_Latitude,
@@ -469,7 +661,7 @@ namespace TransportManagementSystem.Controllers
                     counter++;
                 }
 
-                return Ok(new { success = true, count = createdTrajs.Count, trajectories = createdTrajs });
+                return Ok(new { success = true, message = $"{createdTrajs.Count} trajets sauvegardés." });
             }
             catch (Exception ex)
             {
@@ -478,243 +670,11 @@ namespace TransportManagementSystem.Controllers
         }
 
         // ================================================
-        // CLASSES AUXILIAIRES POUR L'ALGORITHME
-        // ================================================
-        private class StopWithWorkers
-        {
-            public TrajectoryStop Stop { get; set; } = null!;
-            public int WorkerCount { get; set; }
-        }
-
-        private class StopTravel
-        {
-            public int StopId { get; set; }
-            public double Lat { get; set; }
-            public double Lng { get; set; }
-            public int WorkCount { get; set; }
-            public double TravelTimeFromDepot { get; set; }
-        }
-
-        private class Chromosome
-        {
-            public List<List<int>> Clusters { get; set; } = new();
-            public double Fitness { get; set; }
-        }
-
-        private class OrderedStop : StopTravel
-        {
-            public double CumulativeTime { get; set; }
-        }
-
-        // ================================================
-        // ALGORITHME GÉNÉTIQUE
-        // ================================================
-        private List<List<int>> GeneticBinPacking(List<StopTravel> items, int capacity, double maxTime, int populationSize = 200, int generations = 500, double mutationRate = 0.1)
-        {
-            int n = items.Count;
-            if (n == 0) return new List<List<int>>();
-
-            var population = new List<Chromosome>();
-            for (int i = 0; i < populationSize; i++)
-            {
-                var chrom = RandomChromosome(items, capacity, maxTime);
-                chrom.Fitness = EvaluateFitness(chrom, items, capacity, maxTime);
-                population.Add(chrom);
-            }
-
-            for (int gen = 0; gen < generations; gen++)
-            {
-                var newPopulation = new List<Chromosome>();
-                for (int i = 0; i < populationSize; i++)
-                {
-                    var parent1 = TournamentSelection(population);
-                    var parent2 = TournamentSelection(population);
-                    var child = Crossover(parent1, parent2, items, capacity, maxTime);
-                    if (new Random().NextDouble() < mutationRate)
-                        Mutate(child, items, capacity, maxTime);
-                    child.Fitness = EvaluateFitness(child, items, capacity, maxTime);
-                    newPopulation.Add(child);
-                }
-                var best = population.OrderBy(c => c.Fitness).First();
-                newPopulation[0] = best;
-                population = newPopulation;
-            }
-            return population.OrderBy(c => c.Fitness).First().Clusters;
-        }
-
-        private Chromosome RandomChromosome(List<StopTravel> items, int capacity, double maxTime)
-        {
-            var indices = Enumerable.Range(0, items.Count).OrderBy(x => Guid.NewGuid()).ToList();
-            var clusters = new List<List<int>>();
-            var workSums = new List<int>();
-            var timeMaxs = new List<double>();
-
-            foreach (var idx in indices)
-            {
-                bool placed = false;
-                for (int i = 0; i < clusters.Count; i++)
-                {
-                    if (workSums[i] + items[idx].WorkCount <= capacity && Math.Max(timeMaxs[i], items[idx].TravelTimeFromDepot) <= maxTime)
-                    {
-                        clusters[i].Add(idx);
-                        workSums[i] += items[idx].WorkCount;
-                        timeMaxs[i] = Math.Max(timeMaxs[i], items[idx].TravelTimeFromDepot);
-                        placed = true;
-                        break;
-                    }
-                }
-                if (!placed)
-                {
-                    clusters.Add(new List<int> { idx });
-                    workSums.Add(items[idx].WorkCount);
-                    timeMaxs.Add(items[idx].TravelTimeFromDepot);
-                }
-            }
-            return new Chromosome { Clusters = clusters, Fitness = 0 };
-        }
-
-        private Chromosome TournamentSelection(List<Chromosome> population, int tournamentSize = 5)
-        {
-            var best = population.OrderBy(c => c.Fitness).First();
-            var rand = new Random();
-            for (int i = 0; i < tournamentSize; i++)
-            {
-                var candidate = population[rand.Next(population.Count)];
-                if (candidate.Fitness < best.Fitness)
-                    best = candidate;
-            }
-            return best;
-        }
-
-        private Chromosome Crossover(Chromosome parent1, Chromosome parent2, List<StopTravel> items, int capacity, double maxTime)
-        {
-            var usedIndices = new HashSet<int>();
-            var newClusters = new List<List<int>>();
-
-            foreach (var cluster in parent1.Clusters)
-            {
-                var valid = new List<int>();
-                int sum = 0;
-                double maxT = 0;
-                foreach (var idx in cluster)
-                {
-                    if (!usedIndices.Contains(idx))
-                    {
-                        if (sum + items[idx].WorkCount <= capacity && Math.Max(maxT, items[idx].TravelTimeFromDepot) <= maxTime)
-                        {
-                            valid.Add(idx);
-                            sum += items[idx].WorkCount;
-                            maxT = Math.Max(maxT, items[idx].TravelTimeFromDepot);
-                            usedIndices.Add(idx);
-                        }
-                    }
-                }
-                if (valid.Any())
-                    newClusters.Add(valid);
-            }
-
-            foreach (var cluster in parent2.Clusters)
-            {
-                var valid = new List<int>();
-                int sum = 0;
-                double maxT = 0;
-                foreach (var idx in cluster)
-                {
-                    if (!usedIndices.Contains(idx))
-                    {
-                        if (sum + items[idx].WorkCount <= capacity && Math.Max(maxT, items[idx].TravelTimeFromDepot) <= maxTime)
-                        {
-                            valid.Add(idx);
-                            sum += items[idx].WorkCount;
-                            maxT = Math.Max(maxT, items[idx].TravelTimeFromDepot);
-                            usedIndices.Add(idx);
-                        }
-                    }
-                }
-                if (valid.Any())
-                    newClusters.Add(valid);
-            }
-
-            for (int i = 0; i < items.Count; i++)
-            {
-                if (!usedIndices.Contains(i))
-                    newClusters.Add(new List<int> { i });
-            }
-            return new Chromosome { Clusters = newClusters, Fitness = 0 };
-        }
-
-        private void Mutate(Chromosome chrom, List<StopTravel> items, int capacity, double maxTime)
-        {
-            if (chrom.Clusters.Count < 2) return;
-            var rand = new Random();
-            int idx1 = rand.Next(chrom.Clusters.Count);
-            int idx2 = rand.Next(chrom.Clusters.Count);
-            if (idx1 == idx2 || chrom.Clusters[idx1].Count == 0) return;
-
-            int elemIdx = rand.Next(chrom.Clusters[idx1].Count);
-            int stopId = chrom.Clusters[idx1][elemIdx];
-            int newWork = chrom.Clusters[idx2].Sum(i => items[i].WorkCount) + items[stopId].WorkCount;
-            double newTime = Math.Max(items[stopId].TravelTimeFromDepot, chrom.Clusters[idx2].Max(i => items[i].TravelTimeFromDepot));
-            if (newWork <= capacity && newTime <= maxTime)
-            {
-                chrom.Clusters[idx1].RemoveAt(elemIdx);
-                chrom.Clusters[idx2].Add(stopId);
-                chrom.Clusters = chrom.Clusters.Where(c => c.Any()).ToList();
-            }
-        }
-
-        private double EvaluateFitness(Chromosome chrom, List<StopTravel> items, int capacity, double maxTime)
-        {
-            int clusterCount = chrom.Clusters.Count;
-            double penalty = 0;
-            foreach (var cluster in chrom.Clusters)
-            {
-                int sum = cluster.Sum(i => items[i].WorkCount);
-                double maxT = cluster.Max(i => items[i].TravelTimeFromDepot);
-                if (sum > capacity) penalty += 1000;
-                if (maxT > maxTime) penalty += 1000;
-            }
-            return clusterCount + penalty;
-        }
-
-        // ================================================
-        // TSP HEURISTIQUE
-        // ================================================
-        private List<OrderedStop> SolveTSP(List<StopTravel> stops, double startLat, double startLng, double speedKmh)
-        {
-            var remaining = stops.ToList();
-            var route = new List<OrderedStop>();
-            double currentLat = startLat, currentLng = startLng;
-            double cumulative = 0;
-
-            while (remaining.Any())
-            {
-                var nearest = remaining.OrderBy(s => HaversineDistance(currentLat, currentLng, s.Lat, s.Lng)).First();
-                double dist = HaversineDistance(currentLat, currentLng, nearest.Lat, nearest.Lng);
-                double time = dist / 1000.0 / speedKmh * 60;
-                cumulative += time;
-                route.Add(new OrderedStop
-                {
-                    StopId = nearest.StopId,
-                    Lat = nearest.Lat,
-                    Lng = nearest.Lng,
-                    WorkCount = nearest.WorkCount,
-                    TravelTimeFromDepot = nearest.TravelTimeFromDepot,
-                    CumulativeTime = cumulative
-                });
-                currentLat = nearest.Lat;
-                currentLng = nearest.Lng;
-                remaining.Remove(nearest);
-            }
-            return route;
-        }
-
-        // ================================================
         // UTILITAIRES DE DISTANCE
         // ================================================
         private double HaversineDistance(double lat1, double lon1, double lat2, double lon2)
         {
-            const double R = 6371e3; // mètres
+            const double R = 6371e3;
             var φ1 = lat1 * Math.PI / 180;
             var φ2 = lat2 * Math.PI / 180;
             var Δφ = (lat2 - lat1) * Math.PI / 180;
@@ -728,7 +688,7 @@ namespace TransportManagementSystem.Controllers
 
         private double CalculateDistance(double lat1, double lon1, double lat2, double lon2)
         {
-            const double R = 6371; // km
+            const double R = 6371;
             var dLat = (lat2 - lat1) * Math.PI / 180;
             var dLon = (lon2 - lon1) * Math.PI / 180;
             var a = Math.Sin(dLat / 2) * Math.Sin(dLat / 2) +
@@ -768,5 +728,15 @@ namespace TransportManagementSystem.Controllers
     public class RemoveWorkerRequest
     {
         public int WorkerId { get; set; }
+    }
+
+    public class GenerateRoutesRequest
+    {
+        public int BusCapacity { get; set; } = 20;
+    }
+
+    public class SaveRoutesRequest
+    {
+        public int BusCapacity { get; set; } = 20;
     }
 }
