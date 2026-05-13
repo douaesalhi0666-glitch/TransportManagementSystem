@@ -58,7 +58,7 @@
 </div>
 
 <hr />
-<h3>📋 Assignations actuelles</h3>
+<h3>📋 Assignations actuelles (Chauffeur ↔ Bus)</h3>
 
 <table class="table table-striped">
     <thead>
@@ -66,7 +66,6 @@
             <th>Bus</th>
             <th>Plaque</th>
             <th>Chauffeur</th>
-            <th>Fragment assigné</th>
             <th>Actions</th>
         </tr>
     </thead>
@@ -87,22 +86,16 @@
                     }
                 </td>
                 <td>
-                    @if (bus.AssignedFragment != null)
-                    {
-                        <span>@bus.AssignedFragment.Fragment_Name (code: @bus.AssignedFragment.Fragment_Code)</span>
-                    }
-                    else
-                    {
-                        <span class="text-muted">Aucun fragment</span>
-                    }
-                </td>
-                <td>
                     @if (bus.CurrentDriver != null)
                     {
                         <form method="post" action="/Assignments/UnassignDriver" style="display:inline;">
                             <input type="hidden" name="driverId" value="@bus.CurrentDriver.Driver_id" />
                             <button type="submit" class="btn btn-sm btn-danger">Libérer chauffeur</button>
                         </form>
+                    }
+                    else
+                    {
+                        <span class="text-muted">-</span>
                     }
                 </td>
             </tr>

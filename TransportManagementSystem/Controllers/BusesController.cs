@@ -42,11 +42,49 @@ namespace TransportManagementSystem.Controllers
         {
             if (ModelState.IsValid)
             {
+                // Check if Bus_Code already exists
+                var existingCode = await _context.Buses
+                    .FirstOrDefaultAsync(b => b.Bus_Code == bus.Bus_Code);
+
+                if (existingCode != null)
+                {
+                    ModelState.AddModelError("Bus_Code", "Ce code de bus existe déjà. Veuillez utiliser un code unique.");
+                    return View(bus);
+                }
+
+                // Check if Bus_PlateNumber already exists
+                var existingPlate = await _context.Buses
+                    .FirstOrDefaultAsync(b => b.Bus_PlateNumber == bus.Bus_PlateNumber);
+
+                if (existingPlate != null)
+                {
+                    ModelState.AddModelError("Bus_PlateNumber", "Cette plaque d'immatriculation existe déjà. Veuillez entrer une plaque unique.");
+                    return View(bus);
+                }
+
                 bus.Bus_CreatedAt = DateTime.Now;
                 bus.Bus_UpdatedAt = DateTime.Now;
                 _context.Add(bus);
-                await _context.SaveChangesAsync();
-                return RedirectToAction(nameof(Index));
+
+                try
+                {
+                    await _context.SaveChangesAsync();
+                    DashboardController.AddNotification("success", "Bus ajouté", $"Le bus {bus.Bus_Code} a été ajouté avec succès.");
+                    return RedirectToAction(nameof(Index));
+                }
+                catch (DbUpdateException ex)
+                {
+                    var innerMessage = ex.InnerException?.Message ?? ex.Message;
+                    if (innerMessage.Contains("UNIQUE KEY") || innerMessage.Contains("duplicate"))
+                    {
+                        ModelState.AddModelError("", "Un bus avec ce code ou cette plaque existe déjà.");
+                    }
+                    else
+                    {
+                        ModelState.AddModelError("", $"Erreur lors de l'enregistrement: {innerMessage}");
+                    }
+                    return View(bus);
+                }
             }
             return View(bus);
         }
