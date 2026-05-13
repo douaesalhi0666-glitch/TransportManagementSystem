@@ -5,6 +5,15 @@
     Layout = "~/Views/Shared/_Layout.cshtml";
 }
 
+<style>
+    .details-card {
+        margin-bottom: 10px;
+    }
+    .details-card .card-header {
+        font-weight: bold;
+    }
+</style>
+
 <h1>Gestion des Chauffeurs</h1>
 
 <p>
@@ -37,8 +46,6 @@
             <th>Nom</th>
             <th>Email</th>
             <th>Téléphone</th>
-            <th>Permis</th>
-            <th>Expérience (années)</th>
             <th>Bus assigné</th>
             <th>Statut</th>
             <th>Actions</th>
@@ -53,8 +60,6 @@
                 <td>@item.Driver_LastName</td>
                 <td>@item.Driver_Email</td>
                 <td>@item.Driver_PhoneNumber</td>
-                <td>@item.Driver_LicenseNumber</td>
-                <td>@(item.Driver_ExperienceYears?.ToString() ?? "—")</td>
                 <td>
                     @if (item.AssignedBus != null)
                     {
@@ -80,10 +85,11 @@
                     }
                 </td>
                 <td>
-                    <button class="btn btn-sm btn-warning edit-btn" data-id="@item.Driver_id">Modifier</button>
+                    <button class="btn btn-sm btn-info details-btn" data-id="@item.Driver_id" title="Voir détails">🔍 Détails</button>
+                    <button class="btn btn-sm btn-warning edit-btn" data-id="@item.Driver_id" title="Modifier">✏️ Modifier</button>
                     <form asp-action="Delete" asp-route-id="@item.Driver_id" method="post" style="display:inline;" onsubmit="return confirm('Supprimer définitivement ce chauffeur ?');">
                         @Html.AntiForgeryToken()
-                        <button type="submit" class="btn btn-sm btn-danger">Supprimer</button>
+                        <button type="submit" class="btn btn-sm btn-danger" title="Supprimer">🗑️ Supprimer</button>
                     </form>
                 </td>
             </tr>
@@ -93,7 +99,7 @@
 
 <a asp-controller="Dashboard" asp-action="AdminDashboard" class="btn btn-secondary">Retour au Dashboard</a>
 
-<!-- Modal d'édition -->
+<!-- Modal d'édition (SANS Bus assigné) -->
 <div class="modal fade" id="editModal" tabindex="-1" aria-labelledby="editModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-lg">
         <div class="modal-content">
@@ -149,16 +155,6 @@
                             </select>
                         </div>
                     </div>
-                    <div class="mb-2">
-                        <label>Bus assigné</label>
-                        <select id="edit_BusId" name="Driver_AssignedBusId" class="form-select">
-                            <option value="">-- Aucun --</option>
-                            @foreach (var bus in ViewBag.Buses)
-                            {
-                                <option value="@bus.Bus_Id">@bus.Bus_Code - @bus.Bus_PlateNumber</option>
-                            }
-                        </select>
-                    </div>
                 </form>
             </div>
             <div class="modal-footer">
@@ -169,94 +165,158 @@
     </div>
 </div>
 
+<!-- Modal Détails Chauffeur -->
+<div class="modal fade" id="detailsModal" tabindex="-1" aria-labelledby="detailsModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header bg-info text-white">
+                <h5 class="modal-title" id="detailsModalLabel">📋 Détails du chauffeur</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div id="detailsContent" class="row">
+                    <div class="col-12 text-center">Chargement...</div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fermer</button>
+            </div>
+        </div>
+    </div>
+</div>
+
 @section Scripts {
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script>
         $(document).ready(function() {
-        // Filtrage par recherche et statut
-        function filterTable() {
-        var searchText = $('#searchInput').val().toLowerCase();
-        var status = $('#statusFilter').val();
+            function filterTable() {
+                var searchText = $('#searchInput').val().toLowerCase();
+                var status = $('#statusFilter').val();
 
-        $('#driversTable tbody tr').each(function() {
-        var id = $(this).find('td:first').text();
-        var firstName = $(this).find('td:nth-child(2)').text();
-        var lastName = $(this).find('td:nth-child(3)').text();
-        var rowStatus = $(this).data('status');
-        var matchSearch = (id.toLowerCase().indexOf(searchText) !== -1) ||
-        (firstName.toLowerCase().indexOf(searchText) !== -1) ||
-        (lastName.toLowerCase().indexOf(searchText) !== -1);
-        var matchStatus = (status === '' || rowStatus === status);
-        if (matchSearch && matchStatus) {
-        $(this).show();
-        } else {
-        $(this).hide();
-        }
-        });
-        }
+                $('#driversTable tbody tr').each(function() {
+                    var id = $(this).find('td:first').text();
+                    var firstName = $(this).find('td:nth-child(2)').text();
+                    var lastName = $(this).find('td:nth-child(3)').text();
+                    var rowStatus = $(this).data('status');
+                    var matchSearch = (id.toLowerCase().indexOf(searchText) !== -1) ||
+                        (firstName.toLowerCase().indexOf(searchText) !== -1) ||
+                        (lastName.toLowerCase().indexOf(searchText) !== -1);
+                    var matchStatus = (status === '' || rowStatus === status);
+                    if (matchSearch && matchStatus) {
+                        $(this).show();
+                    } else {
+                        $(this).hide();
+                    }
+                });
+            }
 
-        $('#searchInput').on('keyup', filterTable);
-        $('#statusFilter').on('change', filterTable);
-        $('#resetFilter').click(function() {
-        $('#searchInput').val('');
-        $('#statusFilter').val('');
-        filterTable();
-        });
+            $('#searchInput').on('keyup', filterTable);
+            $('#statusFilter').on('change', filterTable);
+            $('#resetFilter').click(function() {
+                $('#searchInput').val('');
+                $('#statusFilter').val('');
+                filterTable();
+            });
 
-        // Édition en ligne (modal)
-        $('.edit-btn').click(function() {
-        var id = $(this).data('id');
-        $.get('/Drivers/GetDriverData/' + id, function(data) {
-        $('#edit_Driver_Id').val(data.driver_id);
-        $('#edit_FirstName').val(data.driver_FirstName);
-        $('#edit_LastName').val(data.driver_LastName);
-        $('#edit_Email').val(data.driver_Email);
-        $('#edit_PhoneNumber').val(data.driver_PhoneNumber);
-        $('#edit_LicenseNumber').val(data.driver_LicenseNumber);
-        var expiry = data.driver_LicenseExpiryDate ? data.driver_LicenseExpiryDate.split('T')[0] : '';
-        $('#edit_LicenseExpiryDate').val(expiry);
-        $('#edit_ExperienceYears').val(data.driver_ExperienceYears);
-        $('#edit_Status').val(data.driver_Status);
-        $('#edit_BusId').val(data.driver_AssignedBusId);
-        $('#editModal').modal('show');
-        }).fail(function() {
-        alert('Erreur lors du chargement des données.');
-        });
-        });
+            // Détails button click
+            $('.details-btn').click(function() {
+                var id = $(this).data('id');
+                $.get('/Drivers/GetDriverData/' + id, function(data) {
+                    var html = `
+                        <div class="col-md-6">
+                            <div class="card details-card">
+                                <div class="card-header bg-primary text-white">Informations personnelles</div>
+                                <div class="card-body">
+                                    <p><strong>ID:</strong> ${data.driver_id}</p>
+                                    <p><strong>Prénom:</strong> ${data.driver_FirstName}</p>
+                                    <p><strong>Nom:</strong> ${data.driver_LastName}</p>
+                                    <p><strong>Email:</strong> ${data.driver_Email || '-'}</p>
+                                    <p><strong>Téléphone:</strong> ${data.driver_PhoneNumber || '-'}</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="card details-card">
+                                <div class="card-header bg-success text-white">Permis de conduire</div>
+                                <div class="card-body">
+                                    <p><strong>Numéro de permis:</strong> ${data.driver_LicenseNumber || '-'}</p>
+                                    <p><strong>Date d'expiration:</strong> ${data.driver_LicenseExpiryDate ? new Date(data.driver_LicenseExpiryDate).toLocaleDateString() : '-'}</p>
+                                    <p><strong>Années d'expérience:</strong> ${data.driver_ExperienceYears || '-'}</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-12">
+                            <div class="card details-card">
+                                <div class="card-header bg-warning text-dark">Statut et assignation</div>
+                                <div class="card-body">
+                                    <p><strong>Statut:</strong> 
+                                        ${data.driver_Status === 'Available' ? '✅ Disponible' : (data.driver_Status === 'On Route' ? '🔄 En route' : '🔴 Hors service')}
+                                    </p>
+                                    <p><strong>Bus assigné:</strong> ${data.driver_AssignedBusId ? '🚌 Bus ID: ' + data.driver_AssignedBusId : 'Non assigné'}</p>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                    $('#detailsContent').html(html);
+                    $('#detailsModal').modal('show');
+                }).fail(function() {
+                    $('#detailsContent').html('<div class="col-12 text-center text-danger">❌ Erreur lors du chargement des données.</div>');
+                    $('#detailsModal').modal('show');
+                });
+            });
 
-        $('#saveEditBtn').click(function() {
-        var formData = {
-        Driver_id: $('#edit_Driver_Id').val(),
-        Driver_FirstName: $('#edit_FirstName').val(),
-        Driver_LastName: $('#edit_LastName').val(),
-        Driver_Email: $('#edit_Email').val(),
-        Driver_PhoneNumber: $('#edit_PhoneNumber').val(),
-        Driver_LicenseNumber: $('#edit_LicenseNumber').val(),
-        Driver_LicenseExpiryDate: $('#edit_LicenseExpiryDate').val() || null,
-        Driver_ExperienceYears: $('#edit_ExperienceYears').val() === '' ? null : parseInt($('#edit_ExperienceYears').val()),
-        Driver_Status: $('#edit_Status').val(),
-        Driver_AssignedBusId: $('#edit_BusId').val() === '' ? null : parseInt($('#edit_BusId').val())
-        };
+            // Édition en ligne (modal)
+            $('.edit-btn').click(function() {
+                var id = $(this).data('id');
+                $.get('/Drivers/GetDriverData/' + id, function(data) {
+                    $('#edit_Driver_Id').val(data.driver_id);
+                    $('#edit_FirstName').val(data.driver_FirstName);
+                    $('#edit_LastName').val(data.driver_LastName);
+                    $('#edit_Email').val(data.driver_Email);
+                    $('#edit_PhoneNumber').val(data.driver_PhoneNumber);
+                    $('#edit_LicenseNumber').val(data.driver_LicenseNumber);
+                    var expiry = data.driver_LicenseExpiryDate ? data.driver_LicenseExpiryDate.split('T')[0] : '';
+                    $('#edit_LicenseExpiryDate').val(expiry);
+                    $('#edit_ExperienceYears').val(data.driver_ExperienceYears);
+                    $('#edit_Status').val(data.driver_Status);
+                    $('#editModal').modal('show');
+                }).fail(function() {
+                    alert('Erreur lors du chargement des données.');
+                });
+            });
 
-        $.ajax({
-        url: '/Drivers/UpdateDriver',
-        type: 'POST',
-        contentType: 'application/json',
-        data: JSON.stringify(formData),
-        success: function(response) {
-        if (response.success) {
-        alert(response.message);
-        location.reload();
-        } else {
-        alert('Erreur : ' + (response.message || 'Vérifiez les données'));
-        }
-        },
-        error: function() {
-        alert('Erreur lors de l’envoi.');
-        }
-        });
-        });
+            $('#saveEditBtn').click(function() {
+                var formData = {
+                    Driver_id: $('#edit_Driver_Id').val(),
+                    Driver_FirstName: $('#edit_FirstName').val(),
+                    Driver_LastName: $('#edit_LastName').val(),
+                    Driver_Email: $('#edit_Email').val(),
+                    Driver_PhoneNumber: $('#edit_PhoneNumber').val(),
+                    Driver_LicenseNumber: $('#edit_LicenseNumber').val(),
+                    Driver_LicenseExpiryDate: $('#edit_LicenseExpiryDate').val() || null,
+                    Driver_ExperienceYears: $('#edit_ExperienceYears').val() === '' ? null : parseInt($('#edit_ExperienceYears').val()),
+                    Driver_Status: $('#edit_Status').val()
+                };
+
+                $.ajax({
+                    url: '/Drivers/UpdateDriver',
+                    type: 'POST',
+                    contentType: 'application/json',
+                    data: JSON.stringify(formData),
+                    success: function(response) {
+                        if (response.success) {
+                            alert(response.message);
+                            location.reload();
+                        } else {
+                            alert('Erreur : ' + (response.message || 'Vérifiez les données'));
+                        }
+                    },
+                    error: function() {
+                        alert('Erreur lors de l’envoi.');
+                    }
+                });
+            });
         });
     </script>
 }

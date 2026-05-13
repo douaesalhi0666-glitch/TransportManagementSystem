@@ -45,6 +45,12 @@
         background-color: #dc3545;
         color: white;
     }
+    .details-card {
+        margin-bottom: 10px;
+    }
+    .details-card .card-header {
+        font-weight: bold;
+    }
 </style>
 
 <h1>🚍 Gestion des Bus</h1>
@@ -80,8 +86,6 @@
                 <th>Code</th>
                 <th>Plaque</th>
                 <th>Marque</th>
-                <th>Modèle</th>
-                <th>Année</th>
                 <th>Capacité</th>
                 <th>Chauffeur</th>
                 <th>Statut</th>
@@ -96,8 +100,6 @@
                     <td><strong>@item.Bus_Code</strong></td>
                     <td>@item.Bus_PlateNumber</td>
                     <td>@item.Bus_Brand</td>
-                    <td>@item.Bus_Model</td>
-                    <td>@item.Bus_Year</td>
                     <td>@item.Bus_Capacity</td>
                     <td>
                         @if (item.CurrentDriver != null)
@@ -124,6 +126,7 @@
                         }
                     </td>
                     <td>
+                        <button class="btn btn-sm btn-info details-btn" data-id="@item.Bus_Id" title="Voir détails">🔍 Détails</button>
                         <button class="btn btn-sm btn-edit edit-btn" data-id="@item.Bus_Id" title="Modifier">✏️ Modifier</button>
                         <form asp-action="Delete" asp-route-id="@item.Bus_Id" method="post" style="display:inline;">
                             <button type="submit" class="btn btn-sm btn-delete" onclick="return confirm('Êtes-vous sûr de vouloir supprimer ce bus ?');" title="Supprimer">🗑️ Supprimer</button>
@@ -221,6 +224,26 @@
     </div>
 </div>
 
+<!-- Modal Détails Bus -->
+<div class="modal fade" id="detailsModal" tabindex="-1" aria-labelledby="detailsModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header bg-info text-white">
+                <h5 class="modal-title" id="detailsModalLabel">📋 Détails du bus</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div id="detailsContent" class="row">
+                    <div class="col-12 text-center">Chargement...</div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fermer</button>
+            </div>
+        </div>
+    </div>
+</div>
+
 @section Scripts {
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
@@ -250,6 +273,47 @@
                 $('#searchInput').val('');
                 $('#statusFilter').val('');
                 filterTable();
+            });
+
+            // Détails button click
+            $('.details-btn').click(function() {
+                var id = $(this).data('id');
+                $.get('/Buses/GetBusData/' + id, function(data) {
+                    var html = `
+                        <div class="col-md-6">
+                            <div class="card details-card">
+                                <div class="card-header bg-primary text-white">Informations générales</div>
+                                <div class="card-body">
+                                    <p><strong>ID:</strong> ${data.bus_Id}</p>
+                                    <p><strong>Code:</strong> ${data.bus_Code}</p>
+                                    <p><strong>Plaque:</strong> ${data.bus_PlateNumber}</p>
+                                    <p><strong>Marque:</strong> ${data.bus_Brand || '-'}</p>
+                                    <p><strong>Modèle:</strong> ${data.bus_Model || '-'}</p>
+                                    <p><strong>Année:</strong> ${data.bus_Year || '-'}</p>
+                                    <p><strong>Capacité:</strong> ${data.bus_Capacity || '-'} places</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="card details-card">
+                                <div class="card-header bg-success text-white">Statut et localisation</div>
+                                <div class="card-body">
+                                    <p><strong>Statut:</strong> 
+                                        ${data.bus_Status === 'In Service' ? '✅ En service' : (data.bus_Status === 'Maintenance' ? '⚠️ Maintenance' : '❌ Hors service')}
+                                    </p>
+                                    <p><strong>Chauffeur:</strong> ${data.bus_CurrentDriverId || 'Non assigné'}</p>
+                                    <p><strong>Latitude:</strong> ${data.bus_CurrentLatitude || '-'}</p>
+                                    <p><strong>Longitude:</strong> ${data.bus_CurrentLongitude || '-'}</p>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                    $('#detailsContent').html(html);
+                    $('#detailsModal').modal('show');
+                }).fail(function() {
+                    $('#detailsContent').html('<div class="col-12 text-center text-danger">❌ Erreur lors du chargement des données.</div>');
+                    $('#detailsModal').modal('show');
+                });
             });
 
             $('.edit-btn').click(function() {

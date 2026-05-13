@@ -23,43 +23,16 @@ namespace TransportManagementSystem.Controllers
                 .Include(p => p.AssignedStop)
                 .ToListAsync();
 
-            // SAFE: Handle null values when getting trajectories
             ViewBag.Trajectories = await _context.Trajectories.ToListAsync() ?? new List<Trajectory>();
-
-            // SAFE: Handle null values when getting buses
             ViewBag.Buses = await _context.Buses.ToListAsync() ?? new List<Bus>();
-
-            // SAFE: Handle null values when getting pickup points
-            ViewBag.PickupPoints = await _context.TrajectoryStops
-                .OrderBy(s => s.TS_OrderIndex)
-                .ToListAsync() ?? new List<TrajectoryStop>();
+            ViewBag.PickupPoints = await _context.TrajectoryStops.OrderBy(s => s.TS_OrderIndex).ToListAsync() ?? new List<TrajectoryStop>();
 
             return View(personnel ?? new List<Personnel>());
-        }
-
-        // GET: Personnel/Details/5
-        public async Task<IActionResult> Details(long? id)
-        {
-            if (id == null) return NotFound();
-
-            var personnel = await _context.Personnel
-                .Include(p => p.AssignedTrajectory)
-                .Include(p => p.AssignedBus)
-                .Include(p => p.AssignedStop)
-                .FirstOrDefaultAsync(m => m.Personnel_Id == id);
-            if (personnel == null) return NotFound();
-
-            return View(personnel);
         }
 
         // GET: Personnel/Create
         public async Task<IActionResult> Create()
         {
-            ViewBag.Trajectories = await _context.Trajectories.ToListAsync();
-            ViewBag.Buses = await _context.Buses.ToListAsync();
-            ViewBag.PickupPoints = await _context.TrajectoryStops
-                .OrderBy(s => s.TS_OrderIndex)
-                .ToListAsync();
             return View();
         }
 
@@ -74,14 +47,15 @@ namespace TransportManagementSystem.Controllers
                 if (existing != null)
                 {
                     ModelState.AddModelError("Personnel_Id", "Cet ID existe déjà.");
-                    ViewBag.Trajectories = await _context.Trajectories.ToListAsync();
-                    ViewBag.Buses = await _context.Buses.ToListAsync();
-                    ViewBag.PickupPoints = await _context.TrajectoryStops.OrderBy(s => s.TS_OrderIndex).ToListAsync();
                     return View(personnel);
                 }
 
                 personnel.Personnel_CreatedAt = DateTime.Now;
                 personnel.Personnel_UpdatedAt = DateTime.Now;
+                personnel.IsAssigned = false;
+                personnel.AssignedStopId = null;
+                personnel.AssignedTrajectoryId = null;
+                personnel.AssignedBusId = null;
 
                 _context.Add(personnel);
                 await _context.SaveChangesAsync();
@@ -91,10 +65,92 @@ namespace TransportManagementSystem.Controllers
                 return RedirectToAction(nameof(Index));
             }
 
-            ViewBag.Trajectories = await _context.Trajectories.ToListAsync();
-            ViewBag.Buses = await _context.Buses.ToListAsync();
-            ViewBag.PickupPoints = await _context.TrajectoryStops.OrderBy(s => s.TS_OrderIndex).ToListAsync();
             return View(personnel);
+        }
+
+        // GET: Personnel/Edit/5
+        public async Task<IActionResult> Edit(long? id)
+        {
+            if (id == null) return NotFound();
+            var personnel = await _context.Personnel.FindAsync(id);
+            if (personnel == null) return NotFound();
+            return View(personnel);
+        }
+
+        // POST: Personnel/Edit/5
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> Edit(long id, Personnel personnel)
+        {
+            if (id != personnel.Personnel_Id) return NotFound();
+
+            if (ModelState.IsValid)
+            {
+                try
+                {
+                    var existingPersonnel = await _context.Personnel.AsNoTracking().FirstOrDefaultAsync(p => p.Personnel_Id == id);
+                    if (existingPersonnel == null) return NotFound();
+
+                    bool wasMotorized = existingPersonnel.IsMotorized;
+                    bool isNowMotorized = personnel.IsMotorized;
+
+                    personnel.Personnel_CreatedAt = existingPersonnel.Personnel_CreatedAt;
+                    personnel.Personnel_UpdatedAt = DateTime.Now;
+
+                    // Preserve assignment fields (they should not be changed here)
+                    personnel.AssignedStopId = existingPersonnel.AssignedStopId;
+                    personnel.AssignedTrajectoryId = existingPersonnel.AssignedTrajectoryId;
+                    personnel.AssignedBusId = existingPersonnel.AssignedBusId;
+                    personnel.IsAssigned = existingPersonnel.IsAssigned;
+
+                    // If motorized, remove from pickup point
+                    if (isNowMotorized && !wasMotorized)
+                    {
+                        personnel.AssignedStopId = null;
+                        personnel.IsAssigned = false;
+                        DashboardController.AddNotification("info", "Personnel motorisé",
+                            $"{personnel.Personnel_FirstName} {personnel.Personnel_LastName} est maintenant motorisé et a été retiré du point de ramassage.");
+                    }
+
+                    _context.Update(personnel);
+                    await _context.SaveChangesAsync();
+
+                    TempData["Success"] = "Personnel modifié avec succès.";
+                    return RedirectToAction(nameof(Index));
+                }
+                catch (DbUpdateConcurrencyException)
+                {
+                    if (!PersonnelExists(personnel.Personnel_Id)) return NotFound();
+                    else throw;
+                }
+            }
+            return View(personnel);
+        }
+
+        // GET: Personnel/Delete/5
+        public async Task<IActionResult> Delete(long? id)
+        {
+            if (id == null) return NotFound();
+            var personnel = await _context.Personnel.FindAsync(id);
+            if (personnel == null) return NotFound();
+            return View(personnel);
+        }
+
+        // POST: Personnel/Delete/5
+        [HttpPost, ActionName("Delete")]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> DeleteConfirmed(long id)
+        {
+            var personnel = await _context.Personnel.FindAsync(id);
+            if (personnel != null)
+            {
+                string personnelName = $"{personnel.Personnel_FirstName} {personnel.Personnel_LastName}";
+                _context.Personnel.Remove(personnel);
+                await _context.SaveChangesAsync();
+
+                DashboardController.AddNotification("delete", "Personnel supprimé", $"Le personnel {personnelName} a été supprimé.");
+            }
+            return RedirectToAction(nameof(Index));
         }
 
         // API: GET /Personnel/GetPersonnelData/{id}
@@ -102,14 +158,10 @@ namespace TransportManagementSystem.Controllers
         public async Task<IActionResult> GetPersonnelData(long id)
         {
             var personnel = await _context.Personnel
-                .Include(p => p.AssignedTrajectory)
-                .Include(p => p.AssignedBus)
-                .Include(p => p.AssignedStop)
                 .FirstOrDefaultAsync(p => p.Personnel_Id == id);
 
             if (personnel == null) return NotFound();
 
-            // SAFE: Return null for nullable values instead of throwing error
             return Ok(new
             {
                 personnel.Personnel_Id,
@@ -124,14 +176,14 @@ namespace TransportManagementSystem.Controllers
                 personnel.Personnel_Status,
                 personnel.Personnel_Address,
                 personnel.Personnel_City,
-                Personnel_Latitude = personnel.Personnel_Latitude ?? 0,
-                Personnel_Longitude = personnel.Personnel_Longitude ?? 0,
+                personnel.Personnel_Latitude,
+                personnel.Personnel_Longitude,
                 personnel.HomeAddress,
                 personnel.IsAssigned,
-                AssignedStopId = personnel.AssignedStopId,
-                AssignedTrajectoryId = personnel.AssignedTrajectoryId,
-                AssignedBusId = personnel.AssignedBusId,
-                IsMotorized = personnel.IsMotorized
+                personnel.AssignedStopId,
+                personnel.AssignedTrajectoryId,
+                personnel.AssignedBusId,
+                personnel.IsMotorized
             });
         }
 
@@ -146,13 +198,7 @@ namespace TransportManagementSystem.Controllers
             if (personnel == null)
                 return NotFound(new { success = false, message = "Personnel non trouvé" });
 
-            string oldStopName = null;
-            if (personnel.AssignedStopId != model.AssignedStopId)
-            {
-                var oldStop = await _context.TrajectoryStops.FindAsync(personnel.AssignedStopId);
-                oldStopName = oldStop?.TS_Name;
-            }
-
+            // Update all fields
             personnel.Personnel_FirstName = model.Personnel_FirstName;
             personnel.Personnel_LastName = model.Personnel_LastName;
             personnel.Personnel_Gender = model.Personnel_Gender;
@@ -174,60 +220,24 @@ namespace TransportManagementSystem.Controllers
             personnel.IsMotorized = model.IsMotorized;
             personnel.Personnel_UpdatedAt = DateTime.Now;
 
-            // Si assigné à un point de ramassage, marquer comme assigné
-            if (model.AssignedStopId.HasValue && !model.IsAssigned)
+            // If motorized, remove from pickup point
+            if (personnel.IsMotorized)
             {
-                personnel.IsAssigned = true;
+                personnel.AssignedStopId = null;
+                personnel.IsAssigned = false;
             }
 
-            _context.Update(personnel);
-            await _context.SaveChangesAsync();
-
-            if (oldStopName != null && model.AssignedStopId != null)
+            try
             {
-                var newStop = await _context.TrajectoryStops.FindAsync(model.AssignedStopId);
-                DashboardController.AddNotification("assignment", "Point de ramassage modifié",
-                    $"{personnel.Personnel_FirstName} {personnel.Personnel_LastName} a été réassigné de '{oldStopName}' à '{newStop?.TS_Name}'.");
-            }
-            else if (model.AssignedStopId != null)
-            {
-                var newStop = await _context.TrajectoryStops.FindAsync(model.AssignedStopId);
-                DashboardController.AddNotification("assignment", "Personnel assigné",
-                    $"{personnel.Personnel_FirstName} {personnel.Personnel_LastName} a été assigné au point de ramassage '{newStop?.TS_Name}'.");
-            }
-
-            return Ok(new { success = true, message = "Personnel mis à jour avec succès" });
-        }
-
-        // GET: Personnel/Delete/5
-        public async Task<IActionResult> Delete(long? id)
-        {
-            if (id == null) return NotFound();
-            var personnel = await _context.Personnel
-                .Include(p => p.AssignedTrajectory)
-                .Include(p => p.AssignedBus)
-                .Include(p => p.AssignedStop)
-                .FirstOrDefaultAsync(m => m.Personnel_Id == id);
-            if (personnel == null) return NotFound();
-            return View(personnel);
-        }
-
-        // POST: Personnel/Delete/5
-        [HttpPost, ActionName("Delete")]
-        [ValidateAntiForgeryToken]
-        public async Task<IActionResult> DeleteConfirmed(long id)
-        {
-            var personnel = await _context.Personnel.FindAsync(id);
-            if (personnel != null)
-            {
-                string personnelName = $"{personnel.Personnel_FirstName} {personnel.Personnel_LastName}";
-                _context.Personnel.Remove(personnel);
+                _context.Update(personnel);
                 await _context.SaveChangesAsync();
-
-                DashboardController.AddNotification("delete", "Personnel supprimé",
-                    $"Le personnel {personnelName} a été supprimé.");
+                return Ok(new { success = true, message = "Personnel mis à jour avec succès" });
             }
-            return RedirectToAction(nameof(Index));
+            catch (DbUpdateException ex)
+            {
+                var innerMessage = ex.InnerException?.Message ?? ex.Message;
+                return StatusCode(500, new { success = false, message = innerMessage });
+            }
         }
 
         private bool PersonnelExists(long id) => _context.Personnel.Any(e => e.Personnel_Id == id);

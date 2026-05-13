@@ -10,8 +10,6 @@
 <form asp-action="Edit">
     <div asp-validation-summary="ModelOnly" class="text-danger"></div>
 
-    <!-- Display ID (Read-only) -->
-    <!-- ID Field - Read-only -->
     <div class="form-group mb-3">
         <label>ID Personnel</label>
         <input class="form-control" value="@Model.Personnel_Id" readonly disabled />
@@ -111,13 +109,47 @@
     </div>
 
     <div class="form-group">
-        <label>Adresse</label>
+        <label>Adresse domicile</label>
+        <input asp-for="HomeAddress" class="form-control" />
+        <span asp-validation-for="HomeAddress" class="text-danger"></span>
+    </div>
+
+    <div class="form-group">
+        <label>Adresse (rue)</label>
         <input asp-for="Personnel_Address" class="form-control" />
         <span asp-validation-for="Personnel_Address" class="text-danger"></span>
     </div>
 
+    <div class="row">
+        <div class="col-md-6">
+            <div class="form-group">
+                <label>Latitude</label>
+                <input asp-for="Personnel_Latitude" type="number" step="any" class="form-control" />
+                <span asp-validation-for="Personnel_Latitude" class="text-danger"></span>
+            </div>
+        </div>
+        <div class="col-md-6">
+            <div class="form-group">
+                <label>Longitude</label>
+                <input asp-for="Personnel_Longitude" type="number" step="any" class="form-control" />
+                <span asp-validation-for="Personnel_Longitude" class="text-danger"></span>
+            </div>
+        </div>
+    </div>
+
+    <div class="form-group form-check">
+        <input class="form-check-input" asp-for="IsMotorized" />
+        <label class="form-check-label" asp-for="IsMotorized">Motorisé (véhicule personnel)</label>
+    </div>
+
     <div class="form-group mt-3">
         <input type="submit" value="Enregistrer" class="btn btn-primary" />
-        <a href="https://localhost:7137/Personnel/Index" class="btn btn-secondary">Retour</a>
+        <a href="/Personnel/Index" class="btn btn-secondary">Retour</a>
     </div>
 </form>
+
+@section Scripts {
+    @{
+        await Html.RenderPartialAsync("_ValidationScriptsPartial");
+    }
+}

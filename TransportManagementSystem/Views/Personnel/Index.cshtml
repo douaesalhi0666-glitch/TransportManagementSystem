@@ -73,17 +73,6 @@
     .table-responsive {
         overflow-x: auto;
     }
-
-    .btn-icon {
-        padding: 4px 8px;
-        font-size: 14px;
-    }
-
-    .email-cell, .address-cell {
-        max-width: 200px;
-        overflow: hidden;
-        text-overflow: ellipsis;
-    }
 </style>
 
 <h1>📋 Gestion du Personnel</h1>
@@ -124,12 +113,6 @@
                 <th>ID</th>
                 <th>Prénom</th>
                 <th>Nom</th>
-                <th>Genre</th>
-                <th>Email</th>
-                <th>Téléphone</th>
-                <th>Code</th>
-                <th>Département</th>
-                <th>Adresse</th>
                 <th>📍 Point de ramassage</th>
                 <th>📌 Trajet</th>
                 <th>🚌 Bus</th>
@@ -149,25 +132,6 @@
                     <td>@item.Personnel_Id</td>
                     <td>@item.Personnel_FirstName</td>
                     <td>@item.Personnel_LastName</td>
-                    <td>
-                        @if (item.Personnel_Gender == "Male")
-                        {
-                            <span>👨 Homme</span>
-                        }
-                        else if (item.Personnel_Gender == "Female")
-                        {
-                            <span>👩 Femme</span>
-                        }
-                        else
-                        {
-                            @item.Personnel_Gender
-                        }
-                    </td>
-                    <td class="email-cell" title="@item.Personnel_Email">@(item.Personnel_Email ?? "-")</td>
-                    <td>@(item.Personnel_PhoneNumber ?? "-")</td>
-                    <td>@item.Personnel_EmployeeCode</td>
-                    <td>@(item.Personnel_Department ?? "-")</td>
-                    <td class="address-cell" title="@item.HomeAddress">@(item.HomeAddress ?? "-")</td>
                     <td>
                         @if (assignedStop != null)
                         {
@@ -219,8 +183,9 @@
                         }
                     </td>
                     <td class="action-buttons">
-                        <button class="btn btn-sm btn-warning edit-btn" data-id="@item.Personnel_Id" title="Modifier">✏️</button>
-                        <a href="/Personnel/Delete/@item.Personnel_Id" class="btn btn-sm btn-danger" title="Supprimer">🗑️</a>
+                        <button class="btn btn-sm btn-info details-btn" data-id="@item.Personnel_Id" title="Voir détails">🔍 Détails</button>
+                        <button class="btn btn-sm btn-warning edit-btn" data-id="@item.Personnel_Id" title="Modifier">✏️ Modifier</button>
+                        <a href="/Personnel/Delete/@item.Personnel_Id" class="btn btn-sm btn-danger" title="Supprimer">🗑️ Supprimer</a>
                     </td>
                 </tr>
             }
@@ -232,9 +197,9 @@
     <a href="/Dashboard/AdminDashboard" class="btn btn-secondary">← Retour au Dashboard</a>
 </div>
 
-<!-- Modal d'édition -->
+<!-- Modal d'édition (SANS assignations) -->
 <div class="modal fade" id="editModal" tabindex="-1" aria-labelledby="editModalLabel" aria-hidden="true">
-    <div class="modal-dialog modal-xl">
+    <div class="modal-dialog modal-lg">
         <div class="modal-content">
             <div class="modal-header bg-primary text-white">
                 <h5 class="modal-title" id="editModalLabel">✏️ Modifier le personnel</h5>
@@ -325,55 +290,9 @@
                         </div>
                     </div>
                     
-                    <div class="row">
-                        <div class="col-md-4 mb-2">
-                            <label class="fw-bold">📍 Point de ramassage</label>
-                            <select id="edit_StopId" name="AssignedStopId" class="form-select">
-                                <option value="">-- Aucun --</option>
-                                @if (ViewBag.PickupPoints != null)
-                                {
-                                    foreach (var stop in ViewBag.PickupPoints)
-                                    {
-                                        <option value="@stop.TS_Id">📍 @stop.TS_Name</option>
-                                    }
-                                }
-                            </select>
-                        </div>
-                        <div class="col-md-4 mb-2">
-                            <label class="fw-bold">📌 Trajet assigné</label>
-                            <select id="edit_TrajectoryId" name="AssignedTrajectoryId" class="form-select">
-                                <option value="">-- Aucun --</option>
-                                @foreach (var traj in ViewBag.Trajectories)
-                                {
-                                    <option value="@traj.Trajectory_Id">📌 @traj.Trajectory_Name</option>
-                                }
-                            </select>
-                        </div>
-                        <div class="col-md-4 mb-2">
-                            <label class="fw-bold">🚌 Bus assigné</label>
-                            <select id="edit_BusId" name="AssignedBusId" class="form-select">
-                                <option value="">-- Aucun --</option>
-                                @foreach (var bus in ViewBag.Buses)
-                                {
-                                    <option value="@bus.Bus_Id">🚌 @bus.Bus_Code - @bus.Bus_PlateNumber</option>
-                                }
-                            </select>
-                        </div>
-                    </div>
-                    
-                    <div class="row">
-                        <div class="col-md-6">
-                            <div class="form-check mb-2">
-                                <input type="checkbox" id="edit_IsAssigned" name="IsAssigned" class="form-check-input" value="true" />
-                                <label class="form-check-label fw-bold">✅ Assigné</label>
-                            </div>
-                        </div>
-                        <div class="col-md-6">
-                            <div class="form-check mb-2">
-                                <input type="checkbox" id="edit_IsMotorized" name="IsMotorized" class="form-check-input" value="true" />
-                                <label class="form-check-label fw-bold">🛵 Motorisé (véhicule personnel)</label>
-                            </div>
-                        </div>
+                    <div class="form-check mb-2">
+                        <input type="checkbox" id="edit_IsMotorized" name="IsMotorized" class="form-check-input" value="true" />
+                        <label class="form-check-label fw-bold">🛵 Motorisé (véhicule personnel)</label>
                     </div>
                 </form>
             </div>
@@ -385,117 +304,185 @@
     </div>
 </div>
 
+<!-- Modal Détails Personnel -->
+<div class="modal fade" id="detailsModal" tabindex="-1" aria-labelledby="detailsModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header bg-info text-white">
+                <h5 class="modal-title" id="detailsModalLabel">📋 Détails du personnel</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div id="detailsContent" class="row">
+                    <div class="col-12 text-center">Chargement...</div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fermer</button>
+            </div>
+        </div>
+    </div>
+</div>
+
 @section Scripts {
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script>
         $(document).ready(function() {
-        function filterTable() {
-        var searchText = $('#searchInput').val().toLowerCase();
-        var status = $('#statusFilter').val();
-        var assigned = $('#assignedFilter').val();
+            function filterTable() {
+                var searchText = $('#searchInput').val().toLowerCase();
+                var status = $('#statusFilter').val();
+                var assigned = $('#assignedFilter').val();
 
-        $('#personnelTable tbody tr').each(function() {
-        var id = $(this).find('td:first').text();
-        var firstName = $(this).find('td:nth-child(2)').text();
-        var lastName = $(this).find('td:nth-child(3)').text();
-        var rowStatus = $(this).data('status');
-        var rowAssigned = $(this).data('assigned');
-        var matchSearch = (id.toLowerCase().indexOf(searchText) !== -1) ||
-        (firstName.toLowerCase().indexOf(searchText) !== -1) ||
-        (lastName.toLowerCase().indexOf(searchText) !== -1);
-        var matchStatus = (status === '' || rowStatus === status);
-        var matchAssigned = (assigned === '' || rowAssigned === assigned);
-        if (matchSearch && matchStatus && matchAssigned) {
-        $(this).show();
-        } else {
-        $(this).hide();
-        }
-        });
-        }
+                $('#personnelTable tbody tr').each(function() {
+                    var id = $(this).find('td:first').text();
+                    var firstName = $(this).find('td:nth-child(2)').text();
+                    var lastName = $(this).find('td:nth-child(3)').text();
+                    var rowStatus = $(this).data('status');
+                    var rowAssigned = $(this).data('assigned');
+                    var matchSearch = (id.toLowerCase().indexOf(searchText) !== -1) ||
+                        (firstName.toLowerCase().indexOf(searchText) !== -1) ||
+                        (lastName.toLowerCase().indexOf(searchText) !== -1);
+                    var matchStatus = (status === '' || rowStatus === status);
+                    var matchAssigned = (assigned === '' || rowAssigned === assigned);
+                    if (matchSearch && matchStatus && matchAssigned) {
+                        $(this).show();
+                    } else {
+                        $(this).hide();
+                    }
+                });
+            }
 
-        $('#searchInput').on('keyup', filterTable);
-        $('#statusFilter').on('change', filterTable);
-        $('#assignedFilter').on('change', filterTable);
-        $('#resetFilter').click(function() {
-        $('#searchInput').val('');
-        $('#statusFilter').val('');
-        $('#assignedFilter').val('');
-        filterTable();
-        });
+            $('#searchInput').on('keyup', filterTable);
+            $('#statusFilter').on('change', filterTable);
+            $('#assignedFilter').on('change', filterTable);
+            $('#resetFilter').click(function() {
+                $('#searchInput').val('');
+                $('#statusFilter').val('');
+                $('#assignedFilter').val('');
+                filterTable();
+            });
 
-        $('.edit-btn').click(function() {
-        var id = $(this).data('id');
-        $.get('/Personnel/GetPersonnelData/' + id, function(data) {
-        $('#edit_Personnel_Id').val(data.personnel_Id);
-        $('#edit_FirstName').val(data.personnel_FirstName);
-        $('#edit_LastName').val(data.personnel_LastName);
-        $('#edit_Gender').val(data.personnel_Gender);
-        var dob = data.personnel_DateOfBirth ? data.personnel_DateOfBirth.split('T')[0] : '';
-        $('#edit_DateOfBirth').val(dob);
-        $('#edit_PhoneNumber').val(data.personnel_PhoneNumber);
-        $('#edit_Email').val(data.personnel_Email);
-        $('#edit_EmployeeCode').val(data.personnel_EmployeeCode);
-        $('#edit_Department').val(data.personnel_Department);
-        $('#edit_Status').val(data.personnel_Status);
-        $('#edit_Address').val(data.personnel_Address);
-        $('#edit_City').val(data.personnel_City);
-        $('#edit_Latitude').val(data.personnel_Latitude);
-        $('#edit_Longitude').val(data.personnel_Longitude);
-        $('#edit_HomeAddress').val(data.homeAddress);
-        $('#edit_StopId').val(data.assignedStopId);
-        $('#edit_TrajectoryId').val(data.assignedTrajectoryId);
-        $('#edit_BusId').val(data.assignedBusId);
-        $('#edit_IsAssigned').prop('checked', data.isAssigned === true);
-        $('#edit_IsMotorized').prop('checked', data.isMotorized === true);
-        $('#editModal').modal('show');
-        }).fail(function() {
-        alert('❌ Erreur lors du chargement des données.');
-        });
-        });
+            // Details button click
+            $('.details-btn').click(function() {
+                var id = $(this).data('id');
+                $.get('/Personnel/GetPersonnelData/' + id, function(data) {
+                    var html = `
+                        <div class="col-md-6">
+                            <div class="card details-card">
+                                <div class="card-header bg-primary text-white">Informations personnelles</div>
+                                <div class="card-body">
+                                    <p><strong>ID:</strong> ${data.personnel_Id}</p>
+                                    <p><strong>Prénom:</strong> ${data.personnel_FirstName}</p>
+                                    <p><strong>Nom:</strong> ${data.personnel_LastName}</p>
+                                    <p><strong>Genre:</strong> ${data.personnel_Gender === 'Male' ? '👨 Homme' : (data.personnel_Gender === 'Female' ? '👩 Femme' : data.personnel_Gender)}</p>
+                                    <p><strong>Date de naissance:</strong> ${data.personnel_DateOfBirth ? new Date(data.personnel_DateOfBirth).toLocaleDateString() : '-'}</p>
+                                    <p><strong>Email:</strong> ${data.personnel_Email || '-'}</p>
+                                    <p><strong>Téléphone:</strong> ${data.personnel_PhoneNumber || '-'}</p>
+                                    <p><strong>Code employé:</strong> ${data.personnel_EmployeeCode}</p>
+                                    <p><strong>Département:</strong> ${data.personnel_Department || '-'}</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="card details-card">
+                                <div class="card-header bg-success text-white">Adresse et localisation</div>
+                                <div class="card-body">
+                                    <p><strong>Adresse domicile:</strong> ${data.homeAddress || '-'}</p>
+                                    <p><strong>Adresse (rue):</strong> ${data.personnel_Address || '-'}</p>
+                                    <p><strong>Ville:</strong> ${data.personnel_City || '-'}</p>
+                                    <p><strong>Latitude:</strong> ${data.personnel_Latitude || '-'}</p>
+                                    <p><strong>Longitude:</strong> ${data.personnel_Longitude || '-'}</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-12">
+                            <div class="card details-card">
+                                <div class="card-header bg-warning text-dark">Assignations et statut</div>
+                                <div class="card-body">
+                                    <p><strong>Statut:</strong> ${data.personnel_Status === 'Active' ? '✅ Actif' : '❌ Inactif'}</p>
+                                    <p><strong>Motorisé:</strong> ${data.isMotorized ? '🛵 Oui' : '🚶 Non'}</p>
+                                    <p><strong>Assigné:</strong> ${data.isAssigned ? '✅ Oui' : '❌ Non'}</p>
+                                    <p><strong>📍 Point de ramassage:</strong> ${data.assignedStopId || 'Non assigné'}</p>
+                                    <p><strong>📌 Trajet assigné:</strong> ${data.assignedTrajectoryId || 'Non assigné'}</p>
+                                    <p><strong>🚌 Bus assigné:</strong> ${data.assignedBusId || 'Non assigné'}</p>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                    $('#detailsContent').html(html);
+                    $('#detailsModal').modal('show');
+                }).fail(function() {
+                    $('#detailsContent').html('<div class="col-12 text-center text-danger">❌ Erreur lors du chargement des données.</div>');
+                    $('#detailsModal').modal('show');
+                });
+            });
 
-        $('#saveEditBtn').click(function() {
-        var formData = {
-        Personnel_Id: $('#edit_Personnel_Id').val(),
-        Personnel_FirstName: $('#edit_FirstName').val(),
-        Personnel_LastName: $('#edit_LastName').val(),
-        Personnel_Gender: $('#edit_Gender').val(),
-        Personnel_DateOfBirth: $('#edit_DateOfBirth').val() || null,
-        Personnel_PhoneNumber: $('#edit_PhoneNumber').val(),
-        Personnel_Email: $('#edit_Email').val(),
-        Personnel_EmployeeCode: $('#edit_EmployeeCode').val(),
-        Personnel_Department: $('#edit_Department').val(),
-        Personnel_Status: $('#edit_Status').val(),
-        Personnel_Address: $('#edit_Address').val(),
-        Personnel_City: $('#edit_City').val(),
-        Personnel_Latitude: $('#edit_Latitude').val() === '' ? null : parseFloat($('#edit_Latitude').val()),
-        Personnel_Longitude: $('#edit_Longitude').val() === '' ? null : parseFloat($('#edit_Longitude').val()),
-        HomeAddress: $('#edit_HomeAddress').val(),
-        AssignedStopId: $('#edit_StopId').val() === '' ? null : parseInt($('#edit_StopId').val()),
-        AssignedTrajectoryId: $('#edit_TrajectoryId').val() === '' ? null : parseInt($('#edit_TrajectoryId').val()),
-        AssignedBusId: $('#edit_BusId').val() === '' ? null : parseInt($('#edit_BusId').val()),
-        IsAssigned: $('#edit_IsAssigned').is(':checked'),
-        IsMotorized: $('#edit_IsMotorized').is(':checked')
-        };
+            // Edit button click
+            $('.edit-btn').click(function() {
+                var id = $(this).data('id');
+                $.get('/Personnel/GetPersonnelData/' + id, function(data) {
+                    $('#edit_Personnel_Id').val(data.personnel_Id);
+                    $('#edit_FirstName').val(data.personnel_FirstName);
+                    $('#edit_LastName').val(data.personnel_LastName);
+                    $('#edit_Gender').val(data.personnel_Gender);
+                    var dob = data.personnel_DateOfBirth ? data.personnel_DateOfBirth.split('T')[0] : '';
+                    $('#edit_DateOfBirth').val(dob);
+                    $('#edit_PhoneNumber').val(data.personnel_PhoneNumber);
+                    $('#edit_Email').val(data.personnel_Email);
+                    $('#edit_EmployeeCode').val(data.personnel_EmployeeCode);
+                    $('#edit_Department').val(data.personnel_Department);
+                    $('#edit_Status').val(data.personnel_Status);
+                    $('#edit_Address').val(data.personnel_Address);
+                    $('#edit_City').val(data.personnel_City);
+                    $('#edit_Latitude').val(data.personnel_Latitude);
+                    $('#edit_Longitude').val(data.personnel_Longitude);
+                    $('#edit_HomeAddress').val(data.homeAddress);
+                    $('#edit_IsMotorized').prop('checked', data.isMotorized === true);
+                    $('#editModal').modal('show');
+                }).fail(function() {
+                    alert('❌ Erreur lors du chargement des données.');
+                });
+            });
 
-        $.ajax({
-        url: '/Personnel/UpdatePersonnel',
-        type: 'POST',
-        contentType: 'application/json',
-        data: JSON.stringify(formData),
-        success: function(response) {
-        if (response.success) {
-        alert('✅ ' + response.message);
-        location.reload();
-        } else {
-        alert('❌ Erreur : ' + (response.message || 'Vérifiez les données'));
-        }
-        },
-        error: function() {
-        alert('❌ Erreur lors de l\'envoi.');
-        }
-        });
-        });
+            $('#saveEditBtn').click(function() {
+                var formData = {
+                    Personnel_Id: $('#edit_Personnel_Id').val(),
+                    Personnel_FirstName: $('#edit_FirstName').val(),
+                    Personnel_LastName: $('#edit_LastName').val(),
+                    Personnel_Gender: $('#edit_Gender').val(),
+                    Personnel_DateOfBirth: $('#edit_DateOfBirth').val() || null,
+                    Personnel_PhoneNumber: $('#edit_PhoneNumber').val(),
+                    Personnel_Email: $('#edit_Email').val(),
+                    Personnel_EmployeeCode: $('#edit_EmployeeCode').val(),
+                    Personnel_Department: $('#edit_Department').val(),
+                    Personnel_Status: $('#edit_Status').val(),
+                    Personnel_Address: $('#edit_Address').val(),
+                    Personnel_City: $('#edit_City').val(),
+                    Personnel_Latitude: $('#edit_Latitude').val() === '' ? null : parseFloat($('#edit_Latitude').val()),
+                    Personnel_Longitude: $('#edit_Longitude').val() === '' ? null : parseFloat($('#edit_Longitude').val()),
+                    HomeAddress: $('#edit_HomeAddress').val(),
+                    IsMotorized: $('#edit_IsMotorized').is(':checked')
+                };
+
+                $.ajax({
+                    url: '/Personnel/UpdatePersonnel',
+                    type: 'POST',
+                    contentType: 'application/json',
+                    data: JSON.stringify(formData),
+                    success: function(response) {
+                        if (response.success) {
+                            alert('✅ ' + response.message);
+                            location.reload();
+                        } else {
+                            alert('❌ Erreur : ' + (response.message || 'Vérifiez les données'));
+                        }
+                    },
+                    error: function() {
+                        alert('❌ Erreur lors de l\'envoi.');
+                    }
+                });
+            });
         });
     </script>
 }
