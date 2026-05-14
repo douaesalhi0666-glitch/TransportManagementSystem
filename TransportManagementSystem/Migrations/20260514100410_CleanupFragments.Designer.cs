@@ -12,8 +12,8 @@ using TransportManagementSystem.Data;
 namespace TransportManagementSystem.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    [Migration("20260514092900_AddMotorizationAndTrajectory")]
-    partial class AddMotorizationAndTrajectory
+    [Migration("20260514100410_CleanupFragments")]
+    partial class CleanupFragments
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
