@@ -48,8 +48,15 @@ namespace TransportManagementSystem.Models
 
         public DateTime? Bus_UpdatedAt { get; set; }
 
+        // Nouvelle propriété pour assigner le bus à une trajectoire
+        public int? Bus_CurrentTrajectoryId { get; set; }
+
         [ForeignKey("Bus_CurrentDriverId")]
         public virtual Driver? CurrentDriver { get; set; }
+
+        // Navigation vers la trajectoire assignée
+        [ForeignKey("Bus_CurrentTrajectoryId")]
+        public virtual Trajectory? CurrentTrajectory { get; set; }
 
         public virtual ICollection<Personnel>? AssignedPersonnel { get; set; }
     }

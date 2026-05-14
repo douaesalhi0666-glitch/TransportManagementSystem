@@ -965,6 +965,42 @@ namespace TransportManagementSystem.Controllers
             }
         }
 
+        // ================================================
+        // ASSIGNATION AUTOMATIQUE DES BUS AUX TRAJETS
+        // ================================================
+        [HttpPost]
+        public async Task<IActionResult> AutoAssignBusesToTrajectories()
+        {
+            try
+            {
+                var availableBuses = await _context.Buses
+                    .Where(b => b.Bus_Status == "In Service" && b.Bus_CurrentTrajectoryId == null)
+                    .ToListAsync();
+
+                var trajectoriesWithoutBus = await _context.Trajectories
+                    .Where(t => t.Trajectory_Status == "Active" && !_context.Buses.Any(b => b.Bus_CurrentTrajectoryId == t.Trajectory_Id))
+                    .OrderBy(t => t.Trajectory_Id)
+                    .ToListAsync();
+
+                if (!availableBuses.Any() || !trajectoriesWithoutBus.Any())
+                    return Ok(new { success = false, message = "Aucun bus disponible ou aucune trajectoire sans bus." });
+
+                int assignedCount = 0;
+                for (int i = 0; i < Math.Min(availableBuses.Count, trajectoriesWithoutBus.Count); i++)
+                {
+                    availableBuses[i].Bus_CurrentTrajectoryId = trajectoriesWithoutBus[i].Trajectory_Id;
+                    assignedCount++;
+                }
+
+                await _context.SaveChangesAsync();
+                return Ok(new { success = true, message = $"{assignedCount} bus assignés aux trajectoires." });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { success = false, message = ex.Message });
+            }
+        }
+
         private double CalculateDistance(double lat1, double lon1, double lat2, double lon2)
         {
             const double R = 6371;

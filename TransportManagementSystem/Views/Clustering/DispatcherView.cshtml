@@ -33,6 +33,11 @@
                     </button>
                 </div>
                 <small class="text-muted">Crée des trajets optimisés basés sur les points et la capacité des bus</small>
+                <hr />
+                <button id="autoAssignBusesBtn" class="btn btn-info w-100 mt-2">
+                    🚌 Assigner automatiquement les bus aux trajets
+                </button>
+                <small class="text-muted">Assigne les bus en service aux trajectoires actives sans bus</small>
             </div>
         </div>
     </div>
@@ -464,10 +469,29 @@
             }
         };
 
+        // Assignation automatique des bus aux trajets
+        window.autoAssignBuses = async () => {
+            showNotification('🔄 Assignation des bus en cours...');
+            try {
+                const res = await fetch('/Clustering/AutoAssignBusesToTrajectories', { method: 'POST' });
+                const data = await res.json();
+                if (data.success) {
+                    showNotification(`✅ ${data.message}`);
+                    // Recharger la carte pour mettre à jour l'affichage si besoin
+                    setTimeout(() => location.reload(), 1500);
+                } else {
+                    showNotification('❌ ' + data.message, true);
+                }
+            } catch (err) {
+                showNotification('Erreur réseau', true);
+            }
+        };
+
         // Attacher les événements
         document.getElementById('autoAssignAllBtn').onclick = autoAssignAll;
         document.getElementById('generateRoutesBtn').onclick = generateRoutes;
         document.getElementById('aiGenTraj').onclick = generateSmartTrajectories;
+        document.getElementById('autoAssignBusesBtn').onclick = autoAssignBuses;
         document.getElementById('confirmAssignBtn').onclick = confirmAssign;
         document.getElementById('autoAssignToStopBtn').onclick = autoAssignToStop;
         document.getElementById('saveStopChanges').onclick = saveStopChanges;
