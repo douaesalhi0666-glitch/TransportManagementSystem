@@ -146,12 +146,14 @@ namespace TransportManagementSystem.Controllers
             return View(assignments);
         }
 
+        // ========== BUS OCCUPANCY CORRIGÉE ==========
         public async Task<IActionResult> BusOccupancy()
         {
+            // Exclure les bus dont la trajectoire est NULL ou == 1
             var buses = await _context.Buses
                 .Include(b => b.CurrentDriver)
-                .Include(b => b.CurrentTrajectory)  // ← Ajout pour récupérer la trajectoire
-                .Where(b => b.Bus_CurrentTrajectoryId != null)
+                .Include(b => b.CurrentTrajectory)
+                .Where(b => b.Bus_CurrentTrajectoryId != null && b.Bus_CurrentTrajectoryId != 1)
                 .ToListAsync();
 
             var busOccupancy = new List<BusOccupancyViewModel>();
@@ -176,6 +178,7 @@ namespace TransportManagementSystem.Controllers
             return View();
         }
 
+        // ========== ASSIGNER PERSONNEL AU BUS ==========
         [HttpPost]
         public async Task<IActionResult> AssignPersonnelToBus(long busId)
         {
@@ -214,17 +217,29 @@ namespace TransportManagementSystem.Controllers
             return RedirectToAction("BusOccupancy");
         }
 
+        // ========== DÉSASSIGNER PERSONNEL D'UN BUS (CORRIGÉE) ==========
         [HttpPost]
         public async Task<IActionResult> RemovePersonnelFromBus(long personnelId, long busId)
         {
             var personnel = await _context.Personnel.FindAsync(personnelId);
-            if (personnel != null && personnel.AssignedBusId == busId)
+            if (personnel == null)
+            {
+                TempData["Error"] = "Personnel non trouvé.";
+                return RedirectToAction("BusOccupancy");
+            }
+
+            if (personnel.AssignedBusId == busId)
             {
                 personnel.AssignedBusId = null;
-                personnel.IsAssigned = false;
+                personnel.IsAssigned = false;  // Important : le personnel n'est plus assigné à ce bus
                 await _context.SaveChangesAsync();
-                TempData["Success"] = "Personnel retiré du bus avec succès.";
+                TempData["Success"] = $"Personnel {personnel.Personnel_FirstName} {personnel.Personnel_LastName} retiré du bus.";
             }
+            else
+            {
+                TempData["Error"] = "Ce personnel n'est pas assigné à ce bus.";
+            }
+
             return RedirectToAction("BusOccupancy");
         }
 

@@ -13,6 +13,13 @@
     </div>
 }
 
+@if (TempData["Error"] != null)
+{
+    <div class="alert alert-danger">
+        ❌ @TempData["Error"]
+    </div>
+}
+
 @if (ViewBag.BusOccupancy != null)
 {
     foreach (var item in ViewBag.BusOccupancy)
