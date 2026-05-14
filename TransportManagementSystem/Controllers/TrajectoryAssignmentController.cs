@@ -126,7 +126,6 @@ namespace TransportManagementSystem.Controllers
             if (personnel != null)
             {
                 personnel.AssignedTrajectoryId = null;
-                // personnel.AssignedFragmentId = null; // SUPPRIMÉ - plus utilisé
                 personnel.AssignedBusId = null;
                 personnel.AssignedStopId = null;
                 personnel.IsAssigned = false;
@@ -140,7 +139,6 @@ namespace TransportManagementSystem.Controllers
         {
             var assignments = await _context.Personnel
                 .Include(p => p.AssignedTrajectory)
-                // .Include(p => p.AssignedFragment) // SUPPRIMÉ
                 .Include(p => p.AssignedBus)
                 .Include(p => p.AssignedStop)
                 .Where(p => p.IsAssigned == true)
@@ -152,6 +150,8 @@ namespace TransportManagementSystem.Controllers
         {
             var buses = await _context.Buses
                 .Include(b => b.CurrentDriver)
+                .Include(b => b.CurrentTrajectory)  // ← Ajout pour récupérer la trajectoire
+                .Where(b => b.Bus_CurrentTrajectoryId != null)
                 .ToListAsync();
 
             var busOccupancy = new List<BusOccupancyViewModel>();
@@ -159,7 +159,8 @@ namespace TransportManagementSystem.Controllers
             foreach (var bus in buses)
             {
                 var personnel = await _context.Personnel
-                    .Where(p => p.AssignedBusId == bus.Bus_Id && p.IsAssigned == true)
+                    .Where(p => p.AssignedTrajectoryId == bus.Bus_CurrentTrajectoryId
+                                && p.IsAssigned == true)
                     .ToListAsync();
 
                 busOccupancy.Add(new BusOccupancyViewModel

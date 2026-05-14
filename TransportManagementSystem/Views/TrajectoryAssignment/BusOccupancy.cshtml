@@ -15,9 +15,12 @@
 
 @if (ViewBag.BusOccupancy != null)
 {
-    @foreach (var item in ViewBag.BusOccupancy)
+    foreach (var item in ViewBag.BusOccupancy)
     {
-        var percentage = item.Occupancy * 100 / item.Capacity;
+        if (item.Bus == null) continue;
+
+        var capacity = item.Capacity > 0 ? item.Capacity : 1;
+        var percentage = (item.Occupancy * 100) / capacity;
         <div class="card mb-4">
             <div class="card-header bg-primary text-white">
                 <h4>🚌 Bus @item.Bus.Bus_Code - @item.Bus.Bus_PlateNumber</h4>
@@ -26,8 +29,9 @@
                 <div class="row">
                     <div class="col-md-6">
                         <p><strong>Chauffeur:</strong> @(item.Bus.CurrentDriver?.Driver_FirstName ?? "Non assigné") @(item.Bus.CurrentDriver?.Driver_LastName ?? "")</p>
-                        <p><strong>Capacité:</strong> @item.Capacity places</p>
-                        <p><strong>Occupation actuelle:</strong> @item.Occupancy / @item.Capacity</p>
+                        <p><strong>Trajectoire:</strong> @(item.Bus.CurrentTrajectory?.Trajectory_Name ?? "Non définie")</p>
+                        <p><strong>Capacité:</strong> @capacity places</p>
+                        <p><strong>Occupation actuelle:</strong> @item.Occupancy / @capacity</p>
                         <div class="progress mb-3">
                             <div class="progress-bar @(percentage > 90 ? "bg-danger" : percentage > 70 ? "bg-warning" : "bg-success")" role="progressbar" style="width: @percentage%">
                                 @percentage%
@@ -44,7 +48,7 @@
                 <div class="collapse mt-3" id="collapse-@item.Bus.Bus_Id">
                     <div class="card card-body">
                         <h5>👥 Personnels assignés à ce bus</h5>
-                        @if (item.Personnel.Count > 0)
+                        @if (item.Personnel != null && item.Personnel.Count > 0)
                         {
                             <table class="table table-striped">
                                 <thead>
@@ -52,7 +56,6 @@
                                         <th>ID</th>
                                         <th>Nom</th>
                                         <th>Prénom</th>
-                                        <th>Fragment</th>
                                         <th>Action</th>
                                     </tr>
                                 </thead>
