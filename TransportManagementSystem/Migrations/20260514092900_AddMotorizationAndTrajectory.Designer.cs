@@ -12,8 +12,8 @@ using TransportManagementSystem.Data;
 namespace TransportManagementSystem.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    [Migration("20260514081056_AddBusCurrentTrajectoryId")]
-    partial class AddBusCurrentTrajectoryId
+    [Migration("20260514092900_AddMotorizationAndTrajectory")]
+    partial class AddMotorizationAndTrajectory
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)

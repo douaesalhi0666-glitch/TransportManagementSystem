@@ -6,7 +6,7 @@ using Microsoft.EntityFrameworkCore.Migrations;
 namespace TransportManagementSystem.Migrations
 {
     /// <inheritdoc />
-    public partial class AddBusCurrentTrajectoryId : Migration
+    public partial class AddMotorizationAndTrajectory : Migration
     {
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
@@ -39,6 +39,10 @@ namespace TransportManagementSystem.Migrations
                 schema: "Transport");
 
             migrationBuilder.DropTable(
+                name: "RecommendationLog_tbl",
+                schema: "Service");
+
+            migrationBuilder.DropTable(
                 name: "TrajectoryFragment_tbl",
                 schema: "Transport");
 
@@ -48,7 +52,7 @@ namespace TransportManagementSystem.Migrations
                 table: "Personnel_tbl");
 
             migrationBuilder.DropIndex(
-                name: "IX_Bus_tbl_Bus_CurrentFragmentId",
+                name: "IX_Bus_tbl_Trajectory_Id",
                 schema: "Transport",
                 table: "Bus_tbl");
 
@@ -57,22 +61,31 @@ namespace TransportManagementSystem.Migrations
                 schema: "Security",
                 table: "Personnel_tbl");
 
-            migrationBuilder.DropColumn(
-                name: "Bus_CurrentFragmentId",
-                schema: "Transport",
-                table: "Bus_tbl");
-
             migrationBuilder.RenameColumn(
                 name: "Trajectory_Id",
+                schema: "Transport",
+                table: "Bus_tbl",
+                newName: "CurrentOccupancy");
+
+            migrationBuilder.RenameColumn(
+                name: "Bus_CurrentFragmentId",
                 schema: "Transport",
                 table: "Bus_tbl",
                 newName: "Bus_CurrentTrajectoryId");
 
             migrationBuilder.RenameIndex(
-                name: "IX_Bus_tbl_Trajectory_Id",
+                name: "IX_Bus_tbl_Bus_CurrentFragmentId",
                 schema: "Transport",
                 table: "Bus_tbl",
                 newName: "IX_Bus_tbl_Bus_CurrentTrajectoryId");
+
+            migrationBuilder.AddColumn<bool>(
+                name: "IsMotorized",
+                schema: "Security",
+                table: "Personnel_tbl",
+                type: "bit",
+                nullable: false,
+                defaultValue: false);
 
             migrationBuilder.CreateTable(
                 name: "MotorizationRequests_tbl",
@@ -128,17 +141,28 @@ namespace TransportManagementSystem.Migrations
                 name: "MotorizationRequests_tbl",
                 schema: "Service");
 
+            migrationBuilder.DropColumn(
+                name: "IsMotorized",
+                schema: "Security",
+                table: "Personnel_tbl");
+
+            migrationBuilder.RenameColumn(
+                name: "CurrentOccupancy",
+                schema: "Transport",
+                table: "Bus_tbl",
+                newName: "Trajectory_Id");
+
             migrationBuilder.RenameColumn(
                 name: "Bus_CurrentTrajectoryId",
                 schema: "Transport",
                 table: "Bus_tbl",
-                newName: "Trajectory_Id");
+                newName: "Bus_CurrentFragmentId");
 
             migrationBuilder.RenameIndex(
                 name: "IX_Bus_tbl_Bus_CurrentTrajectoryId",
                 schema: "Transport",
                 table: "Bus_tbl",
-                newName: "IX_Bus_tbl_Trajectory_Id");
+                newName: "IX_Bus_tbl_Bus_CurrentFragmentId");
 
             migrationBuilder.AddColumn<int>(
                 name: "AssignedFragmentId",
@@ -147,12 +171,24 @@ namespace TransportManagementSystem.Migrations
                 type: "int",
                 nullable: true);
 
-            migrationBuilder.AddColumn<int>(
-                name: "Bus_CurrentFragmentId",
-                schema: "Transport",
-                table: "Bus_tbl",
-                type: "int",
-                nullable: true);
+            migrationBuilder.CreateTable(
+                name: "RecommendationLog_tbl",
+                schema: "Service",
+                columns: table => new
+                {
+                    Recommendation_Id = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    Recommendation_Date = table.Column<DateTime>(type: "datetime2", nullable: false),
+                    Recommended_BusId = table.Column<long>(type: "bigint", nullable: false),
+                    Recommended_DriverId = table.Column<long>(type: "bigint", nullable: false),
+                    Recommended_TrajectoryId = table.Column<int>(type: "int", nullable: false),
+                    Score = table.Column<decimal>(type: "decimal(18,2)", nullable: false),
+                    Was_Accepted = table.Column<bool>(type: "bit", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_RecommendationLog_tbl", x => x.Recommendation_Id);
+                });
 
             migrationBuilder.CreateTable(
                 name: "TrajectoryFragment_tbl",
@@ -282,10 +318,10 @@ namespace TransportManagementSystem.Migrations
                 column: "AssignedFragmentId");
 
             migrationBuilder.CreateIndex(
-                name: "IX_Bus_tbl_Bus_CurrentFragmentId",
+                name: "IX_Bus_tbl_Trajectory_Id",
                 schema: "Transport",
                 table: "Bus_tbl",
-                column: "Bus_CurrentFragmentId");
+                column: "Trajectory_Id");
 
             migrationBuilder.CreateIndex(
                 name: "IX_BusFragmentAssignment_tbl_Bus_Id",
