@@ -27,7 +27,8 @@ namespace TransportManagementSystem.Data
         public DbSet<PersonnelTrajectoryAssignment> PersonnelTrajectoryAssignments { get; set; }
         public DbSet<SuggestedStop> SuggestedStops { get; set; }
         public DbSet<MotorizationRequest> MotorizationRequests { get; set; }
-        //public DbSet<RecommendationLog> RecommendationLogs { get; set; }
+        // NOUVEAU
+        public DbSet<PersonnelBusAssignment> PersonnelBusAssignments { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -110,14 +111,27 @@ namespace TransportManagementSystem.Data
                       .OnDelete(DeleteBehavior.Restrict);
             });
 
-            /*modelBuilder.Entity<RecommendationLog>(entity =>
+            // ================================================
+            // CONFIGURATION DE PersonnelBusAssignment
+            // ================================================
+            modelBuilder.Entity<PersonnelBusAssignment>(entity =>
             {
-                entity.ToTable("RecommendationLog_tbl", "Service");
-                entity.HasKey(e => e.LogId);
-            });*/
+                entity.ToTable("PersonnelBusAssignment_tbl", "Assignment");
+                entity.HasKey(e => e.PBA_Id);
+                entity.HasIndex(e => new { e.PBA_PersonnelId, e.PBA_BusId, e.PBA_Status })
+                      .HasDatabaseName("IX_PBA_PersonnelBus_Status");
+                entity.HasOne(e => e.Personnel)
+                      .WithMany()
+                      .HasForeignKey(e => e.PBA_PersonnelId)
+                      .OnDelete(DeleteBehavior.Restrict);
+                entity.HasOne(e => e.Bus)
+                      .WithMany()
+                      .HasForeignKey(e => e.PBA_BusId)
+                      .OnDelete(DeleteBehavior.Restrict);
+            });
 
             // ================================================
-            // RELATIONS
+            // RELATIONS EXISTANTES
             // ================================================
 
             modelBuilder.Entity<Driver>()

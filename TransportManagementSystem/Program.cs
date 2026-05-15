@@ -17,8 +17,9 @@ builder.Services.AddSession(options =>
     options.Cookie.IsEssential = true;
 });
 
-// Service de prédiction IA
+// Services personnalisés
 builder.Services.AddSingleton<ETAPredictionService>();
+builder.Services.AddScoped<IAssignmentService, AssignmentService>();   // ← AJOUT
 
 var app = builder.Build();
 

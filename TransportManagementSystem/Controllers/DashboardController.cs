@@ -2,6 +2,7 @@
 using Microsoft.EntityFrameworkCore;
 using TransportManagementSystem.Data;
 using TransportManagementSystem.Models;
+using TransportManagementSystem.Services;
 using System.Text.Json;
 using System.IO;
 
@@ -10,10 +11,13 @@ namespace TransportManagementSystem.Controllers
     public class DashboardController : Controller
     {
         private readonly ApplicationDbContext _context;
+        private readonly IAssignmentService _assignmentService;
 
-        public DashboardController(ApplicationDbContext context)
+        // Injection du service d'assignation
+        public DashboardController(ApplicationDbContext context, IAssignmentService assignmentService)
         {
             _context = context;
+            _assignmentService = assignmentService;
         }
 
         public IActionResult Index()
@@ -30,17 +34,11 @@ namespace TransportManagementSystem.Controllers
             ViewBag.UserRole = role;
 
             if (role == "Admin")
-            {
                 return RedirectToAction("AdminDashboard");
-            }
             else if (role == "Driver")
-            {
                 return RedirectToAction("DriverDashboard");
-            }
             else if (role == "Personnel")
-            {
                 return RedirectToAction("PersonnelDashboard");
-            }
 
             return RedirectToAction("Login", "Account");
         }
@@ -49,9 +47,7 @@ namespace TransportManagementSystem.Controllers
         {
             var role = HttpContext.Session.GetString("UserRole");
             if (role != "Admin")
-            {
                 return RedirectToAction("Login", "Account");
-            }
 
             ViewBag.PersonnelCount = _context.Personnel.Count();
             ViewBag.DriverCount = _context.Drivers.Count();
@@ -66,26 +62,63 @@ namespace TransportManagementSystem.Controllers
         {
             var role = HttpContext.Session.GetString("UserRole");
             if (role != "Driver")
-            {
                 return RedirectToAction("Login", "Account");
-            }
 
             ViewBag.UserName = HttpContext.Session.GetString("UserName");
             return View();
         }
 
-        public IActionResult PersonnelDashboard()
+        // ========== PERSONNEL DASHBOARD AVEC AFFICHAGE DES ASSIGNATIONS ==========
+        public async Task<IActionResult> PersonnelDashboard()
         {
             var role = HttpContext.Session.GetString("UserRole");
             if (role != "Personnel")
-            {
                 return RedirectToAction("Login", "Account");
-            }
+
+            var personnelIdStr = HttpContext.Session.GetString("PersonnelId");
+            if (string.IsNullOrEmpty(personnelIdStr))
+                return RedirectToAction("Login", "Account");
+
+            var personnelId = long.Parse(personnelIdStr);
+            var personnel = await _context.Personnel
+                .Include(p => p.AssignedTrajectory)
+                .Include(p => p.AssignedStop)
+                .Include(p => p.AssignedBus)
+                    .ThenInclude(b => b.CurrentDriver)
+                .FirstOrDefaultAsync(p => p.Personnel_Id == personnelId);
+
+            if (personnel == null)
+                return NotFound();
 
             ViewBag.UserName = HttpContext.Session.GetString("UserName");
+
+            // Cas motorisé
+            if (personnel.IsMotorized)
+            {
+                ViewBag.IsMotorized = true;
+                ViewBag.Message = "Vous êtes motorisé, aucun transport ne vous est assigné.";
+                return View();
+            }
+
+            // Non motorisé : vérifier les assignations
+            if (personnel.AssignedTrajectory != null && personnel.AssignedStop != null && personnel.AssignedBus != null)
+            {
+                ViewBag.AssignedTrajectory = personnel.AssignedTrajectory;
+                ViewBag.AssignedStop = personnel.AssignedStop;
+                ViewBag.AssignedBus = personnel.AssignedBus;
+                ViewBag.DriverName = personnel.AssignedBus.CurrentDriver != null
+                    ? $"{personnel.AssignedBus.CurrentDriver.Driver_FirstName} {personnel.AssignedBus.CurrentDriver.Driver_LastName}"
+                    : "Non assigné";
+            }
+            else
+            {
+                ViewBag.Message = "Aucune assignation de transport trouvée. Contactez l'administrateur.";
+            }
+
             return View();
         }
 
+        // ========== NOTIFICATIONS (inchangées) ==========
         [HttpGet]
         public IActionResult GetNotifications()
         {
@@ -111,9 +144,7 @@ namespace TransportManagementSystem.Controllers
         {
             var filePath = GetNotificationFilePath();
             if (!System.IO.File.Exists(filePath))
-            {
                 return new List<Notification>();
-            }
             var json = System.IO.File.ReadAllText(filePath);
             return JsonSerializer.Deserialize<List<Notification>>(json) ?? new List<Notification>();
         }
@@ -137,9 +168,7 @@ namespace TransportManagementSystem.Controllers
                 }
 
                 if (notifications.Count >= 50)
-                {
                     notifications = notifications.Skip(notifications.Count - 49).ToList();
-                }
 
                 notifications.Add(new Notification
                 {
@@ -160,6 +189,7 @@ namespace TransportManagementSystem.Controllers
             }
         }
 
+        // ========== DEMANDES DE MOTORISATION ==========
         [HttpPost]
         public async Task<IActionResult> RequestMotorizationChange(bool isMotorized)
         {
@@ -239,17 +269,38 @@ namespace TransportManagementSystem.Controllers
                 request.Personnel.AssignedBusId = null;
                 request.Personnel.IsAssigned = false;
 
-                AddNotification("Motorization", "Demande acceptée",
-                    $"Votre demande pour devenir {(request.RequestedIsMotorized ? "motorisé" : "non motorisé")} a été acceptée par l'administrateur.",
-                    request.PersonnelId);
+                // Si le personnel devient NON motorisé -> assignation automatique
+                if (!request.RequestedIsMotorized)
+                {
+                    bool success = await _assignmentService.AutoAssignNonMotorizedPersonnel(request.Personnel);
+                    if (!success)
+                    {
+                        AddNotification("Erreur", "Assignation automatique impossible",
+                            "Aucun bus ou arrêt disponible. Contactez l'administrateur.",
+                            request.PersonnelId);
+                    }
+                    else
+                    {
+                        AddNotification("Assignation", "Nouveau transport assigné",
+                            $"Vous avez été assigné à un bus sur la trajectoire {request.Personnel.AssignedTrajectoryId}.",
+                            request.PersonnelId);
+                    }
+                }
+                else
+                {
+                    AddNotification("Motorization", "Demande acceptée",
+                        $"Vous êtes maintenant motorisé. Aucun transport ne vous sera assigné.",
+                        request.PersonnelId);
+                }
             }
             else
             {
                 request.Status = "Rejected";
                 AddNotification("Motorization", "Demande refusée",
-                    $"Votre demande pour devenir {(request.RequestedIsMotorized ? "motorisé" : "non motorisé")} a été refusée. Raison : {model.Comment ?? "non précisée"}.",
+                    $"Votre demande a été refusée. Raison : {model.Comment ?? "non précisée"}.",
                     request.PersonnelId);
             }
+
             request.ProcessedDate = DateTime.Now;
             request.AdminComment = model.Comment;
 

@@ -1,11 +1,13 @@
-﻿using System;
+﻿using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.ML;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
-using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
 using TransportManagementSystem.Data;
 using TransportManagementSystem.Models;
+using TransportManagementSystem.ViewModels;
 
 namespace TransportManagementSystem.Controllers
 {
@@ -18,6 +20,7 @@ namespace TransportManagementSystem.Controllers
             _context = context;
         }
 
+        // ========== ASSIGNATION PERSONNEL (Trajectoires) ==========
         public async Task<IActionResult> AssignPersonnel()
         {
             ViewBag.Personnel = await _context.Personnel
@@ -146,26 +149,24 @@ namespace TransportManagementSystem.Controllers
             return View(assignments);
         }
 
-        // ========== BUS OCCUPANCY CORRIGÉE ==========
+        // ========== OCCUPATION DES BUS ==========
         public async Task<IActionResult> BusOccupancy()
         {
-            // Exclure les bus dont la trajectoire est NULL ou == 1
             var buses = await _context.Buses
                 .Include(b => b.CurrentDriver)
                 .Include(b => b.CurrentTrajectory)
                 .Where(b => b.Bus_CurrentTrajectoryId != null && b.Bus_CurrentTrajectoryId != 1)
                 .ToListAsync();
 
-            var busOccupancy = new List<BusOccupancyViewModel>();
+            var busOccupancyList = new List<BusOccupancyViewModel>();
 
             foreach (var bus in buses)
             {
                 var personnel = await _context.Personnel
-                    .Where(p => p.AssignedTrajectoryId == bus.Bus_CurrentTrajectoryId
-                                && p.IsAssigned == true)
+                    .Where(p => p.AssignedBusId == bus.Bus_Id && p.IsAssigned == true)
                     .ToListAsync();
 
-                busOccupancy.Add(new BusOccupancyViewModel
+                busOccupancyList.Add(new BusOccupancyViewModel
                 {
                     Bus = bus,
                     Occupancy = personnel.Count,
@@ -174,50 +175,73 @@ namespace TransportManagementSystem.Controllers
                 });
             }
 
-            ViewBag.BusOccupancy = busOccupancy;
-            return View();
+            return View(busOccupancyList);
         }
 
-        // ========== ASSIGNER PERSONNEL AU BUS ==========
+        // ========== ASSIGNER PERSONNEL À UN BUS ==========
         [HttpPost]
         public async Task<IActionResult> AssignPersonnelToBus(long busId)
         {
-            var bus = await _context.Buses.FindAsync(busId);
+            var bus = await _context.Buses
+                .Include(b => b.CurrentTrajectory)
+                .FirstOrDefaultAsync(b => b.Bus_Id == busId);
+
             if (bus == null)
             {
                 TempData["Error"] = "Bus non trouvé.";
                 return RedirectToAction("BusOccupancy");
             }
 
-            var personnelToAssign = await _context.Personnel
-                .Where(p => p.IsAssigned == false
-                            && p.AssignedStopId != null
-                            && p.AssignedBusId == null
-                            && p.Personnel_Status == "Active")
+            if (bus.Bus_CurrentTrajectoryId == null || bus.Bus_CurrentTrajectoryId == 1)
+            {
+                TempData["Error"] = "Ce bus n'a pas de trajectoire valide.";
+                return RedirectToAction("BusOccupancy");
+            }
+
+            var trajectoryId = bus.Bus_CurrentTrajectoryId.Value;
+
+            // Récupérer les arrêts de cette trajectoire, triés par ordre
+            var stops = await _context.TrajectoryStops
+                .Where(s => s.TS_TrajectoryId == trajectoryId)
+                .OrderBy(s => s.TS_OrderIndex)
                 .ToListAsync();
 
             var capacity = bus.Bus_Capacity ?? 50;
             var currentOccupancy = await _context.Personnel.CountAsync(p => p.AssignedBusId == busId);
-
             int assignedCount = 0;
-            foreach (var person in personnelToAssign)
+
+            // Parcourir les arrêts dans l'ordre
+            foreach (var stop in stops)
             {
+                // Personnels affectés à cet arrêt, sans bus, actifs
+                var workersAtStop = await _context.Personnel
+                    .Where(p => p.AssignedStopId == stop.TS_Id
+                                && p.AssignedBusId == null
+                                && p.Personnel_Status == "Active")
+                    .ToListAsync();
+
+                foreach (var worker in workersAtStop)
+                {
+                    if (currentOccupancy + assignedCount >= capacity)
+                        break;
+
+                    worker.AssignedBusId = busId;
+                    worker.IsAssigned = true; // reste true
+                    assignedCount++;
+                }
+
                 if (currentOccupancy + assignedCount >= capacity)
                     break;
-
-                person.AssignedBusId = busId;
-                person.IsAssigned = true;
-                assignedCount++;
             }
 
             bus.CurrentOccupancy = currentOccupancy + assignedCount;
             await _context.SaveChangesAsync();
 
-            TempData["Success"] = $"{assignedCount} personnels assignés au bus (Capacité: {capacity}, Occupation: {currentOccupancy + assignedCount})";
+            TempData["Success"] = $"{assignedCount} personnels assignés au bus (Trajectoire: {bus.CurrentTrajectory?.Trajectory_Name}, Capacité: {capacity}, Occupation: {currentOccupancy + assignedCount})";
             return RedirectToAction("BusOccupancy");
         }
 
-        // ========== DÉSASSIGNER PERSONNEL D'UN BUS (CORRIGÉE) ==========
+        // ========== DÉSASSIGNER PERSONNEL D'UN BUS ==========
         [HttpPost]
         public async Task<IActionResult> RemovePersonnelFromBus(long personnelId, long busId)
         {
@@ -231,7 +255,7 @@ namespace TransportManagementSystem.Controllers
             if (personnel.AssignedBusId == busId)
             {
                 personnel.AssignedBusId = null;
-                personnel.IsAssigned = false;  // Important : le personnel n'est plus assigné à ce bus
+                personnel.IsAssigned = false;
                 await _context.SaveChangesAsync();
                 TempData["Success"] = $"Personnel {personnel.Personnel_FirstName} {personnel.Personnel_LastName} retiré du bus.";
             }
@@ -243,6 +267,39 @@ namespace TransportManagementSystem.Controllers
             return RedirectToAction("BusOccupancy");
         }
 
+        // ========== SYNCHRONISATION : ASSIGNEDBUSID DEPUIS STOP ET TRAJECTOIRE ==========
+        [HttpPost]
+        public async Task<IActionResult> SyncPersonnelBusAssignments()
+        {
+            var personnelList = await _context.Personnel
+                .Where(p => p.AssignedStopId != null && p.AssignedBusId == null && p.IsAssigned == true)
+                .ToListAsync();
+
+            int updatedCount = 0;
+            foreach (var p in personnelList)
+            {
+                var stop = await _context.TrajectoryStops.FindAsync(p.AssignedStopId);
+                if (stop == null) continue;
+
+                var trajectory = await _context.Trajectories.FindAsync(stop.TS_TrajectoryId);
+                if (trajectory == null) continue;
+
+                var bus = await _context.Buses
+                    .FirstOrDefaultAsync(b => b.Bus_CurrentTrajectoryId == trajectory.Trajectory_Id
+                                           && b.Bus_Status == "In Service");
+                if (bus != null)
+                {
+                    p.AssignedBusId = bus.Bus_Id;
+                    updatedCount++;
+                }
+            }
+
+            await _context.SaveChangesAsync();
+            TempData["Success"] = $"Synchronisation terminée : {updatedCount} personnels assignés à un bus.";
+            return RedirectToAction("BusOccupancy");
+        }
+
+        // ========== HELPERS ==========
         private double CalculateDistance(double lat1, double lon1, double lat2, double lon2)
         {
             const double R = 6371;
@@ -256,13 +313,5 @@ namespace TransportManagementSystem.Controllers
         }
 
         private double ToRadians(double degrees) => degrees * Math.PI / 180;
-    }
-
-    public class BusOccupancyViewModel
-    {
-        public Bus Bus { get; set; } = null!;
-        public int Occupancy { get; set; }
-        public int Capacity { get; set; }
-        public List<Personnel> Personnel { get; set; } = new List<Personnel>();
     }
 }

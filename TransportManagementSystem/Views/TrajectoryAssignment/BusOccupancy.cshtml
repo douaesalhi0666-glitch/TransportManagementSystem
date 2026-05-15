@@ -1,4 +1,6 @@
-﻿@{
+﻿@model IEnumerable<TransportManagementSystem.ViewModels.BusOccupancyViewModel>
+
+@{
     ViewData["Title"] = "Occupation des bus";
     Layout = "~/Views/Shared/_Layout.cshtml";
 }
@@ -20,9 +22,13 @@
     </div>
 }
 
-@if (ViewBag.BusOccupancy != null)
+<form method="post" asp-action="SyncPersonnelBusAssignments" asp-controller="TrajectoryAssignment" class="mb-3">
+    <button type="submit" class="btn btn-warning">🔄 Synchroniser les assignations (Stop → Bus)</button>
+</form>
+
+@if (Model != null && Model.Any())
 {
-    foreach (var item in ViewBag.BusOccupancy)
+    foreach (var item in Model)
     {
         if (item.Bus == null) continue;
 
@@ -49,6 +55,10 @@
                         <button class="btn btn-info" type="button" data-bs-toggle="collapse" data-bs-target="#collapse-@item.Bus.Bus_Id">
                             📋 Voir les personnels assignés
                         </button>
+                        <form method="post" asp-action="AssignPersonnelToBus" asp-controller="TrajectoryAssignment" style="display:inline;">
+                            <input type="hidden" name="busId" value="@item.Bus.Bus_Id" />
+                            <button type="submit" class="btn btn-sm btn-success ms-2">➕ Assigner des personnels</button>
+                        </form>
                     </div>
                 </div>
 
@@ -74,7 +84,7 @@
                                             <td>@p.Personnel_LastName</td>
                                             <td>@p.Personnel_FirstName</td>
                                             <td>
-                                                <form method="post" asp-action="RemovePersonnelFromBus" style="display:inline;">
+                                                <form method="post" asp-action="RemovePersonnelFromBus" asp-controller="TrajectoryAssignment" style="display:inline;">
                                                     <input type="hidden" name="personnelId" value="@p.Personnel_Id" />
                                                     <input type="hidden" name="busId" value="@item.Bus.Bus_Id" />
                                                     <button type="submit" class="btn btn-sm btn-danger" onclick="return confirm('Retirer ce personnel du bus ?')">
@@ -100,7 +110,7 @@
 else
 {
     <div class="alert alert-info">
-        ℹ️ Aucun bus disponible.
+        ℹ️ Aucun bus disponible ou aucune assignation.
     </div>
 }
 
