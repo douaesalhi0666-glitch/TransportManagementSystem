@@ -6,90 +6,242 @@
     <title>@ViewData["Title"] - Système de Gestion de Transport</title>
     <link rel="stylesheet" href="~/lib/bootstrap/css/bootstrap.min.css" />
     <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
+    <style>
+            /* Style de la sidebar pour l'admin */
+            .admin-sidebar {
+                position: fixed;
+                top: 0;
+                left: 0;
+                height: 100vh;
+                width: 260px;
+                background: #2c3e50;
+                color: white;
+                transition: all 0.3s;
+                z-index: 1030;
+                overflow-y: auto;
+            }
+
+                .admin-sidebar .sidebar-header {
+                    padding: 20px;
+                    background: #1a252f;
+                    text-align: center;
+                    border-bottom: 1px solid #3d566e;
+                }
+
+                    .admin-sidebar .sidebar-header h3 {
+                        margin: 0;
+                        font-size: 1.3rem;
+                    }
+
+                .admin-sidebar ul.components {
+                    padding: 20px 0;
+                }
+
+                .admin-sidebar ul li {
+                    padding: 12px 20px;
+                    border-bottom: 1px solid #3d566e;
+                }
+
+                    .admin-sidebar ul li a {
+                        color: #ecf0f1;
+                        text-decoration: none;
+                        display: block;
+                        font-size: 1rem;
+                    }
+
+                        .admin-sidebar ul li a i {
+                            margin-right: 12px;
+                            width: 24px;
+                            text-align: center;
+                        }
+
+                    .admin-sidebar ul li:hover {
+                        background: #1a252f;
+                    }
+
+                    .admin-sidebar ul li.active {
+                        background: #007bff;
+                    }
+
+            .admin-topbar {
+                position: fixed;
+                top: 0;
+                right: 0;
+                left: 260px;
+                height: 60px;
+                background: #fff;
+                box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+                display: flex;
+                align-items: center;
+                justify-content: flex-end;
+                padding: 0 30px;
+                z-index: 1020;
+                transition: all 0.3s;
+            }
+
+            .admin-content {
+                margin-left: 260px;
+                margin-top: 60px;
+                padding: 30px;
+                transition: all 0.3s;
+            }
+
+            .toggle-sidebar {
+                background: none;
+                border: none;
+                font-size: 1.5rem;
+                cursor: pointer;
+                color: #333;
+                margin-right: 15px;
+                display: none;
+            }
+            /* Responsive */
+            @@media (max-width: 768px) {
+                .admin-sidebar {
+                    margin-left: -260px;
+                }
+
+                    .admin-sidebar.active {
+                        margin-left: 0;
+                    }
+
+                .admin-topbar, .admin-content {
+                    left: 0;
+                }
+
+                .admin-topbar {
+                    left: 0;
+                    padding: 0 15px;
+                }
+
+                .admin-content {
+                    margin-left: 0;
+                }
+
+                .toggle-sidebar {
+                    display: block;
+                }
+            }
+
+            .normal-layout {
+                /* rien de spécial, garde l'ancien style */
+            }
+    </style>
 </head>
 <body>
-    <header>
-        <nav class="navbar navbar-expand-sm navbar-toggleable-sm navbar-light bg-white border-bottom box-shadow mb-3">
-            <div class="container-fluid">
-                @if (Context.Session.GetString("UserRole") == "Admin")
-                {
-                    <a class="navbar-brand" href="/Dashboard/AdminDashboard">Système de Gestion de Transport</a>
-                }
-                else if (Context.Session.GetString("UserRole") != null)
-                {
-                    <a class="navbar-brand" href="/Dashboard/Index">Système de Gestion de Transport</a>
-                }
-                else
-                {
-                    <a class="navbar-brand" href="/Account/Login">Système de Gestion de Transport</a>
-                }
+    @{
+        var role = Context.Session.GetString("UserRole");
+        var isAdmin = (role == "Admin");
+    }
 
-                <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target=".navbar-collapse">
-                    <span class="navbar-toggler-icon"></span>
-                </button>
-
-                <div class="navbar-collapse collapse d-sm-inline-flex justify-content-between">
-                    <ul class="navbar-nav flex-grow-1">
-                        @if (Context.Session.GetString("UserRole") == "Admin")
-                        {
-                            <li class="nav-item">
-                                <a class="nav-link text-dark" href="/Dashboard/AdminDashboard">Tableau de bord</a>
-                            </li>
-                            <li class="nav-item">
-                                <a class="nav-link text-dark" href="/Personnel/Index">Personnel</a>
-                            </li>
-                            <li class="nav-item">
-                                <a class="nav-link text-dark" href="/Drivers/Index">Chauffeurs</a>
-                            </li>
-                            <li class="nav-item">
-                                <a class="nav-link text-dark" href="/Buses/Index">Bus</a>
-                            </li>
-                            <li class="nav-item">
-                                <a class="nav-link text-dark" href="/Trajectories/Index">Trajets</a>
-                            </li>
-                            <li class="nav-item">
-                                <a class="nav-link text-dark" href="/Assignments/Index">Assignations</a>
-                            </li>
-                            <!-- Nouveau lien pour le clustering IA -->
-                            <li class="nav-item">
-                                <a class="nav-link text-dark" href="/Clustering/DispatcherView">🗺️ Gestion des arrêts</a>
-                            </li>
-                            <li class="nav-item">
-                                <a class="nav-link text-dark" href="/Account/Logout">Déconnexion</a>
-                            </li>
-                        }
-                        else if (Context.Session.GetString("UserRole") != null)
-                        {
-                            <li class="nav-item">
-                                <a class="nav-link text-dark" href="/Dashboard/Index">Mon espace</a>
-                            </li>
-                            <li class="nav-item">
-                                <a class="nav-link text-dark" href="/Account/Logout">Déconnexion</a>
-                            </li>
-                        }
-                        else
-                        {
-                            <li class="nav-item">
-                                <a class="nav-link text-dark" href="/Account/Login">Connexion</a>
-                            </li>
-                        }
-                    </ul>
-                </div>
+    @if (isAdmin)
+    {
+        <!-- Layout Admin avec sidebar -->
+        <div class="admin-sidebar" id="adminSidebar">
+            <div class="sidebar-header">
+                <h3>🚍 TransportMS</h3>
+                <small>Administration</small>
             </div>
-        </nav>
-    </header>
-
-    <div class="container">
-        <main role="main" class="pb-3">
-            @RenderBody()
-        </main>
-    </div>
-
-    <footer class="border-top footer text-muted">
-        <div class="container">
-            &copy; 2026 - Système de Gestion de Transport
+            <ul class="components">
+                <li class="@(ViewContext.RouteData.Values["controller"]?.ToString() == "Dashboard" && ViewContext.RouteData.Values["action"]?.ToString() == "AdminDashboard" ? "active" : "")">
+                    <a href="/Dashboard/AdminDashboard"><i class="fas fa-tachometer-alt"></i> Tableau de bord</a>
+                </li>
+                <li class="@(ViewContext.RouteData.Values["controller"]?.ToString() == "Personnel" ? "active" : "")">
+                    <a href="/Personnel/Index"><i class="fas fa-users"></i> Personnel</a>
+                </li>
+                <li class="@(ViewContext.RouteData.Values["controller"]?.ToString() == "Drivers" ? "active" : "")">
+                    <a href="/Drivers/Index"><i class="fas fa-truck"></i> Chauffeurs</a>
+                </li>
+                <li class="@(ViewContext.RouteData.Values["controller"]?.ToString() == "Buses" ? "active" : "")">
+                    <a href="/Buses/Index"><i class="fas fa-bus"></i> Bus</a>
+                </li>
+                <li class="@(ViewContext.RouteData.Values["controller"]?.ToString() == "Trajectories" ? "active" : "")">
+                    <a href="/Trajectories/Index"><i class="fas fa-map-marked-alt"></i> Trajets</a>
+                </li>
+                <li class="@(ViewContext.RouteData.Values["controller"]?.ToString() == "Assignments" ? "active" : "")">
+                    <a href="/Assignments/Index"><i class="fas fa-user-cog"></i> Assignations</a>
+                </li>
+                <li>
+                    <a href="/Clustering/DispatcherView"><i class="fas fa-map-pin"></i> Points de ramassage</a>
+                </li>
+                <li>
+                    <a href="/TrajectoryAssignment/BusOccupancy"><i class="fas fa-chart-line"></i> Occupation bus</a>
+                </li>
+                <li>
+                    <a href="/Account/Logout"><i class="fas fa-sign-out-alt"></i> Déconnexion</a>
+                </li>
+            </ul>
         </div>
-    </footer>
+
+        <div class="admin-topbar">
+            <button class="toggle-sidebar" id="toggleSidebarBtn">☰</button>
+            <div class="user-info">
+                <span>👋 Bonjour, <strong>@Context.Session.GetString("UserName")</strong></span>
+            </div>
+        </div>
+
+        <div class="admin-content">
+            <main role="main">
+                @RenderBody()
+            </main>
+        </div>
+
+        <script>
+                document.getElementById('toggleSidebarBtn')?.addEventListener('click', function () {
+                    document.getElementById('adminSidebar').classList.toggle('active');
+                });
+        </script>
+    }
+    else
+    {
+        <!-- Layout normal (navbar horizontale) -->
+        <header>
+            <nav class="navbar navbar-expand-sm navbar-toggleable-sm navbar-light bg-white border-bottom box-shadow mb-3">
+                <div class="container-fluid">
+                    @if (Context.Session.GetString("UserRole") != null)
+                    {
+                        <a class="navbar-brand" href="/Dashboard/Index">Système de Gestion de Transport</a>
+                    }
+                    else
+                    {
+                        <a class="navbar-brand" href="/Account/Login">Système de Gestion de Transport</a>
+                    }
+                    <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target=".navbar-collapse">
+                        <span class="navbar-toggler-icon"></span>
+                    </button>
+                    <div class="navbar-collapse collapse d-sm-inline-flex justify-content-between">
+                        <ul class="navbar-nav flex-grow-1">
+                            @if (Context.Session.GetString("UserRole") != null)
+                            {
+                                <li class="nav-item">
+                                    <a class="nav-link text-dark" href="/Dashboard/Index">Mon espace</a>
+                                </li>
+                                <li class="nav-item">
+                                    <a class="nav-link text-dark" href="/Account/Logout">Déconnexion</a>
+                                </li>
+                            }
+                            else
+                            {
+                                <li class="nav-item">
+                                    <a class="nav-link text-dark" href="/Account/Login">Connexion</a>
+                                </li>
+                            }
+                        </ul>
+                    </div>
+                </div>
+            </nav>
+        </header>
+        <div class="container">
+            <main role="main" class="pb-3">
+                @RenderBody()
+            </main>
+        </div>
+        <footer class="border-top footer text-muted">
+            <div class="container">
+                &copy; 2026 - Système de Gestion de Transport
+            </div>
+        </footer>
+    }
 
     <script src="~/lib/jquery/jquery.min.js"></script>
     <script src="~/lib/bootstrap/js/bootstrap.bundle.min.js"></script>

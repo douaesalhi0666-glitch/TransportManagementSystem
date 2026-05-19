@@ -245,6 +245,14 @@ namespace TransportManagementSystem.Controllers
         }
 
         [HttpPost]
+        public async Task<IActionResult> RunAnomalyDetection()
+        {
+            var service = HttpContext.RequestServices.GetRequiredService<AnomalyDetectionService>();
+            await service.RunFullDetection();
+            return Ok(new { success = true, message = "Détection d'anomalies exécutée." });
+        }
+
+        [HttpPost]
         public async Task<IActionResult> ProcessMotorizationRequest([FromBody] ProcessMotorizationRequestModel model)
         {
             if (model == null || model.RequestId <= 0)
@@ -335,4 +343,5 @@ namespace TransportManagementSystem.Controllers
         public string Timestamp { get; set; } = string.Empty;
         public long? PersonnelId { get; set; }
     }
+
 }

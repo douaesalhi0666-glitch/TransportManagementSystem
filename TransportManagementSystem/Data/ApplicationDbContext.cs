@@ -29,6 +29,7 @@ namespace TransportManagementSystem.Data
         public DbSet<MotorizationRequest> MotorizationRequests { get; set; }
         // NOUVEAU
         public DbSet<PersonnelBusAssignment> PersonnelBusAssignments { get; set; }
+        public DbSet<AnomalyLog> AnomalyLogs { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {

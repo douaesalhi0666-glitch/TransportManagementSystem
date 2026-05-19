@@ -3,180 +3,105 @@
     Layout = "~/Views/Shared/_Layout.cshtml";
 }
 
-<div class="container">
-    <!-- En-tête de bienvenue -->
-    <div class="alert alert-success shadow-sm">
-        <h2>👑 Bonjour, @ViewBag.UserName !</h2>
-        <p>Vous êtes connecté en tant qu'<strong>Administrateur</strong> – Tableau de bord central</p>
-    </div>
+<div class="alert alert-success shadow-sm">
+    <h2>👑 Bonjour, @ViewBag.UserName !</h2>
+    <p>Vous êtes connecté en tant qu'<strong>Administrateur</strong> – Tableau de bord central</p>
+</div>
 
-    <!-- =============================== -->
-    <!-- 1. Gestion des ressources       -->
-    <!-- =============================== -->
-    <div class="row mb-4">
-        <div class="col-md-3 mb-3">
-            <div class="card text-white bg-primary h-100">
-                <div class="card-body">
-                    <i class="fas fa-users fa-2x mb-2"></i>
-                    <h5>Personnel</h5>
-                    <p>Gérer les employés</p>
-                    <a href="/Personnel/Index" class="btn btn-light btn-sm">Gérer →</a>
-                </div>
-            </div>
-        </div>
-
-        <div class="col-md-3 mb-3">
-            <div class="card text-white bg-success h-100">
-                <div class="card-body">
-                    <i class="fas fa-truck fa-2x mb-2"></i>
-                    <h5>Chauffeurs</h5>
-                    <p>Gérer les conducteurs</p>
-                    <a href="/Drivers/Index" class="btn btn-light btn-sm">Gérer →</a>
-                </div>
-            </div>
-        </div>
-
-        <div class="col-md-3 mb-3">
-            <div class="card text-white bg-warning h-100">
-                <div class="card-body">
-                    <i class="fas fa-bus fa-2x mb-2"></i>
-                    <h5>Bus</h5>
-                    <p>Gérer le parc automobile</p>
-                    <a href="/Buses/Index" class="btn btn-light btn-sm">Gérer →</a>
-                    <hr class="bg-light">
-                    <a href="/TrajectoryAssignment/BusOccupancy" class="btn btn-outline-light btn-sm w-100 mt-1">
-                        📊 Occupation des bus
-                    </a>
-                </div>
-            </div>
-        </div>
-
-        <div class="col-md-3 mb-3">
-            <div class="card text-white bg-info h-100">
-                <div class="card-body">
-                    <i class="fas fa-map-marked-alt fa-2x mb-2"></i>
-                    <h5>Trajets</h5>
-                    <p>Gérer les itinéraires</p>
-                    <a href="/Trajectories/Index" class="btn btn-light btn-sm">Gérer →</a>
-                </div>
+<!-- =============================== -->
+<!-- 1. Gestion des ressources       -->
+<!-- =============================== -->
+<div class="row mb-4">
+    <div class="col-md-3 mb-3">
+        <div class="card text-white bg-primary h-100">
+            <div class="card-body">
+                <i class="fas fa-users fa-2x mb-2"></i>
+                <h5>Personnel</h5>
+                <p>Gérer les employés</p>
+                <a href="/Personnel/Index" class="btn btn-light btn-sm">Gérer →</a>
             </div>
         </div>
     </div>
 
-    <!-- =============================== -->
-    <!-- 2. Assignations principales      -->
-    <!-- =============================== -->
-    <div class="row mb-4">
-        <div class="col-md-6 mb-3">
-            <div class="card border-secondary h-100">
-                <div class="card-header bg-secondary text-white">
-                    <i class="fas fa-user-cog"></i> Assigner chauffeurs ↔ bus
-                </div>
-                <div class="card-body">
-                    <p>Affecter un conducteur à un bus</p>
-                    <a href="/Assignments" class="btn btn-primary btn-sm">Accéder →</a>
-                </div>
+    <div class="col-md-3 mb-3">
+        <div class="card text-white bg-success h-100">
+            <div class="card-body">
+                <i class="fas fa-truck fa-2x mb-2"></i>
+                <h5>Chauffeurs</h5>
+                <p>Gérer les conducteurs</p>
+                <a href="/Drivers/Index" class="btn btn-light btn-sm">Gérer →</a>
             </div>
         </div>
     </div>
 
-    <!-- =============================== -->
-    <!-- 3. Gestion des points de ramassage -->
-    <!-- =============================== -->
-    <div class="row mb-4">
-        <div class="col-12">
-            <div class="card text-center border-0 shadow-sm" style="background: #f8f9fa;">
-                <div class="card-body">
-                    <span class="badge bg-dark px-3 py-2">📍 Gestion des points de ramassage</span>
-                    <h6 class="mt-2">Définir, visualiser et assigner les personnels aux arrêts</h6>
-                    <a href="/Clustering/DefinePickupPoints" class="btn btn-outline-dark btn-sm">Accéder à la gestion des points de ramassage →</a>
-                </div>
+    <div class="col-md-3 mb-3">
+        <div class="card text-white bg-warning h-100">
+            <div class="card-body">
+                <i class="fas fa-bus fa-2x mb-2"></i>
+                <h5>Bus</h5>
+                <p>Gérer le parc automobile</p>
+                <a href="/Buses/Index" class="btn btn-light btn-sm">Gérer →</a>
+                <hr class="bg-light">
+                <a href="/TrajectoryAssignment/BusOccupancy" class="btn btn-outline-light btn-sm w-100 mt-1">
+                    📊 Occupation des bus
+                </a>
             </div>
         </div>
     </div>
 
-    
-
-    <!-- =============================== -->
-    <!-- 5. Demandes de changement de statut (motorisé/non motorisé) -->
-    <!-- =============================== -->
-    <div class="row mb-4">
-        <div class="col-12">
-            <div class="card border-warning">
-                <div class="card-header bg-warning text-dark">
-                    <h5>⏳ Demandes de changement de statut (motorisé / non motorisé)</h5>
-                </div>
-                <div class="card-body">
-                    <div id="pendingRequestsList">Chargement...</div>
-                </div>
+    <div class="col-md-3 mb-3">
+        <div class="card text-white bg-info h-100">
+            <div class="card-body">
+                <i class="fas fa-map-marked-alt fa-2x mb-2"></i>
+                <h5>Trajets</h5>
+                <p>Gérer les itinéraires</p>
+                <a href="/Trajectories/Index" class="btn btn-light btn-sm">Gérer →</a>
             </div>
-        </div>
-    </div>
-
-    <!-- =============================== -->
-    <!-- 6. Déconnexion                  -->
-    <!-- =============================== -->
-    <div class="row mt-4 mb-5">
-        <div class="col-12 text-center">
-            <a href="/Account/Logout" class="btn btn-danger btn-lg">🔓 Se déconnecter</a>
         </div>
     </div>
 </div>
+
+<!-- =============================== -->
+<!-- 2. Assignations principales      -->
+<!-- =============================== -->
+<div class="row mb-4">
+    <div class="col-md-6 mb-3">
+        <div class="card border-secondary h-100">
+            <div class="card-header bg-secondary text-white">
+                <i class="fas fa-user-cog"></i> Assigner chauffeurs ↔ bus
+            </div>
+            <div class="card-body">
+                <p>Affecter un conducteur à un bus</p>
+                <a href="/Assignments" class="btn btn-primary btn-sm">Accéder →</a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- =============================== -->
+<!-- 3. Gestion des points de ramassage -->
+<!-- =============================== -->
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card text-center border-0 shadow-sm" style="background: #f8f9fa;">
+            <div class="card-body">
+                <span class="badge bg-dark px-3 py-2">📍 Gestion des points de ramassage</span>
+                <h6 class="mt-2">Définir, visualiser et assigner les personnels aux arrêts</h6>
+                <a href="/Clustering/DefinePickupPoints" class="btn btn-outline-dark btn-sm">Accéder à la gestion des points de ramassage →</a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- =============================== -->
+<!-- 4. Déconnexion                  -->
+<!-- =============================== -->
+<div class="row mt-4 mb-5">
+    <div class="col-12 text-center">
+        <a href="/Account/Logout" class="btn btn-danger btn-lg">🔓 Se déconnecter</a>
+    </div>
+</div>
+
 @section Scripts {
-    <script>
-        async function loadPendingRequests() {
-            try {
-                const response = await fetch('/Dashboard/GetPendingMotorizationRequests');
-                const requests = await response.json();
-                const container = document.getElementById('pendingRequestsList');
-                if (requests.length === 0) {
-                    container.innerHTML = '<p class="text-muted">Aucune demande en attente.</p>';
-                    return;
-                }
-                let html = '<table class="table table-striped"><thead><tr><th>Personnel</th><th>Demande</th><th>Date</th><th>Actions</th></tr></thead><tbody>';
-                requests.forEach(req => {
-                    const type = req.requestedIsMotorized ? 'Motorisé' : 'Non motorisé';
-                    html += `<tr>
-                        <td>${req.personnelName} (ID ${req.personnelId})</td>
-                        <td>Devenir ${type}</td>
-                        <td>${new Date(req.requestDate).toLocaleString()}</td>
-                        <td>
-                            <button class="btn btn-sm btn-success approve-request" data-id="${req.id}" data-approve="true">✅ Accepter</button>
-                            <button class="btn btn-sm btn-danger reject-request" data-id="${req.id}" data-approve="false">❌ Refuser</button>
-                        </td>
-                    </tr>`;
-                });
-                html += '</tbody></table>';
-                container.innerHTML = html;
-
-                document.querySelectorAll('.approve-request').forEach(btn => {
-                    btn.addEventListener('click', () => processRequest(btn.dataset.id, true));
-                });
-                document.querySelectorAll('.reject-request').forEach(btn => {
-                    btn.addEventListener('click', () => processRequest(btn.dataset.id, false));
-                });
-            } catch (err) {
-                console.error(err);
-                document.getElementById('pendingRequestsList').innerHTML = '<p class="text-danger">Erreur de chargement.</p>';
-            }
-        }
-
-        async function processRequest(requestId, approve) {
-            const comment = approve ? prompt("Commentaire (optionnel) :") : prompt("Raison du refus (optionnel) :");
-            const response = await fetch('/Dashboard/ProcessMotorizationRequest', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ requestId: parseInt(requestId), approve: approve, comment: comment })
-            });
-            const data = await response.json();
-            if (response.ok && data.success) {
-                alert(data.message);
-                loadPendingRequests(); // rafraîchir la liste
-            } else {
-                alert("Erreur : " + (data.message || "Une erreur est survenue."));
-            }
-        }
-
-        loadPendingRequests();
-    </script>
+    <script src="https://kit.fontawesome.com/a076d05399.js" crossorigin="anonymous"></script>
 }
