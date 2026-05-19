@@ -6,6 +6,7 @@ using System.Linq;
 using System.Threading.Tasks;
 using TransportManagementSystem.Data;
 using TransportManagementSystem.Models;
+using TransportManagementSystem.Services;
 
 namespace TransportManagementSystem.Controllers
 {
@@ -76,10 +77,13 @@ namespace TransportManagementSystem.Controllers
     public class ClusteringController : Controller
     {
         private readonly ApplicationDbContext _context;
+        private readonly OsrmRoutingService _routing;
 
-        public ClusteringController(ApplicationDbContext context)
+        // ✅ UN SEUL CONSTRUCTEUR (avec les deux dépendances)
+        public ClusteringController(ApplicationDbContext context, OsrmRoutingService routing)
         {
             _context = context;
+            _routing = routing;
         }
 
         private async Task<int> GetOrCreateDefaultTrajectoryId()
@@ -847,7 +851,7 @@ namespace TransportManagementSystem.Controllers
 
                 _context.ChangeTracker.Clear();
 
-                // MODIFICATION: Suppression du filtre IsMotorized
+                // 1. Récupérer les arrêts avec leur nombre de personnels (tous, plus de filtre IsMotorized)
                 var stopsData = await _context.TrajectoryStops
                     .AsNoTracking()
                     .Where(s => s.TS_Latitude != 0 && s.TS_Longitude != 0)
@@ -861,13 +865,13 @@ namespace TransportManagementSystem.Controllers
                 var validStops = stopsData
                     .Where(s => s.WorkerCount > 0)
                     .Select(s => new { s.Stop, s.WorkerCount })
-                    .OrderByDescending(s => CalculateDistance(startLat, startLng, (double)s.Stop.TS_Latitude, (double)s.Stop.TS_Longitude))
+                    .OrderByDescending(s => EuclideanDistance(startLat, startLng, (double)s.Stop.TS_Latitude, (double)s.Stop.TS_Longitude))
                     .ToList();
 
                 if (!validStops.Any())
-                    return Ok(new { success = false, message = "No pickup points with personnel found." });
+                    return Ok(new { success = false, message = "Aucun point de ramassage avec personnel." });
 
-                // Delete previously generated trajectories (keep default ID = 1)
+                // Nettoyer les anciennes trajectoires (conserver ID = 1 pour la trajectoire par défaut)
                 await _context.Database.ExecuteSqlRawAsync("DELETE FROM [Transport].[TrajectoryStop_tbl] WHERE TS_TrajectoryId > 1");
                 await _context.Database.ExecuteSqlRawAsync("DELETE FROM [Transport].[Trajectory_tbl] WHERE Trajectory_Id > 1");
                 await _context.Database.ExecuteSqlRawAsync("DBCC CHECKIDENT ('[Transport].[Trajectory_tbl]', RESEED, 1)");
@@ -878,9 +882,12 @@ namespace TransportManagementSystem.Controllers
                 int trajectoryCounter = 1;
                 string timestamp = DateTime.Now.ToString("yyyyMMddHHmmss");
 
+                // 2. Construction gloutonne des tournées (remplissage par capacité)
+                var routes = new List<List<(TrajectoryStop Stop, int WorkersToPick)>>();
+
                 while (remainingList.Any(r => r > 0))
                 {
-                    var currentTrajectoryStops = new List<(TrajectoryStop Stop, int WorkersToPick)>();
+                    var currentRoute = new List<(TrajectoryStop Stop, int WorkersToPick)>();
                     int currentLoad = 0;
                     var newRemainingList = remainingList.ToList();
 
@@ -891,99 +898,114 @@ namespace TransportManagementSystem.Controllers
 
                         if (currentLoad + remaining <= busCapacity)
                         {
-                            currentTrajectoryStops.Add((stopList[i], remaining));
+                            currentRoute.Add((stopList[i], remaining));
                             currentLoad += remaining;
                             newRemainingList[i] = 0;
                         }
                         else if (currentLoad < busCapacity)
                         {
                             int take = busCapacity - currentLoad;
-                            currentTrajectoryStops.Add((stopList[i], take));
+                            currentRoute.Add((stopList[i], take));
                             currentLoad = busCapacity;
                             newRemainingList[i] = remaining - take;
                         }
                     }
 
                     for (int i = 0; i < remainingList.Count; i++)
-                    {
                         remainingList[i] = newRemainingList[i];
-                    }
 
-                    if (currentTrajectoryStops.Any())
+                    if (currentRoute.Any())
+                        routes.Add(currentRoute);
+                }
+
+                // 3. Optimisation de l’ordre des arrêts pour chaque tournée (TSP nearest neighbour avec distances OSRM)
+                var optimizedRoutes = new List<List<(TrajectoryStop Stop, int WorkersToPick)>>();
+                foreach (var route in routes)
+                {
+                    var ordered = await OptimizeRouteOrder(route, startLat, startLng);
+                    optimizedRoutes.Add(ordered);
+                }
+
+                // 4. Sauvegarder les trajectoires optimisées
+                int totalTrajectories = 0;
+                foreach (var route in optimizedRoutes)
+                {
+                    // Calcul de la distance totale (départ → arrêts)
+                    double totalDistance = 0;
+                    double currentLat = startLat;
+                    double currentLng = startLng;
+                    foreach (var (stop, _) in route)
                     {
-                        double totalDistance = 0;
-                        double currentLat = startLat;
-                        double currentLng = startLng;
-                        foreach (var (stop, _) in currentTrajectoryStops)
-                        {
-                            totalDistance += CalculateDistance(currentLat, currentLng, (double)stop.TS_Latitude, (double)stop.TS_Longitude);
-                            currentLat = (double)stop.TS_Latitude;
-                            currentLng = (double)stop.TS_Longitude;
-                        }
-
-                        double estimatedTime = totalDistance / speedKmh * 60;
-                        int totalWorkers = currentTrajectoryStops.Sum(t => t.WorkersToPick);
-
-                        var traj = new Trajectory
-                        {
-                            Trajectory_Name = $"Trajet-{timestamp}-{trajectoryCounter}",
-                            Trajectory_Code = $"T-{timestamp}-{trajectoryCounter}",
-                            Trajectory_Description = $"{currentTrajectoryStops.Count} stops, {totalWorkers} workers",
-                            Trajectory_StartLatitude = (decimal)startLat,
-                            Trajectory_StartLongitude = (decimal)startLng,
-                            Trajectory_EndLatitude = (decimal)currentTrajectoryStops.Last().Stop.TS_Latitude,
-                            Trajectory_EndLongitude = (decimal)currentTrajectoryStops.Last().Stop.TS_Longitude,
-                            Trajectory_DistanceKm = (decimal)Math.Round(totalDistance, 2),
-                            Trajectory_EstimatedDurationMinutes = (int)Math.Ceiling(estimatedTime),
-                            Trajectory_Status = "Active",
-                            Trajectory_CreatedAt = DateTime.Now,
-                            Trajectory_UpdatedAt = DateTime.Now
-                        };
-
-                        _context.Trajectories.Add(traj);
-                        await _context.SaveChangesAsync();
-
-                        for (int i = 0; i < currentTrajectoryStops.Count; i++)
-                        {
-                            var (stop, workersToPick) = currentTrajectoryStops[i];
-
-                            var newStop = new TrajectoryStop
-                            {
-                                TS_TrajectoryId = traj.Trajectory_Id,
-                                TS_Name = stop.TS_Name,
-                                TS_OrderIndex = i + 1,
-                                TS_Latitude = stop.TS_Latitude,
-                                TS_Longitude = stop.TS_Longitude
-                            };
-                            _context.TrajectoryStops.Add(newStop);
-
-                            var workersToAssign = await _context.Personnel
-                                .Where(p => p.AssignedStopId == stop.TS_Id
-                                    && p.IsAssigned == true
-                                    && p.AssignedTrajectoryId == null)
-                                .Take(workersToPick)
-                                .ToListAsync();
-
-                            foreach (var worker in workersToAssign)
-                            {
-                                worker.AssignedTrajectoryId = traj.Trajectory_Id;
-                            }
-                        }
-                        await _context.SaveChangesAsync();
-
-                        trajectoryCounter++;
+                        double segDistance = await _routing.GetRouteDistance(
+                            currentLat, currentLng,
+                            (double)stop.TS_Latitude, (double)stop.TS_Longitude);
+                        totalDistance += segDistance;
+                        currentLat = (double)stop.TS_Latitude;
+                        currentLng = (double)stop.TS_Longitude;
                     }
+                    totalDistance /= 1000; // conversion en km
+
+                    double estimatedTime = totalDistance / speedKmh * 60;
+                    int totalWorkers = route.Sum(t => t.WorkersToPick);
+
+                    var traj = new Trajectory
+                    {
+                        Trajectory_Name = $"Trajet-{timestamp}-{trajectoryCounter}",
+                        Trajectory_Code = $"T-{timestamp}-{trajectoryCounter}",
+                        Trajectory_Description = $"{route.Count} arrêts, {totalWorkers} personnes",
+                        Trajectory_StartLatitude = (decimal)startLat,
+                        Trajectory_StartLongitude = (decimal)startLng,
+                        Trajectory_EndLatitude = (decimal)route.Last().Stop.TS_Latitude,
+                        Trajectory_EndLongitude = (decimal)route.Last().Stop.TS_Longitude,
+                        Trajectory_DistanceKm = (decimal)Math.Round(totalDistance, 2),
+                        Trajectory_EstimatedDurationMinutes = (int)Math.Ceiling(estimatedTime),
+                        Trajectory_Status = "Active",
+                        Trajectory_CreatedAt = DateTime.Now,
+                        Trajectory_UpdatedAt = DateTime.Now
+                    };
+
+                    _context.Trajectories.Add(traj);
+                    await _context.SaveChangesAsync();
+
+                    // Créer les arrêts de la trajectoire et assigner les personnels
+                    for (int i = 0; i < route.Count; i++)
+                    {
+                        var (stop, workersToPick) = route[i];
+
+                        var newStop = new TrajectoryStop
+                        {
+                            TS_TrajectoryId = traj.Trajectory_Id,
+                            TS_Name = stop.TS_Name,
+                            TS_OrderIndex = i + 1,
+                            TS_Latitude = stop.TS_Latitude,
+                            TS_Longitude = stop.TS_Longitude
+                        };
+                        _context.TrajectoryStops.Add(newStop);
+
+                        var workersToAssign = await _context.Personnel
+                            .Where(p => p.AssignedStopId == stop.TS_Id
+                                        && p.IsAssigned == true
+                                        && p.AssignedTrajectoryId == null)
+                            .Take(workersToPick)
+                            .ToListAsync();
+
+                        foreach (var worker in workersToAssign)
+                            worker.AssignedTrajectoryId = traj.Trajectory_Id;
+                    }
+                    await _context.SaveChangesAsync();
+
+                    trajectoryCounter++;
+                    totalTrajectories++;
                 }
 
                 var finalTrajectories = await _context.Trajectories.Where(t => t.Trajectory_Id > 1).CountAsync();
-                var assignedWorkers = await _context.Personnel
-                    .CountAsync(p => p.AssignedTrajectoryId != null); // plus de filtre IsMotorized
+                var assignedWorkers = await _context.Personnel.CountAsync(p => p.AssignedTrajectoryId != null);
 
                 return Ok(new
                 {
                     success = true,
-                    message = $"Generated {finalTrajectories} trajectories with {assignedWorkers} workers assigned.",
-                    trajectoryCount = finalTrajectories,
+                    message = $"{totalTrajectories} trajectoires générées, {assignedWorkers} personnels assignés.",
+                    trajectoryCount = totalTrajectories,
                     workerCount = assignedWorkers
                 });
             }
@@ -991,6 +1013,54 @@ namespace TransportManagementSystem.Controllers
             {
                 return StatusCode(500, new { success = false, message = ex.Message, innerException = ex.InnerException?.Message });
             }
+        }
+
+        // Fonction auxiliaire pour réordonner une tournée (nearest neighbour avec distances OSRM)
+        private async Task<List<(TrajectoryStop Stop, int WorkersToPick)>> OptimizeRouteOrder(
+            List<(TrajectoryStop Stop, int WorkersToPick)> route,
+            double depotLat, double depotLng)
+        {
+            if (route.Count <= 1) return route;
+
+            var remaining = new List<(TrajectoryStop Stop, int WorkersToPick)>(route);
+            var ordered = new List<(TrajectoryStop Stop, int WorkersToPick)>();
+            double currentLat = depotLat;
+            double currentLng = depotLng;
+
+            while (remaining.Any())
+            {
+                int bestIdx = -1;
+                double bestDist = double.MaxValue;
+
+                for (int i = 0; i < remaining.Count; i++)
+                {
+                    var (stop, _) = remaining[i];
+                    double dist = await _routing.GetRouteDistance(
+                        currentLat, currentLng,
+                        (double)stop.TS_Latitude, (double)stop.TS_Longitude);
+                    if (dist < bestDist)
+                    {
+                        bestDist = dist;
+                        bestIdx = i;
+                    }
+                }
+
+                var selected = remaining[bestIdx];
+                ordered.Add(selected);
+                currentLat = (double)selected.Stop.TS_Latitude;
+                currentLng = (double)selected.Stop.TS_Longitude;
+                remaining.RemoveAt(bestIdx);
+            }
+
+            return ordered;
+        }
+
+        // Distance euclidienne pour le tri initial (rapide)
+        private double EuclideanDistance(double lat1, double lon1, double lat2, double lon2)
+        {
+            double dx = (lat2 - lat1) * 111320; // conversion approchée en mètres
+            double dy = (lon2 - lon1) * 111320 * Math.Cos(lat1 * Math.PI / 180);
+            return Math.Sqrt(dx * dx + dy * dy);
         }
 
         // ================================================
