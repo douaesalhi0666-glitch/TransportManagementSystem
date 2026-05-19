@@ -295,16 +295,6 @@ namespace TransportManagementSystem.Controllers
             if (personnel == null)
                 return NotFound("Personnel non trouvé");
 
-            // Si motorisé, retour simplifié
-            if (personnel.IsMotorized)
-            {
-                return Ok(new
-                {
-                    isMotorized = true,
-                    message = "Vous êtes motorisé"
-                });
-            }
-
             Trajectory? trajectory = personnel.AssignedTrajectory;
             TrajectoryStop? stop = null;
             string stopName = "Non défini";
@@ -442,7 +432,7 @@ namespace TransportManagementSystem.Controllers
                 } : null,
                 assignedDriver = driverName,
                 stopName = stopName,
-                isMotorized = false
+                isMotorized = personnel.IsMotorized
             });
         }
 

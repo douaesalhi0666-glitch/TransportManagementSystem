@@ -1,10 +1,11 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.ML;
+using System.IO;
+using System.Text.Json;
 using TransportManagementSystem.Data;
 using TransportManagementSystem.Models;
 using TransportManagementSystem.Services;
-using System.Text.Json;
-using System.IO;
 
 namespace TransportManagementSystem.Controllers
 {
@@ -13,7 +14,6 @@ namespace TransportManagementSystem.Controllers
         private readonly ApplicationDbContext _context;
         private readonly IAssignmentService _assignmentService;
 
-        // Injection du service d'assignation
         public DashboardController(ApplicationDbContext context, IAssignmentService assignmentService)
         {
             _context = context;
@@ -68,7 +68,7 @@ namespace TransportManagementSystem.Controllers
             return View();
         }
 
-        // ========== PERSONNEL DASHBOARD AVEC AFFICHAGE DES ASSIGNATIONS ==========
+        // ========== PERSONNEL DASHBOARD ==========
         public async Task<IActionResult> PersonnelDashboard()
         {
             var role = HttpContext.Session.GetString("UserRole");
@@ -92,7 +92,6 @@ namespace TransportManagementSystem.Controllers
 
             ViewBag.UserName = HttpContext.Session.GetString("UserName");
 
-            // Cas motorisé
             if (personnel.IsMotorized)
             {
                 ViewBag.IsMotorized = true;
@@ -100,7 +99,6 @@ namespace TransportManagementSystem.Controllers
                 return View();
             }
 
-            // Non motorisé : vérifier les assignations
             if (personnel.AssignedTrajectory != null && personnel.AssignedStop != null && personnel.AssignedBus != null)
             {
                 ViewBag.AssignedTrajectory = personnel.AssignedTrajectory;
@@ -118,7 +116,7 @@ namespace TransportManagementSystem.Controllers
             return View();
         }
 
-        // ========== NOTIFICATIONS (inchangées) ==========
+        // ========== NOTIFICATIONS ==========
         [HttpGet]
         public IActionResult GetNotifications()
         {
@@ -263,13 +261,11 @@ namespace TransportManagementSystem.Controllers
                 request.Personnel.IsMotorized = request.RequestedIsMotorized;
                 request.Status = "Approved";
 
-                // Désassigner complètement le personnel
                 request.Personnel.AssignedTrajectoryId = null;
                 request.Personnel.AssignedStopId = null;
                 request.Personnel.AssignedBusId = null;
                 request.Personnel.IsAssigned = false;
 
-                // Si le personnel devient NON motorisé -> assignation automatique
                 if (!request.RequestedIsMotorized)
                 {
                     bool success = await _assignmentService.AutoAssignNonMotorizedPersonnel(request.Personnel);
@@ -306,6 +302,27 @@ namespace TransportManagementSystem.Controllers
 
             await _context.SaveChangesAsync();
             return Ok(new { success = true, message = model.Approve ? "Demande approuvée." : "Demande refusée." });
+        }
+
+        // ========== NOUVELLE MÉTHODE POUR CHANGER LE STATUT SANS DEMANDE (direct) ==========
+        [HttpPost]
+        public async Task<IActionResult> ToggleMotorizedStatus()
+        {
+            var personnelIdStr = HttpContext.Session.GetString("PersonnelId");
+            if (string.IsNullOrEmpty(personnelIdStr))
+                return Unauthorized();
+
+            var personnelId = long.Parse(personnelIdStr);
+            var personnel = await _context.Personnel.FindAsync(personnelId);
+            if (personnel == null)
+                return NotFound();
+
+            // Inverser le statut sans toucher aux assignations
+            personnel.IsMotorized = !personnel.IsMotorized;
+            personnel.Personnel_UpdatedAt = DateTime.Now;
+            await _context.SaveChangesAsync();
+
+            return Ok(new { success = true, isMotorized = personnel.IsMotorized, message = $"Vous êtes maintenant {(personnel.IsMotorized ? "motorisé" : "non motorisé")}." });
         }
     }
 

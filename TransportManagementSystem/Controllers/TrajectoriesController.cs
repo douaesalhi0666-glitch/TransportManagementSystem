@@ -179,11 +179,17 @@ namespace TransportManagementSystem.Controllers
 
                 string trajectoryName = trajectory.Trajectory_Name;
 
+                // 0. Libérer les bus
+                var buses = await _context.Buses
+                    .Where(b => b.Bus_CurrentTrajectoryId == id)
+                    .ToListAsync();
+                foreach (var bus in buses)
+                    bus.Bus_CurrentTrajectoryId = null;
+
                 // 1. Libérer les personnels assignés à cette trajectoire
                 var personnelList = await _context.Personnel
                     .Where(p => p.AssignedTrajectoryId == id)
                     .ToListAsync();
-
                 foreach (var person in personnelList)
                 {
                     person.AssignedTrajectoryId = null;
@@ -197,45 +203,35 @@ namespace TransportManagementSystem.Controllers
                     .Where(a => a.PTA_TrajectoryId == id)
                     .ToListAsync();
                 if (personnelAssignments.Any())
-                {
                     _context.PersonnelTrajectoryAssignments.RemoveRange(personnelAssignments);
-                }
 
                 // 3. Supprimer les assignations bus-trajet
                 var busTrajAssignments = await _context.BusTrajectoryAssignments
                     .Where(a => a.BTA_TrajectoryId == id)
                     .ToListAsync();
                 if (busTrajAssignments.Any())
-                {
                     _context.BusTrajectoryAssignments.RemoveRange(busTrajAssignments);
-                }
 
                 // 4. Supprimer les alertes
                 var alerts = await _context.Alerts
                     .Where(a => a.Alert_TrajectoryId == id)
                     .ToListAsync();
                 if (alerts.Any())
-                {
                     _context.Alerts.RemoveRange(alerts);
-                }
 
                 // 5. Supprimer les schedules
                 var schedules = await _context.TrajectorySchedules
                     .Where(s => s.TSched_TrajectoryId == id)
                     .ToListAsync();
                 if (schedules.Any())
-                {
                     _context.TrajectorySchedules.RemoveRange(schedules);
-                }
 
                 // 6. Supprimer les driver performances
                 var driverPerformances = await _context.DriverPerformance_tbl
                     .Where(p => p.Trajectory_Id == id)
                     .ToListAsync();
                 if (driverPerformances.Any())
-                {
                     _context.DriverPerformance_tbl.RemoveRange(driverPerformances);
-                }
 
                 // 7. Supprimer les stops (points de ramassage) liés à cette trajectoire
                 var stops = await _context.TrajectoryStops
@@ -243,6 +239,15 @@ namespace TransportManagementSystem.Controllers
                     .ToListAsync();
                 if (stops.Any())
                 {
+                    var stopIds = stops.Select(s => s.TS_Id).ToList();
+                    // 🔑 FIX: Libérer les personnels qui référencent ces stops
+                    var personnelWithStops = await _context.Personnel
+                        .Where(p => stopIds.Contains(p.AssignedStopId ?? 0))
+                        .ToListAsync();
+                    foreach (var p in personnelWithStops)
+                    {
+                        p.AssignedStopId = null;
+                    }
                     _context.TrajectoryStops.RemoveRange(stops);
                 }
 
@@ -251,13 +256,13 @@ namespace TransportManagementSystem.Controllers
                 await _context.SaveChangesAsync();
 
                 DashboardController.AddNotification("delete", "Trajet supprimé", $"Le trajet '{trajectoryName}' a été supprimé.");
-
                 TempData["Success"] = $"✅ Trajectoire '{trajectoryName}' supprimée avec succès!";
             }
             catch (Exception ex)
             {
-                var innerMessage = ex.InnerException?.Message ?? ex.Message;
-                TempData["Error"] = $"❌ Erreur lors de la suppression: {innerMessage}";
+                var fullMessage = ex.InnerException?.Message ?? ex.Message;
+                System.Diagnostics.Debug.WriteLine(ex.ToString());
+                TempData["Error"] = $"❌ Erreur lors de la suppression: {fullMessage}";
             }
 
             return RedirectToAction(nameof(Index));

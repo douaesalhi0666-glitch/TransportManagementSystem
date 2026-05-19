@@ -243,9 +243,10 @@ namespace TransportManagementSystem.Controllers
         [HttpGet]
         public async Task<IActionResult> GetUnassignedWorkers()
         {
+            // MODIFICATION: Suppression du filtre p.IsMotorized == false
             var workers = await _context.Personnel
                 .Where(p => p.IsAssigned == false && p.AssignedStopId == null && p.Personnel_Status == "Active"
-                    && p.Personnel_Latitude != null && p.Personnel_Longitude != null && p.IsMotorized == false)
+                    && p.Personnel_Latitude != null && p.Personnel_Longitude != null)
                 .Select(p => new
                 {
                     p.Personnel_Id,
@@ -306,9 +307,10 @@ namespace TransportManagementSystem.Controllers
             if (stop == null)
                 return BadRequest(new { success = false, message = "Arrêt non trouvé" });
 
+            // MODIFICATION: Suppression du filtre IsMotorized
             var unassignedWorkers = await _context.Personnel
                 .Where(p => p.IsAssigned == false && p.AssignedStopId == null && p.Personnel_Status == "Active"
-                    && p.Personnel_Latitude != null && p.Personnel_Longitude != null && p.IsMotorized == false)
+                    && p.Personnel_Latitude != null && p.Personnel_Longitude != null)
                 .ToListAsync();
 
             if (!unassignedWorkers.Any())
@@ -341,9 +343,10 @@ namespace TransportManagementSystem.Controllers
             if (!stops.Any())
                 return BadRequest(new { success = false, message = "Aucun arrêt trouvé" });
 
+            // MODIFICATION: Suppression du filtre IsMotorized
             var unassignedWorkers = await _context.Personnel
                 .Where(p => p.IsAssigned == false && p.AssignedStopId == null && p.Personnel_Status == "Active"
-                    && p.Personnel_Latitude != null && p.Personnel_Longitude != null && p.IsMotorized == false)
+                    && p.Personnel_Latitude != null && p.Personnel_Longitude != null)
                 .ToListAsync();
 
             if (!unassignedWorkers.Any())
@@ -471,8 +474,9 @@ namespace TransportManagementSystem.Controllers
             if (request.TrajectoryId <= 0)
                 return BadRequest("Trajectoire invalide");
 
+            // MODIFICATION: Suppression du filtre IsMotorized
             var personnelPoints = await _context.Personnel
-                .Where(p => p.Personnel_Status == "Active" && p.Personnel_Latitude != null && p.Personnel_Longitude != null && p.IsMotorized == false)
+                .Where(p => p.Personnel_Status == "Active" && p.Personnel_Latitude != null && p.Personnel_Longitude != null)
                 .Select(p => new ClusterPoint
                 {
                     X = (double)p.Personnel_Latitude!.Value,
@@ -482,7 +486,7 @@ namespace TransportManagementSystem.Controllers
                 .ToListAsync();
 
             if (personnelPoints.Count == 0)
-                return Ok(new { clusters = new List<object>(), points = new List<object>(), message = "Aucun personnel non motorisé avec coordonnées." });
+                return Ok(new { clusters = new List<object>(), points = new List<object>(), message = "Aucun personnel avec coordonnées." });
 
             int k = Math.Max(1, Math.Min(request.NumberOfClusters, personnelPoints.Count));
             var clusters = KMeansDeterministic(personnelPoints, k);
@@ -578,19 +582,20 @@ namespace TransportManagementSystem.Controllers
             {
                 int busCapacity = request?.BusCapacity ?? 20;
 
+                // MODIFICATION: Suppression du filtre IsMotorized dans WorkerCount
                 var stopsWithWorkers = await _context.TrajectoryStops
                     .Where(s => s.TS_Latitude != 0 && s.TS_Longitude != 0)
                     .Select(s => new
                     {
                         Stop = s,
-                        WorkerCount = _context.Personnel.Count(p => p.AssignedStopId == s.TS_Id && p.IsAssigned == true && p.IsMotorized == false)
+                        WorkerCount = _context.Personnel.Count(p => p.AssignedStopId == s.TS_Id && p.IsAssigned == true)
                     })
                     .ToListAsync();
 
                 var validStops = stopsWithWorkers.Where(s => s.WorkerCount > 0).OrderBy(s => s.Stop.TS_OrderIndex).ToList();
 
                 if (!validStops.Any())
-                    return BadRequest(new { success = false, message = "Aucun point de ramassage avec personnels non motorisés." });
+                    return BadRequest(new { success = false, message = "Aucun point de ramassage avec personnels." });
 
                 var routes = new List<object>();
                 var currentRouteStops = new List<(TrajectoryStop Stop, int Workers)>();
@@ -661,8 +666,9 @@ namespace TransportManagementSystem.Controllers
             var allPassengers = new List<object>();
             foreach (var r in routeStops)
             {
+                // MODIFICATION: Suppression du filtre IsMotorized
                 var passengers = _context.Personnel
-                    .Where(p => p.AssignedStopId == r.Stop.TS_Id && p.IsAssigned == true && p.IsMotorized == false)
+                    .Where(p => p.AssignedStopId == r.Stop.TS_Id && p.IsAssigned == true)
                     .Select(p => new { FirstName = p.Personnel_FirstName, LastName = p.Personnel_LastName })
                     .ToList();
                 allPassengers.AddRange(passengers);
@@ -686,19 +692,20 @@ namespace TransportManagementSystem.Controllers
                 const double startLat = 34.2900, startLng = -6.5700;
                 const double speedKmh = 30;
 
+                // MODIFICATION: Suppression du filtre IsMotorized
                 var stopsWithWorkers = await _context.TrajectoryStops
                     .Where(s => s.TS_Latitude != 0 && s.TS_Longitude != 0)
                     .Select(s => new
                     {
                         Stop = s,
-                        WorkerCount = _context.Personnel.Count(p => p.AssignedStopId == s.TS_Id && p.IsAssigned == true && p.IsMotorized == false)
+                        WorkerCount = _context.Personnel.Count(p => p.AssignedStopId == s.TS_Id && p.IsAssigned == true)
                     })
                     .ToListAsync();
 
                 var validStops = stopsWithWorkers.Where(s => s.WorkerCount > 0).OrderBy(s => s.Stop.TS_OrderIndex).ToList();
 
                 if (!validStops.Any())
-                    return BadRequest(new { success = false, message = "Aucun point de ramassage avec personnels non motorisés." });
+                    return BadRequest(new { success = false, message = "Aucun point de ramassage avec personnels." });
 
                 var createdTrajs = new List<Trajectory>();
                 var currentRouteStops = new List<TrajectoryStop>();
@@ -780,7 +787,7 @@ namespace TransportManagementSystem.Controllers
             {
                 Trajectory_Name = $"Trajet-{DateTime.Now:yyyyMMddHHmmss}-{counter}",
                 Trajectory_Code = $"T-{counter}",
-                Trajectory_Description = $"{stops.Count} arrêts, {totalWorkers} pers non motorisés",
+                Trajectory_Description = $"{stops.Count} arrêts, {totalWorkers} pers",
                 Trajectory_StartLatitude = (decimal)startLat,
                 Trajectory_StartLongitude = (decimal)startLng,
                 Trajectory_EndLatitude = (decimal)stops.Last().TS_Latitude,
@@ -804,14 +811,14 @@ namespace TransportManagementSystem.Controllers
             }
             await _context.SaveChangesAsync();
 
-            // FIX: Assign workers to this trajectory
+            // MODIFICATION: Suppression du filtre IsMotorized
             for (int i = 0; i < stops.Count; i++)
             {
                 var stop = stops[i];
                 int workersToTake = workers[i];
 
                 var workersToAssign = await _context.Personnel
-                    .Where(p => p.AssignedStopId == stop.TS_Id && p.IsAssigned == true && p.IsMotorized == false)
+                    .Where(p => p.AssignedStopId == stop.TS_Id && p.IsAssigned == true)
                     .Take(workersToTake)
                     .ToListAsync();
 
@@ -838,19 +845,16 @@ namespace TransportManagementSystem.Controllers
                 const double speedKmh = 30;
                 int busCapacity = 20;
 
-                // Clear tracked entities
                 _context.ChangeTracker.Clear();
 
-                // 1. Get all stops with workers assigned
+                // MODIFICATION: Suppression du filtre IsMotorized
                 var stopsData = await _context.TrajectoryStops
                     .AsNoTracking()
                     .Where(s => s.TS_Latitude != 0 && s.TS_Longitude != 0)
                     .Select(s => new
                     {
                         Stop = s,
-                        WorkerCount = _context.Personnel.Count(p => p.AssignedStopId == s.TS_Id
-                            && p.IsAssigned == true
-                            && p.IsMotorized == false)
+                        WorkerCount = _context.Personnel.Count(p => p.AssignedStopId == s.TS_Id && p.IsAssigned == true)
                     })
                     .ToListAsync();
 
@@ -861,29 +865,25 @@ namespace TransportManagementSystem.Controllers
                     .ToList();
 
                 if (!validStops.Any())
-                    return Ok(new { success = false, message = "No pickup points with non-motorized personnel found." });
+                    return Ok(new { success = false, message = "No pickup points with personnel found." });
 
-                // 2. Delete ONLY generated trajectories (keep default ID = 1)
+                // Delete previously generated trajectories (keep default ID = 1)
                 await _context.Database.ExecuteSqlRawAsync("DELETE FROM [Transport].[TrajectoryStop_tbl] WHERE TS_TrajectoryId > 1");
                 await _context.Database.ExecuteSqlRawAsync("DELETE FROM [Transport].[Trajectory_tbl] WHERE Trajectory_Id > 1");
-
                 await _context.Database.ExecuteSqlRawAsync("DBCC CHECKIDENT ('[Transport].[Trajectory_tbl]', RESEED, 1)");
 
-                // 3. Create two parallel lists to track remaining workers
                 var stopList = validStops.Select(s => s.Stop).ToList();
                 var remainingList = validStops.Select(s => s.WorkerCount).ToList();
 
                 int trajectoryCounter = 1;
                 string timestamp = DateTime.Now.ToString("yyyyMMddHHmmss");
 
-                // 4. Keep creating trajectories until all workers are assigned
                 while (remainingList.Any(r => r > 0))
                 {
                     var currentTrajectoryStops = new List<(TrajectoryStop Stop, int WorkersToPick)>();
                     int currentLoad = 0;
-                    var newRemainingList = remainingList.ToList(); // Copy for updates
+                    var newRemainingList = remainingList.ToList();
 
-                    // Try to fill the current bus with workers from stops
                     for (int i = 0; i < stopList.Count; i++)
                     {
                         int remaining = remainingList[i];
@@ -891,14 +891,12 @@ namespace TransportManagementSystem.Controllers
 
                         if (currentLoad + remaining <= busCapacity)
                         {
-                            // Take ALL remaining workers from this stop
                             currentTrajectoryStops.Add((stopList[i], remaining));
                             currentLoad += remaining;
                             newRemainingList[i] = 0;
                         }
                         else if (currentLoad < busCapacity)
                         {
-                            // Take only what fits, leave the rest for NEXT trajectory
                             int take = busCapacity - currentLoad;
                             currentTrajectoryStops.Add((stopList[i], take));
                             currentLoad = busCapacity;
@@ -906,7 +904,6 @@ namespace TransportManagementSystem.Controllers
                         }
                     }
 
-                    // Update the remaining list
                     for (int i = 0; i < remainingList.Count; i++)
                     {
                         remainingList[i] = newRemainingList[i];
@@ -914,7 +911,6 @@ namespace TransportManagementSystem.Controllers
 
                     if (currentTrajectoryStops.Any())
                     {
-                        // Calculate total distance
                         double totalDistance = 0;
                         double currentLat = startLat;
                         double currentLng = startLng;
@@ -928,7 +924,6 @@ namespace TransportManagementSystem.Controllers
                         double estimatedTime = totalDistance / speedKmh * 60;
                         int totalWorkers = currentTrajectoryStops.Sum(t => t.WorkersToPick);
 
-                        // Create new trajectory
                         var traj = new Trajectory
                         {
                             Trajectory_Name = $"Trajet-{timestamp}-{trajectoryCounter}",
@@ -948,12 +943,10 @@ namespace TransportManagementSystem.Controllers
                         _context.Trajectories.Add(traj);
                         await _context.SaveChangesAsync();
 
-                        // Assign workers to this trajectory
                         for (int i = 0; i < currentTrajectoryStops.Count; i++)
                         {
                             var (stop, workersToPick) = currentTrajectoryStops[i];
 
-                            // Create stop for this trajectory
                             var newStop = new TrajectoryStop
                             {
                                 TS_TrajectoryId = traj.Trajectory_Id,
@@ -964,11 +957,9 @@ namespace TransportManagementSystem.Controllers
                             };
                             _context.TrajectoryStops.Add(newStop);
 
-                            // Assign workers that are NOT yet assigned to any trajectory
                             var workersToAssign = await _context.Personnel
                                 .Where(p => p.AssignedStopId == stop.TS_Id
                                     && p.IsAssigned == true
-                                    && p.IsMotorized == false
                                     && p.AssignedTrajectoryId == null)
                                 .Take(workersToPick)
                                 .ToListAsync();
@@ -986,7 +977,7 @@ namespace TransportManagementSystem.Controllers
 
                 var finalTrajectories = await _context.Trajectories.Where(t => t.Trajectory_Id > 1).CountAsync();
                 var assignedWorkers = await _context.Personnel
-                    .CountAsync(p => p.IsMotorized == false && p.AssignedTrajectoryId != null);
+                    .CountAsync(p => p.AssignedTrajectoryId != null); // plus de filtre IsMotorized
 
                 return Ok(new
                 {
