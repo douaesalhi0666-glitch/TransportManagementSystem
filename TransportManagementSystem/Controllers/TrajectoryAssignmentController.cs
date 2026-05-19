@@ -297,7 +297,6 @@ namespace TransportManagementSystem.Controllers
         }
 
         // ========== NOUVELLES MÉTHODES POUR ASSIGNER/DÉSASSIGNER LES BUS ==========
-
         [HttpGet]
         public async Task<IActionResult> GetAvailableBuses()
         {
@@ -321,7 +320,8 @@ namespace TransportManagementSystem.Controllers
         }
 
         [HttpPost]
-        public async Task<IActionResult> AssignBusToTrajectory(int busId, int trajectoryId)
+        
+        public async Task<IActionResult> AssignBusToTrajectory(long busId, int trajectoryId)
         {
             var bus = await _context.Buses.FindAsync(busId);
             if (bus == null)
@@ -341,7 +341,8 @@ namespace TransportManagementSystem.Controllers
         }
 
         [HttpPost]
-        public async Task<IActionResult> UnassignBus(int busId)
+        
+        public async Task<IActionResult> UnassignBus(long busId)
         {
             var bus = await _context.Buses.FindAsync(busId);
             if (bus == null)
