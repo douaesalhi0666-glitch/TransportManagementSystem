@@ -21,6 +21,7 @@ namespace TransportManagementSystem.Services
         /// </summary>
         public async Task<double> GetRouteDistance(double lat1, double lon1, double lat2, double lon2)
         {
+            Console.WriteLine($"🌐 OSRM: {lat1},{lon1} -> {lat2},{lon2}");  // <-- point-virgule ajouté
             var url = $"{_baseUrl}/route/v1/driving/{lon1},{lat1};{lon2},{lat2}?overview=false";
             var response = await _httpClient.GetAsync(url);
             if (!response.IsSuccessStatusCode)

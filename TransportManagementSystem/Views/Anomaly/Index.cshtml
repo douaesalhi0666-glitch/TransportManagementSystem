@@ -1,0 +1,21 @@
+﻿@model IEnumerable<TransportManagementSystem.Models.AnomalyLog>
+<h2>📋 Anomalies détectées</h2>
+<table class="table table-striped">
+    <thead>
+        <tr><th>Date</th><th>Type</th><th>Description</th><th>Bus</th><th>Personnel</th><th>Sévérité</th><th>Résolu</th></tr>
+    </thead>
+    <tbody>
+        @foreach (var a in Model)
+        {
+            <tr>
+                <td>@a.Timestamp</td>
+                <td>@a.AnomalyType</td>
+                <td>@a.Description</td>
+                <td>@a.BusId</td>
+                <td>@a.PersonnelId</td>
+                <td>@a.SeverityScore.ToString("P0")</td>
+                <td>@(a.IsResolved ? "✅" : "❌")</td>
+            </tr>
+        }
+    </tbody>
+</table>

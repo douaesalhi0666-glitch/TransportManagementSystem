@@ -94,7 +94,26 @@
 </div>
 
 <!-- =============================== -->
-<!-- 4. Déconnexion                  -->
+<!-- 4. Détection d'anomalies         -->
+<!-- =============================== -->
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card border-danger">
+            <div class="card-header bg-danger text-white">
+                <h5>⚠️ Détection d'anomalies</h5>
+            </div>
+            <div class="card-body">
+                <button id="runAnomalyDetectionBtn" class="btn btn-danger">🔍 Lancer la détection</button>
+                <div id="anomalyResult" class="mt-2"></div>
+                <hr>
+                <a href="/Anomaly/Index" class="btn btn-outline-danger">📋 Voir les anomalies détectées</a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- =============================== -->
+<!-- 5. Déconnexion                  -->
 <!-- =============================== -->
 <div class="row mt-4 mb-5">
     <div class="col-12 text-center">
@@ -104,4 +123,26 @@
 
 @section Scripts {
     <script src="https://kit.fontawesome.com/a076d05399.js" crossorigin="anonymous"></script>
+    <script>
+        document.getElementById('runAnomalyDetectionBtn')?.addEventListener('click', async function () {
+        const btn = this;
+        const resultDiv = document.getElementById('anomalyResult');
+        btn.disabled = true;
+        btn.innerHTML = '⏳ Détection en cours...';
+        try {
+        const response = await fetch('/Dashboard/RunAnomalyDetection', { method: 'POST' });
+        const data = await response.json();
+        if (data.success) {
+        resultDiv.innerHTML = `<div class="alert alert-success">✅ ${data.message}</div>`;
+        } else {
+        resultDiv.innerHTML = `<div class="alert alert-danger">❌ ${data.message}</div>`;
+        }
+        } catch (err) {
+        resultDiv.innerHTML = `<div class="alert alert-danger">Erreur réseau</div>`;
+        } finally {
+        btn.disabled = false;
+        btn.innerHTML = '🔍 Lancer la détection';
+        }
+        });
+    </script>
 }
