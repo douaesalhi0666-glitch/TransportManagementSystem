@@ -838,65 +838,87 @@ namespace TransportManagementSystem.Controllers
                 const double speedKmh = 30;
                 int busCapacity = 20;
 
-                var stopsWithWorkers = await _context.TrajectoryStops
+                // Clear tracked entities
+                _context.ChangeTracker.Clear();
+
+                // 1. Get all stops with workers assigned
+                var stopsData = await _context.TrajectoryStops
+                    .AsNoTracking()
                     .Where(s => s.TS_Latitude != 0 && s.TS_Longitude != 0)
                     .Select(s => new
                     {
                         Stop = s,
-                        WorkerCount = _context.Personnel.Count(p => p.AssignedStopId == s.TS_Id && p.IsAssigned == true && p.IsMotorized == false)
+                        WorkerCount = _context.Personnel.Count(p => p.AssignedStopId == s.TS_Id
+                            && p.IsAssigned == true
+                            && p.IsMotorized == false)
                     })
                     .ToListAsync();
 
-                var validStops = stopsWithWorkers.Where(s => s.WorkerCount > 0).ToList();
+                var validStops = stopsData
+                    .Where(s => s.WorkerCount > 0)
+                    .Select(s => new { s.Stop, s.WorkerCount })
+                    .OrderByDescending(s => CalculateDistance(startLat, startLng, (double)s.Stop.TS_Latitude, (double)s.Stop.TS_Longitude))
+                    .ToList();
 
                 if (!validStops.Any())
                     return Ok(new { success = false, message = "No pickup points with non-motorized personnel found." });
 
-                var remainingStops = validStops.Select(s => new { s.Stop, s.WorkerCount }).ToList();
-                int totalTrajets = 0;
+                // 2. Delete ONLY generated trajectories (keep default ID = 1)
+                await _context.Database.ExecuteSqlRawAsync("DELETE FROM [Transport].[TrajectoryStop_tbl] WHERE TS_TrajectoryId > 1");
+                await _context.Database.ExecuteSqlRawAsync("DELETE FROM [Transport].[Trajectory_tbl] WHERE Trajectory_Id > 1");
+
+                await _context.Database.ExecuteSqlRawAsync("DBCC CHECKIDENT ('[Transport].[Trajectory_tbl]', RESEED, 1)");
+
+                // 3. Create two parallel lists to track remaining workers
+                var stopList = validStops.Select(s => s.Stop).ToList();
+                var remainingList = validStops.Select(s => s.WorkerCount).ToList();
+
+                int trajectoryCounter = 1;
                 string timestamp = DateTime.Now.ToString("yyyyMMddHHmmss");
 
-                while (remainingStops.Any())
+                // 4. Keep creating trajectories until all workers are assigned
+                while (remainingList.Any(r => r > 0))
                 {
-                    var currentTrajectory = new List<(TrajectoryStop Stop, int Workers)>();
+                    var currentTrajectoryStops = new List<(TrajectoryStop Stop, int WorkersToPick)>();
                     int currentLoad = 0;
-                    var stopsToRemove = new List<dynamic>();
+                    var newRemainingList = remainingList.ToList(); // Copy for updates
 
-                    foreach (var stopInfo in remainingStops.ToList())
+                    // Try to fill the current bus with workers from stops
+                    for (int i = 0; i < stopList.Count; i++)
                     {
-                        if (currentLoad + stopInfo.WorkerCount <= busCapacity)
+                        int remaining = remainingList[i];
+                        if (remaining == 0) continue;
+
+                        if (currentLoad + remaining <= busCapacity)
                         {
-                            currentTrajectory.Add((stopInfo.Stop, stopInfo.WorkerCount));
-                            currentLoad += stopInfo.WorkerCount;
-                            stopsToRemove.Add(stopInfo);
+                            // Take ALL remaining workers from this stop
+                            currentTrajectoryStops.Add((stopList[i], remaining));
+                            currentLoad += remaining;
+                            newRemainingList[i] = 0;
                         }
-                        else if (currentLoad < busCapacity && stopInfo.WorkerCount > busCapacity - currentLoad)
+                        else if (currentLoad < busCapacity)
                         {
+                            // Take only what fits, leave the rest for NEXT trajectory
                             int take = busCapacity - currentLoad;
-                            currentTrajectory.Add((stopInfo.Stop, take));
-                            currentLoad += take;
-
-                            var index = remainingStops.FindIndex(r => r.Stop.TS_Id == stopInfo.Stop.TS_Id);
-                            if (index >= 0)
-                            {
-                                var updated = remainingStops[index];
-                                remainingStops[index] = new { updated.Stop, WorkerCount = updated.WorkerCount - take };
-                            }
-                            break;
+                            currentTrajectoryStops.Add((stopList[i], take));
+                            currentLoad = busCapacity;
+                            newRemainingList[i] = remaining - take;
                         }
                     }
 
-                    foreach (var toRemove in stopsToRemove)
+                    // Update the remaining list
+                    for (int i = 0; i < remainingList.Count; i++)
                     {
-                        remainingStops.RemoveAll(r => r.Stop.TS_Id == toRemove.Stop.TS_Id);
+                        remainingList[i] = newRemainingList[i];
                     }
 
-                    if (currentTrajectory.Any())
+                    if (currentTrajectoryStops.Any())
                     {
+                        // Calculate total distance
                         double totalDistance = 0;
                         double currentLat = startLat;
                         double currentLng = startLng;
-                        foreach (var (stop, _) in currentTrajectory)
+                        foreach (var (stop, _) in currentTrajectoryStops)
                         {
                             totalDistance += CalculateDistance(currentLat, currentLng, (double)stop.TS_Latitude, (double)stop.TS_Longitude);
                             currentLat = (double)stop.TS_Latitude;
@@ -904,20 +926,18 @@ namespace TransportManagementSystem.Controllers
                         }
 
                         double estimatedTime = totalDistance / speedKmh * 60;
-                        int totalWorkers = currentTrajectory.Sum(t => t.Workers);
-                        totalTrajets++;
+                        int totalWorkers = currentTrajectoryStops.Sum(t => t.WorkersToPick);
 
-                        string uniqueCode = $"T-{timestamp}-{totalTrajets}";
-
+                        // Create new trajectory
                         var traj = new Trajectory
                         {
-                            Trajectory_Name = $"Trajet-{timestamp}-{totalTrajets}",
-                            Trajectory_Code = uniqueCode,
-                            Trajectory_Description = $"{currentTrajectory.Count} stops, {totalWorkers} persons",
+                            Trajectory_Name = $"Trajet-{timestamp}-{trajectoryCounter}",
+                            Trajectory_Code = $"T-{timestamp}-{trajectoryCounter}",
+                            Trajectory_Description = $"{currentTrajectoryStops.Count} stops, {totalWorkers} workers",
                             Trajectory_StartLatitude = (decimal)startLat,
                             Trajectory_StartLongitude = (decimal)startLng,
-                            Trajectory_EndLatitude = (decimal)currentTrajectory.Last().Stop.TS_Latitude,
-                            Trajectory_EndLongitude = (decimal)currentTrajectory.Last().Stop.TS_Longitude,
+                            Trajectory_EndLatitude = (decimal)currentTrajectoryStops.Last().Stop.TS_Latitude,
+                            Trajectory_EndLongitude = (decimal)currentTrajectoryStops.Last().Stop.TS_Longitude,
                             Trajectory_DistanceKm = (decimal)Math.Round(totalDistance, 2),
                             Trajectory_EstimatedDurationMinutes = (int)Math.Ceiling(estimatedTime),
                             Trajectory_Status = "Active",
@@ -928,24 +948,29 @@ namespace TransportManagementSystem.Controllers
                         _context.Trajectories.Add(traj);
                         await _context.SaveChangesAsync();
 
-                        // Update stops to point to this new trajectory
-                        for (int i = 0; i < currentTrajectory.Count; i++)
+                        // Assign workers to this trajectory
+                        for (int i = 0; i < currentTrajectoryStops.Count; i++)
                         {
-                            var (stop, _) = currentTrajectory[i];
-                            stop.TS_TrajectoryId = traj.Trajectory_Id;
-                            stop.TS_OrderIndex = i + 1;
-                            _context.TrajectoryStops.Update(stop);
-                        }
-                        await _context.SaveChangesAsync();
+                            var (stop, workersToPick) = currentTrajectoryStops[i];
 
-                        // FIX: Assign workers to this trajectory
-                        for (int i = 0; i < currentTrajectory.Count; i++)
-                        {
-                            var (stop, workersToTake) = currentTrajectory[i];
+                            // Create stop for this trajectory
+                            var newStop = new TrajectoryStop
+                            {
+                                TS_TrajectoryId = traj.Trajectory_Id,
+                                TS_Name = stop.TS_Name,
+                                TS_OrderIndex = i + 1,
+                                TS_Latitude = stop.TS_Latitude,
+                                TS_Longitude = stop.TS_Longitude
+                            };
+                            _context.TrajectoryStops.Add(newStop);
 
+                            // Assign workers that are NOT yet assigned to any trajectory
                             var workersToAssign = await _context.Personnel
-                                .Where(p => p.AssignedStopId == stop.TS_Id && p.IsAssigned == true && p.IsMotorized == false)
-                                .Take(workersToTake)
+                                .Where(p => p.AssignedStopId == stop.TS_Id
+                                    && p.IsAssigned == true
+                                    && p.IsMotorized == false
+                                    && p.AssignedTrajectoryId == null)
+                                .Take(workersToPick)
                                 .ToListAsync();
 
                             foreach (var worker in workersToAssign)
@@ -954,10 +979,22 @@ namespace TransportManagementSystem.Controllers
                             }
                         }
                         await _context.SaveChangesAsync();
+
+                        trajectoryCounter++;
                     }
                 }
 
-                return Ok(new { success = true, message = $"{totalTrajets} trajectories generated successfully.", count = totalTrajets });
+                var finalTrajectories = await _context.Trajectories.Where(t => t.Trajectory_Id > 1).CountAsync();
+                var assignedWorkers = await _context.Personnel
+                    .CountAsync(p => p.IsMotorized == false && p.AssignedTrajectoryId != null);
+
+                return Ok(new
+                {
+                    success = true,
+                    message = $"Generated {finalTrajectories} trajectories with {assignedWorkers} workers assigned.",
+                    trajectoryCount = finalTrajectories,
+                    workerCount = assignedWorkers
+                });
             }
             catch (Exception ex)
             {
