@@ -1006,7 +1006,7 @@ namespace TransportManagementSystem.Controllers
                     .ToListAsync();
 
                 var trajectoriesWithoutBus = await _context.Trajectories
-                    .Where(t => t.Trajectory_Status == "Active" && !_context.Buses.Any(b => b.Bus_CurrentTrajectoryId == t.Trajectory_Id))
+                    .Where(t => t.Trajectory_Status == "Active" && t.Trajectory_Id > 1 && !_context.Buses.Any(b => b.Bus_CurrentTrajectoryId == t.Trajectory_Id))
                     .OrderBy(t => t.Trajectory_Id)
                     .ToListAsync();
 
@@ -1016,12 +1016,49 @@ namespace TransportManagementSystem.Controllers
                 int assignedCount = 0;
                 for (int i = 0; i < Math.Min(availableBuses.Count, trajectoriesWithoutBus.Count); i++)
                 {
-                    availableBuses[i].Bus_CurrentTrajectoryId = trajectoriesWithoutBus[i].Trajectory_Id;
+                    var bus = availableBuses[i];
+                    var trajectory = trajectoriesWithoutBus[i];
+
+                    // Assign bus to trajectory
+                    bus.Bus_CurrentTrajectoryId = trajectory.Trajectory_Id;
+
+                    // Now assign personnel from this trajectory's stops to this bus
+                    var stopsInTrajectory = await _context.TrajectoryStops
+                        .Where(s => s.TS_TrajectoryId == trajectory.Trajectory_Id)
+                        .OrderBy(s => s.TS_OrderIndex)
+                        .ToListAsync();
+
+                    int capacity = bus.Bus_Capacity ?? 20;
+                    int currentOccupancy = 0;
+                    int personnelAssigned = 0;
+
+                    foreach (var stop in stopsInTrajectory)
+                    {
+                        if (currentOccupancy >= capacity) break;
+
+                        var workersAtStop = await _context.Personnel
+                            .Where(p => p.AssignedStopId == stop.TS_Id
+                                        && p.AssignedBusId == null
+                                        && p.Personnel_Status == "Active")
+                            .ToListAsync();
+
+                        foreach (var worker in workersAtStop)
+                        {
+                            if (currentOccupancy >= capacity) break;
+
+                            worker.AssignedBusId = bus.Bus_Id;
+                            worker.IsAssigned = true;
+                            currentOccupancy++;
+                            personnelAssigned++;
+                        }
+                    }
+
+                    bus.CurrentOccupancy = currentOccupancy;
                     assignedCount++;
                 }
 
                 await _context.SaveChangesAsync();
-                return Ok(new { success = true, message = $"{assignedCount} bus assignés aux trajectoires." });
+                return Ok(new { success = true, message = $"{assignedCount} bus assignés aux trajectoires avec {_context.Personnel.Count(p => p.AssignedBusId != null)} personnels assignés." });
             }
             catch (Exception ex)
             {

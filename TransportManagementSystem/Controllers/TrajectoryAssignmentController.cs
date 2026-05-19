@@ -200,7 +200,6 @@ namespace TransportManagementSystem.Controllers
 
             var trajectoryId = bus.Bus_CurrentTrajectoryId.Value;
 
-            // Récupérer les arrêts de cette trajectoire, triés par ordre
             var stops = await _context.TrajectoryStops
                 .Where(s => s.TS_TrajectoryId == trajectoryId)
                 .OrderBy(s => s.TS_OrderIndex)
@@ -210,10 +209,8 @@ namespace TransportManagementSystem.Controllers
             var currentOccupancy = await _context.Personnel.CountAsync(p => p.AssignedBusId == busId);
             int assignedCount = 0;
 
-            // Parcourir les arrêts dans l'ordre
             foreach (var stop in stops)
             {
-                // Personnels affectés à cet arrêt, sans bus, actifs
                 var workersAtStop = await _context.Personnel
                     .Where(p => p.AssignedStopId == stop.TS_Id
                                 && p.AssignedBusId == null
@@ -226,7 +223,7 @@ namespace TransportManagementSystem.Controllers
                         break;
 
                     worker.AssignedBusId = busId;
-                    worker.IsAssigned = true; // reste true
+                    worker.IsAssigned = true;
                     assignedCount++;
                 }
 
@@ -297,6 +294,67 @@ namespace TransportManagementSystem.Controllers
             await _context.SaveChangesAsync();
             TempData["Success"] = $"Synchronisation terminée : {updatedCount} personnels assignés à un bus.";
             return RedirectToAction("BusOccupancy");
+        }
+
+        // ========== NOUVELLES MÉTHODES POUR ASSIGNER/DÉSASSIGNER LES BUS ==========
+
+        [HttpGet]
+        public async Task<IActionResult> GetAvailableBuses()
+        {
+            var buses = await _context.Buses
+                .Where(b => b.Bus_Status == "In Service" && b.Bus_CurrentTrajectoryId == null)
+                .Select(b => new { b.Bus_Id, b.Bus_Code, b.Bus_PlateNumber })
+                .ToListAsync();
+            return Ok(buses);
+        }
+
+        [HttpGet]
+        public async Task<IActionResult> GetAvailableTrajectories()
+        {
+            var trajectories = await _context.Trajectories
+                .Where(t => t.Trajectory_Status == "Active"
+                            && t.Trajectory_Id > 1
+                            && !_context.Buses.Any(b => b.Bus_CurrentTrajectoryId == t.Trajectory_Id))
+                .Select(t => new { t.Trajectory_Id, t.Trajectory_Name, t.Trajectory_Code })
+                .ToListAsync();
+            return Ok(trajectories);
+        }
+
+        [HttpPost]
+        public async Task<IActionResult> AssignBusToTrajectory(int busId, int trajectoryId)
+        {
+            var bus = await _context.Buses.FindAsync(busId);
+            if (bus == null)
+                return Json(new { success = false, message = "Bus non trouvé." });
+
+            var trajectory = await _context.Trajectories.FindAsync(trajectoryId);
+            if (trajectory == null)
+                return Json(new { success = false, message = "Trajectoire non trouvée." });
+
+            if (bus.Bus_CurrentTrajectoryId != null)
+                return Json(new { success = false, message = "Ce bus est déjà assigné à une trajectoire." });
+
+            bus.Bus_CurrentTrajectoryId = trajectoryId;
+            await _context.SaveChangesAsync();
+
+            return Json(new { success = true, message = $"Bus {bus.Bus_Code} assigné à la trajectoire {trajectory.Trajectory_Name}." });
+        }
+
+        [HttpPost]
+        public async Task<IActionResult> UnassignBus(int busId)
+        {
+            var bus = await _context.Buses.FindAsync(busId);
+            if (bus == null)
+                return Json(new { success = false, message = "Bus non trouvé." });
+
+            if (bus.Bus_CurrentTrajectoryId == null)
+                return Json(new { success = false, message = "Ce bus n'est assigné à aucune trajectoire." });
+
+            bus.Bus_CurrentTrajectoryId = null;
+            bus.CurrentOccupancy = 0;
+            await _context.SaveChangesAsync();
+
+            return Json(new { success = true, message = $"Bus {bus.Bus_Code} désassigné avec succès." });
         }
 
         // ========== HELPERS ==========

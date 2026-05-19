@@ -5,7 +5,7 @@
     Layout = "~/Views/Shared/_Layout.cshtml";
 }
 
-<h1>🚌 Occupation des bus</h1>
+<h1>🚌 Gestion des bus</h1>
 <hr />
 
 @if (TempData["Success"] != null)
@@ -22,9 +22,18 @@
     </div>
 }
 
-<form method="post" asp-action="SyncPersonnelBusAssignments" asp-controller="TrajectoryAssignment" class="mb-3">
-    <button type="submit" class="btn btn-warning">🔄 Synchroniser les assignations (Stop → Bus)</button>
-</form>
+<div class="row mb-3">
+    <div class="col-md-6">
+        <form method="post" asp-action="SyncPersonnelBusAssignments" asp-controller="TrajectoryAssignment" class="d-inline">
+            <button type="submit" class="btn btn-warning">🔄 Synchroniser les assignations (Stop → Bus)</button>
+        </form>
+    </div>
+    <div class="col-md-6 text-end">
+        <button type="button" class="btn btn-success" data-bs-toggle="modal" data-bs-target="#assignBusModal">
+            ➕ Assigner un bus à une trajectoire
+        </button>
+    </div>
+</div>
 
 @if (Model != null && Model.Any())
 {
@@ -36,7 +45,14 @@
         var percentage = (item.Occupancy * 100) / capacity;
         <div class="card mb-4">
             <div class="card-header bg-primary text-white">
-                <h4>🚌 Bus @item.Bus.Bus_Code - @item.Bus.Bus_PlateNumber</h4>
+                <div class="d-flex justify-content-between align-items-center">
+                    <h4 class="mb-0">🚌 Bus @item.Bus.Bus_Code - @item.Bus.Bus_PlateNumber</h4>
+                    <div>
+                        <button class="btn btn-sm btn-danger" onclick="unassignBus(@item.Bus.Bus_Id, '@item.Bus.Bus_Code')">
+                            🔓 Désassigner du trajet
+                        </button>
+                    </div>
+                </div>
             </div>
             <div class="card-body">
                 <div class="row">
@@ -114,4 +130,110 @@ else
     </div>
 }
 
+<!-- Modal pour assigner un bus à une trajectoire spécifique -->
+<div class="modal fade" id="assignBusModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-success text-white">
+                <h5 class="modal-title">🚌 Assigner un bus à une trajectoire</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="assignBusForm">
+                    <div class="mb-3">
+                        <label>Sélectionner un bus</label>
+                        <select id="busSelect" class="form-control" required>
+                            <option value="">-- Chargement des bus --</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label>Sélectionner une trajectoire</label>
+                        <select id="trajectorySelect" class="form-control" required>
+                            <option value="">-- Chargement des trajectoires --</option>
+                        </select>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
+                <button type="button" class="btn btn-primary" id="confirmAssignBusBtn">Assigner</button>
+            </div>
+        </div>
+    </div>
+</div>
+
 <a href="/Dashboard/AdminDashboard" class="btn btn-secondary">Retour au Dashboard</a>
+
+@section Scripts {
+    <script>
+        // Charger les bus disponibles (sans trajectoire)
+        async function loadAvailableBuses() {
+            const response = await fetch('/TrajectoryAssignment/GetAvailableBuses');
+            const buses = await response.json();
+            const select = document.getElementById('busSelect');
+            select.innerHTML = '<option value="">-- Sélectionner un bus --</option>';
+            buses.forEach(bus => {
+                select.innerHTML += `<option value="${bus.bus_Id}">${bus.bus_Code} - ${bus.bus_PlateNumber}</option>`;
+            });
+        }
+
+        // Charger les trajectoires actives (sans bus)
+        async function loadAvailableTrajectories() {
+            const response = await fetch('/TrajectoryAssignment/GetAvailableTrajectories');
+            const trajectories = await response.json();
+            const select = document.getElementById('trajectorySelect');
+            select.innerHTML = '<option value="">-- Sélectionner une trajectoire --</option>';
+            trajectories.forEach(traj => {
+                select.innerHTML += `<option value="${traj.trajectory_Id}">${traj.trajectory_Name} (${traj.trajectory_Code})</option>`;
+            });
+        }
+
+        // Assigner bus à trajectoire
+        async function assignBusToTrajectory() {
+            const busId = document.getElementById('busSelect').value;
+            const trajectoryId = document.getElementById('trajectorySelect').value;
+
+            if (!busId || !trajectoryId) {
+                alert('Veuillez sélectionner un bus et une trajectoire');
+                return;
+            }
+
+            const response = await fetch(`/TrajectoryAssignment/AssignBusToTrajectory?busId=${busId}&trajectoryId=${trajectoryId}`, {
+                method: 'POST'
+            });
+
+            const result = await response.json();
+            if (result.success) {
+                alert('✅ ' + result.message);
+                location.reload();
+            } else {
+                alert('❌ ' + result.message);
+            }
+        }
+
+        // Désassigner bus de sa trajectoire
+        window.unassignBus = async (busId, busCode) => {
+            if (confirm(`Désassigner le bus ${busCode} de sa trajectoire ?`)) {
+                const response = await fetch(`/TrajectoryAssignment/UnassignBus?busId=${busId}`, {
+                    method: 'POST'
+                });
+                const result = await response.json();
+                if (result.success) {
+                    alert('✅ ' + result.message);
+                    location.reload();
+                } else {
+                    alert('❌ ' + result.message);
+                }
+            }
+        };
+
+        // Événements
+        document.getElementById('confirmAssignBusBtn').onclick = assignBusToTrajectory;
+
+        // Charger les données quand le modal s'ouvre
+        document.getElementById('assignBusModal').addEventListener('show.bs.modal', function() {
+            loadAvailableBuses();
+            loadAvailableTrajectories();
+        });
+    </script>
+}
