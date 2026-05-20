@@ -88,6 +88,7 @@
                                         <th>ID</th>
                                         <th>Nom</th>
                                         <th>Prénom</th>
+                                        <th>Adresse</th>
                                         <th>Action</th>
                                     </tr>
                                 </thead>
@@ -98,14 +99,11 @@
                                             <td>@p.Personnel_Id</td>
                                             <td>@p.Personnel_LastName</td>
                                             <td>@p.Personnel_FirstName</td>
+                                            <td>@p.HomeAddress ?? "-"</td>
                                             <td>
-                                                <form method="post" asp-action="RemovePersonnelFromBus" asp-controller="TrajectoryAssignment" style="display:inline;">
-                                                    <input type="hidden" name="personnelId" value="@p.Personnel_Id" />
-                                                    <input type="hidden" name="busId" value="@item.Bus.Bus_Id" />
-                                                    <button type="submit" class="btn btn-sm btn-danger" onclick="return confirm('Retirer ce personnel du bus ?')">
-                                                        ❌ Désassigner
-                                                    </button>
-                                                </form>
+                                                <button class="btn btn-sm btn-danger" onclick="removePersonnelFromBus(@p.Personnel_Id, @item.Bus.Bus_Id, '@p.Personnel_FirstName @p.Personnel_LastName')">
+                                                    ❌ Désassigner
+                                                </button>
                                             </td>
                                         </tr>
                                     }
@@ -184,6 +182,15 @@ else
 
 @section Scripts {
     <script>
+        // Helper function to escape HTML
+        function escapeHtml(text) {
+            if (!text) return '';
+            return text.replace(/&/g, '&amp;')
+                       .replace(/</g, '&lt;')
+                       .replace(/>/g, '&gt;')
+                       .replace(/"/g, '&quot;');
+        }
+
         // Charger les bus disponibles (sans trajectoire)
         async function loadAvailableBuses() {
             const response = await fetch('/TrajectoryAssignment/GetAvailableBuses');
@@ -245,36 +252,69 @@ else
             }
         };
 
+        // Retirer un personnel d'un bus
+        window.removePersonnelFromBus = async (personnelId, busId, personnelName) => {
+            if (confirm(`Retirer ${personnelName} de ce bus ?`)) {
+                try {
+                    const response = await fetch(`/TrajectoryAssignment/RemovePersonnelFromBus?personnelId=${personnelId}&busId=${busId}`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        }
+                    });
+
+                    const result = await response.json();
+
+                    if (result && result.success) {
+                        alert('✅ ' + result.message);
+                        location.reload();
+                    } else {
+                        alert('❌ ' + (result?.message || 'Erreur lors de la désassignation'));
+                    }
+                } catch (error) {
+                    console.error('Error:', error);
+                    alert('❌ Erreur réseau lors de la désassignation');
+                }
+            }
+        };
+
         // Ouvrir le modal et charger les personnels non assignés
         window.showUnassignedPersonnel = async (busId, busCode) => {
             document.getElementById('modalBusId').value = busId;
             const listDiv = document.getElementById('unassignedPersonnelList');
-            listDiv.innerHTML = '<p class="text-center">Chargement des personnels disponibles...</p>';
+            listDiv.innerHTML = '<div class="text-center"><div class="spinner-border text-primary" role="status"></div><br>Chargement...</div>';
 
-            const response = await fetch(`/TrajectoryAssignment/GetUnassignedPersonnelForBus?busId=${busId}`);
-            const personnel = await response.json();
+            try {
+                const response = await fetch(`/TrajectoryAssignment/GetUnassignedPersonnelForBus?busId=${busId}`);
+                const personnel = await response.json();
 
-            if (personnel && personnel.length > 0) {
-                let html = '<div class="list-group">';
-                personnel.forEach(p => {
-                    html += `
-                        <div class="list-group-item">
-                            <div class="d-flex justify-content-between align-items-center">
-                                <div>
-                                    <strong>${p.personnel_FirstName} ${p.personnel_LastName}</strong><br>
-                                    <small class="text-muted">Arrêt: ${p.stopName}</small>
+                if (personnel && personnel.length > 0) {
+                    let html = '<div class="list-group">';
+                    personnel.forEach(p => {
+                        const address = p.homeAddress || p.HomeAddress || 'Non renseignée';
+                        html += `
+                            <div class="list-group-item">
+                                <div class="d-flex justify-content-between align-items-start">
+                                    <div>
+                                        <strong>${escapeHtml(p.personnel_FirstName)} ${escapeHtml(p.personnel_LastName)}</strong><br>
+                                        <small class="text-muted">📍 Arrêt: ${escapeHtml(p.stopName)}</small><br>
+                                        <small class="text-muted">🏠 Adresse: ${escapeHtml(address)}</small>
+                                    </div>
+                                    <button class="btn btn-sm btn-success" onclick="assignSpecificPersonnel(${busId}, ${p.personnel_Id})">
+                                        ➕ Assigner
+                                    </button>
                                 </div>
-                                <button class="btn btn-sm btn-success" onclick="assignSpecificPersonnel(${busId}, ${p.personnel_Id})">
-                                    ➕ Assigner
-                                </button>
                             </div>
-                        </div>
-                    `;
-                });
-                html += '</div>';
-                listDiv.innerHTML = html;
-            } else {
-                listDiv.innerHTML = '<div class="alert alert-info">Aucun personnel non assigné disponible pour ce bus.</div>';
+                        `;
+                    });
+                    html += '</div>';
+                    listDiv.innerHTML = html;
+                } else {
+                    listDiv.innerHTML = '<div class="alert alert-info">Aucun personnel non assigné disponible pour ce bus.</div>';
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                listDiv.innerHTML = '<div class="alert alert-danger">Erreur lors du chargement des personnels.</div>';
             }
 
             new bootstrap.Modal(document.getElementById('assignPersonnelModal')).show();
@@ -282,15 +322,28 @@ else
 
         // Assigner un personnel spécifique à un bus
         window.assignSpecificPersonnel = async (busId, personnelId) => {
-            const response = await fetch(`/TrajectoryAssignment/AssignPersonnelToBus?busId=${busId}&personnelId=${personnelId}`, {
-                method: 'POST'
-            });
-            const result = await response.json();
-            if (result.success) {
-                alert('✅ ' + result.message);
-                location.reload();
-            } else {
-                alert('❌ ' + (result.message || 'Erreur lors de l\'assignation'));
+            console.log("Assigning personnel:", personnelId, "to bus:", busId);
+
+            try {
+                const response = await fetch(`/TrajectoryAssignment/AssignPersonnelToBus?busId=${busId}&personnelId=${personnelId}`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                });
+
+                const result = await response.json();
+                console.log("Response:", result);
+
+                if (result && result.success === true) {
+                    alert('✅ ' + result.message);
+                    location.reload();
+                } else {
+                    alert('❌ ' + (result?.message || 'Erreur lors de l\'assignation'));
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                alert('❌ Erreur réseau lors de l\'assignation: ' + error.message);
             }
         };
 
