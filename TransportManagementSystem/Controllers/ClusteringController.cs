@@ -983,7 +983,7 @@ namespace TransportManagementSystem.Controllers
                 ");
 
                 // Automatically assign buses to trajectories AND personnel to buses
-                await AutoAssignBusesToTrajectories();
+                //await AutoAssignBusesToTrajectories();
 
                 var finalTrajectories = await _context.Trajectories.Where(t => t.Trajectory_Id > 1).CountAsync();
                 var assignedWorkers = await _context.Personnel.CountAsync(p => p.AssignedTrajectoryId != null);
@@ -1042,7 +1042,7 @@ namespace TransportManagementSystem.Controllers
                     // CRITICAL FIX: Directly assign personnel from this trajectory
                     var workersInTrajectory = await _context.Personnel
                         .Where(p => p.AssignedTrajectoryId == trajectory.Trajectory_Id
-                                    && p.IsMotorized == false
+                                   
                                     && p.Personnel_Status == "Active"
                                     && (p.AssignedBusId == null || p.AssignedBusId == 0))
                         .ToListAsync();

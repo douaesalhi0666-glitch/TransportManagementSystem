@@ -188,14 +188,12 @@ namespace TransportManagementSystem.Controllers
 
             if (bus == null)
             {
-                TempData["Error"] = "Bus non trouvé.";
-                return RedirectToAction("BusOccupancy");
+                return Json(new { success = false, message = "Bus non trouvé." });
             }
 
             if (bus.Bus_CurrentTrajectoryId == null || bus.Bus_CurrentTrajectoryId == 1)
             {
-                TempData["Error"] = "Ce bus n'a pas de trajectoire valide.";
-                return RedirectToAction("BusOccupancy");
+                return Json(new { success = false, message = "Ce bus n'a pas de trajectoire valide." });
             }
 
             var trajectoryId = bus.Bus_CurrentTrajectoryId.Value;
@@ -205,23 +203,21 @@ namespace TransportManagementSystem.Controllers
             // Manual assignment for a specific personnel
             if (personnelId.HasValue && personnelId.Value > 0)
             {
+                // REMOVED: && p.IsMotorized == false
                 var worker = await _context.Personnel
                     .FirstOrDefaultAsync(p => p.Personnel_Id == personnelId.Value
                         && p.AssignedTrajectoryId == trajectoryId
-                        && p.IsMotorized == false
                         && p.Personnel_Status == "Active"
                         && (p.AssignedBusId == null || p.AssignedBusId == 0));
 
                 if (worker == null)
                 {
-                    TempData["Error"] = "Ce personnel n'est pas disponible ou déjà assigné.";
-                    return RedirectToAction("BusOccupancy");
+                    return Json(new { success = false, message = "Ce personnel n'est pas disponible ou déjà assigné." });
                 }
 
                 if (currentOccupancy >= capacity)
                 {
-                    TempData["Error"] = $"Le bus est déjà plein (capacité: {capacity}).";
-                    return RedirectToAction("BusOccupancy");
+                    return Json(new { success = false, message = $"Le bus est déjà plein (capacité: {capacity})." });
                 }
 
                 worker.AssignedBusId = busId;
@@ -230,14 +226,13 @@ namespace TransportManagementSystem.Controllers
                 bus.CurrentOccupancy = currentOccupancy;
                 await _context.SaveChangesAsync();
 
-                TempData["Success"] = $"✅ Personnel {worker.Personnel_FirstName} {worker.Personnel_LastName} assigné au bus.";
-                return RedirectToAction("BusOccupancy");
+                return Json(new { success = true, message = $"✅ Personnel {worker.Personnel_FirstName} {worker.Personnel_LastName} assigné au bus." });
             }
 
             // Auto-assign: find all unassigned personnel in this trajectory
+            // REMOVED: && p.IsMotorized == false
             var unassignedWorkers = await _context.Personnel
                 .Where(p => p.AssignedTrajectoryId == trajectoryId
-                            && p.IsMotorized == false
                             && p.Personnel_Status == "Active"
                             && (p.AssignedBusId == null || p.AssignedBusId == 0))
                 .OrderBy(p => p.AssignedStopId)
@@ -245,8 +240,7 @@ namespace TransportManagementSystem.Controllers
 
             if (!unassignedWorkers.Any())
             {
-                TempData["Error"] = "Aucun personnel non assigné trouvé pour cette trajectoire.";
-                return RedirectToAction("BusOccupancy");
+                return Json(new { success = false, message = "Aucun personnel non assigné trouvé pour cette trajectoire." });
             }
 
             int assignedCount = 0;
@@ -263,10 +257,10 @@ namespace TransportManagementSystem.Controllers
             bus.CurrentOccupancy = currentOccupancy + assignedCount;
             await _context.SaveChangesAsync();
 
-            TempData["Success"] = $"✅ {assignedCount} personnels assignés au bus (Trajectoire: {bus.CurrentTrajectory?.Trajectory_Name}, Capacité: {capacity}, Occupation: {currentOccupancy + assignedCount})";
-            return RedirectToAction("BusOccupancy");
+            return Json(new { success = true, message = $"✅ {assignedCount} personnels assignés au bus (Trajectoire: {bus.CurrentTrajectory?.Trajectory_Name}, Capacité: {capacity}, Occupation: {currentOccupancy + assignedCount})" });
         }
 
+        // ========== DÉSASSIGNER PERSONNEL D'UN BUS ==========
         // ========== DÉSASSIGNER PERSONNEL D'UN BUS ==========
         [HttpPost]
         public async Task<IActionResult> RemovePersonnelFromBus(long personnelId, long busId)
@@ -274,8 +268,7 @@ namespace TransportManagementSystem.Controllers
             var personnel = await _context.Personnel.FindAsync(personnelId);
             if (personnel == null)
             {
-                TempData["Error"] = "Personnel non trouvé.";
-                return RedirectToAction("BusOccupancy");
+                return Json(new { success = false, message = "Personnel non trouvé." });
             }
 
             if (personnel.AssignedBusId == busId)
@@ -283,14 +276,12 @@ namespace TransportManagementSystem.Controllers
                 personnel.AssignedBusId = null;
                 personnel.IsAssigned = false;
                 await _context.SaveChangesAsync();
-                TempData["Success"] = $"Personnel {personnel.Personnel_FirstName} {personnel.Personnel_LastName} retiré du bus.";
+                return Json(new { success = true, message = $"Personnel {personnel.Personnel_FirstName} {personnel.Personnel_LastName} retiré du bus." });
             }
             else
             {
-                TempData["Error"] = "Ce personnel n'est pas assigné à ce bus.";
+                return Json(new { success = false, message = "Ce personnel n'est pas assigné à ce bus." });
             }
-
-            return RedirectToAction("BusOccupancy");
         }
 
         // ========== OBTENIR LES PERSONNELS NON ASSIGNÉS POUR UN BUS ==========
@@ -307,9 +298,9 @@ namespace TransportManagementSystem.Controllers
             if (trajectoryId == null || trajectoryId == 1)
                 return Ok(new List<object>());
 
+            // REMOVED: && p.IsMotorized == false
             var unassignedWorkers = await _context.Personnel
                 .Where(p => p.AssignedTrajectoryId == trajectoryId
-                            && p.IsMotorized == false
                             && p.Personnel_Status == "Active"
                             && (p.AssignedBusId == null || p.AssignedBusId == 0))
                 .Select(p => new
@@ -318,6 +309,13 @@ namespace TransportManagementSystem.Controllers
                     p.Personnel_FirstName,
                     p.Personnel_LastName,
                     p.AssignedStopId,
+                    p.HomeAddress,
+                    p.AssignedTrajectoryId,
+                    p.IsMotorized,
+                    TrajectoryName = _context.Trajectories
+                        .Where(t => t.Trajectory_Id == p.AssignedTrajectoryId)
+                        .Select(t => t.Trajectory_Name)
+                        .FirstOrDefault() ?? "Non assigné",
                     StopName = _context.TrajectoryStops
                         .Where(s => s.TS_Id == p.AssignedStopId)
                         .Select(s => s.TS_Name)
