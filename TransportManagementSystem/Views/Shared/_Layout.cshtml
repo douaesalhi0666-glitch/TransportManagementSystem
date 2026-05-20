@@ -143,30 +143,47 @@
                 <small>Administration</small>
             </div>
             <ul class="components">
+                <!-- 1. Tableau de bord -->
                 <li class="@(ViewContext.RouteData.Values["controller"]?.ToString() == "Dashboard" && ViewContext.RouteData.Values["action"]?.ToString() == "AdminDashboard" ? "active" : "")">
                     <a href="/Dashboard/AdminDashboard"><i class="fas fa-tachometer-alt"></i> Tableau de bord</a>
                 </li>
+                <!-- 2. Personnel -->
                 <li class="@(ViewContext.RouteData.Values["controller"]?.ToString() == "Personnel" ? "active" : "")">
                     <a href="/Personnel/Index"><i class="fas fa-users"></i> Personnel</a>
                 </li>
+                <!-- 3. Chauffeurs -->
                 <li class="@(ViewContext.RouteData.Values["controller"]?.ToString() == "Drivers" ? "active" : "")">
                     <a href="/Drivers/Index"><i class="fas fa-truck"></i> Chauffeurs</a>
                 </li>
+                <!-- 4. Bus -->
                 <li class="@(ViewContext.RouteData.Values["controller"]?.ToString() == "Buses" ? "active" : "")">
                     <a href="/Buses/Index"><i class="fas fa-bus"></i> Bus</a>
                 </li>
+                <!-- 5. Assignation bus ↔ chauffeur -->
+                <li>
+                    <a href="/Assignments/Index"><i class="fas fa-user-cog"></i> Assignation bus ↔ chauffeur</a>
+                </li>
+                <!-- 6. Occupation des bus -->
+                <li>
+                    <a href="/TrajectoryAssignment/BusOccupancy"><i class="fas fa-chart-line"></i> Occupation des bus</a>
+                </li>
+                <!-- 7. Trajets -->
                 <li class="@(ViewContext.RouteData.Values["controller"]?.ToString() == "Trajectories" ? "active" : "")">
                     <a href="/Trajectories/Index"><i class="fas fa-map-marked-alt"></i> Trajets</a>
                 </li>
-                <li class="@(ViewContext.RouteData.Values["controller"]?.ToString() == "Assignments" ? "active" : "")">
-                    <a href="/Assignments/Index"><i class="fas fa-user-cog"></i> Assignations</a>
-                </li>
+                <!-- 8. Points de ramassage (DefinePickupPoints) -->
                 <li>
-                    <a href="/Clustering/DispatcherView"><i class="fas fa-map-pin"></i> Points de ramassage</a>
+                    <a href="/Clustering/DefinePickupPoints"><i class="fas fa-map-pin"></i> Points de ramassage</a>
                 </li>
+                <!-- 9. Gestion des arrêts (DispatcherView) -->
                 <li>
-                    <a href="/TrajectoryAssignment/BusOccupancy"><i class="fas fa-chart-line"></i> Occupation bus</a>
+                    <a href="/Clustering/DispatcherView"><i class="fas fa-route"></i> Gestion des arrêts</a>
                 </li>
+                <!-- 10. Détection d'anomalies (redirige vers la section du dashboard) -->
+                <li>
+                    <a href="/Dashboard/AdminDashboard#anomaly-section" id="anomalyNavLink"><i class="fas fa-exclamation-triangle"></i> Détection d'anomalies</a>
+                </li>
+                <!-- 11. Déconnexion -->
                 <li>
                     <a href="/Account/Logout"><i class="fas fa-sign-out-alt"></i> Déconnexion</a>
                 </li>
@@ -189,6 +206,12 @@
         <script>
                 document.getElementById('toggleSidebarBtn')?.addEventListener('click', function () {
                     document.getElementById('adminSidebar').classList.toggle('active');
+                });
+                // Petit script pour que le lien "Détection d'anomalies" ferme la sidebar sur mobile
+                document.getElementById('anomalyNavLink')?.addEventListener('click', function() {
+                    if (window.innerWidth <= 768) {
+                        document.getElementById('adminSidebar').classList.remove('active');
+                    }
                 });
         </script>
     }
