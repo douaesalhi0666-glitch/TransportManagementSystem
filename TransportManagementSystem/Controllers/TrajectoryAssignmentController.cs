@@ -178,9 +178,9 @@ namespace TransportManagementSystem.Controllers
             return View(busOccupancyList);
         }
 
-        // ========== ASSIGNER PERSONNEL À UN BUS ==========
+        // ========== ASSIGNER PERSONNEL À UN BUS (AUTO + MANUEL) ==========
         [HttpPost]
-        public async Task<IActionResult> AssignPersonnelToBus(long busId)
+        public async Task<IActionResult> AssignPersonnelToBus(long busId, int? personnelId = null)
         {
             var bus = await _context.Buses
                 .Include(b => b.CurrentTrajectory)
@@ -199,42 +199,71 @@ namespace TransportManagementSystem.Controllers
             }
 
             var trajectoryId = bus.Bus_CurrentTrajectoryId.Value;
+            int capacity = bus.Bus_Capacity ?? 20;
+            int currentOccupancy = await _context.Personnel.CountAsync(p => p.AssignedBusId == busId);
 
-            var stops = await _context.TrajectoryStops
-                .Where(s => s.TS_TrajectoryId == trajectoryId)
-                .OrderBy(s => s.TS_OrderIndex)
-                .ToListAsync();
-
-            var capacity = bus.Bus_Capacity ?? 50;
-            var currentOccupancy = await _context.Personnel.CountAsync(p => p.AssignedBusId == busId);
-            int assignedCount = 0;
-
-            foreach (var stop in stops)
+            // Manual assignment for a specific personnel
+            if (personnelId.HasValue && personnelId.Value > 0)
             {
-                var workersAtStop = await _context.Personnel
-                    .Where(p => p.AssignedStopId == stop.TS_Id
-                                && p.AssignedBusId == null
-                                && p.Personnel_Status == "Active")
-                    .ToListAsync();
+                var worker = await _context.Personnel
+                    .FirstOrDefaultAsync(p => p.Personnel_Id == personnelId.Value
+                        && p.AssignedTrajectoryId == trajectoryId
+                        && p.IsMotorized == false
+                        && p.Personnel_Status == "Active"
+                        && (p.AssignedBusId == null || p.AssignedBusId == 0));
 
-                foreach (var worker in workersAtStop)
+                if (worker == null)
                 {
-                    if (currentOccupancy + assignedCount >= capacity)
-                        break;
-
-                    worker.AssignedBusId = busId;
-                    worker.IsAssigned = true;
-                    assignedCount++;
+                    TempData["Error"] = "Ce personnel n'est pas disponible ou déjà assigné.";
+                    return RedirectToAction("BusOccupancy");
                 }
 
+                if (currentOccupancy >= capacity)
+                {
+                    TempData["Error"] = $"Le bus est déjà plein (capacité: {capacity}).";
+                    return RedirectToAction("BusOccupancy");
+                }
+
+                worker.AssignedBusId = busId;
+                worker.IsAssigned = true;
+                currentOccupancy++;
+                bus.CurrentOccupancy = currentOccupancy;
+                await _context.SaveChangesAsync();
+
+                TempData["Success"] = $"✅ Personnel {worker.Personnel_FirstName} {worker.Personnel_LastName} assigné au bus.";
+                return RedirectToAction("BusOccupancy");
+            }
+
+            // Auto-assign: find all unassigned personnel in this trajectory
+            var unassignedWorkers = await _context.Personnel
+                .Where(p => p.AssignedTrajectoryId == trajectoryId
+                            && p.IsMotorized == false
+                            && p.Personnel_Status == "Active"
+                            && (p.AssignedBusId == null || p.AssignedBusId == 0))
+                .OrderBy(p => p.AssignedStopId)
+                .ToListAsync();
+
+            if (!unassignedWorkers.Any())
+            {
+                TempData["Error"] = "Aucun personnel non assigné trouvé pour cette trajectoire.";
+                return RedirectToAction("BusOccupancy");
+            }
+
+            int assignedCount = 0;
+            foreach (var worker in unassignedWorkers)
+            {
                 if (currentOccupancy + assignedCount >= capacity)
                     break;
+
+                worker.AssignedBusId = busId;
+                worker.IsAssigned = true;
+                assignedCount++;
             }
 
             bus.CurrentOccupancy = currentOccupancy + assignedCount;
             await _context.SaveChangesAsync();
 
-            TempData["Success"] = $"{assignedCount} personnels assignés au bus (Trajectoire: {bus.CurrentTrajectory?.Trajectory_Name}, Capacité: {capacity}, Occupation: {currentOccupancy + assignedCount})";
+            TempData["Success"] = $"✅ {assignedCount} personnels assignés au bus (Trajectoire: {bus.CurrentTrajectory?.Trajectory_Name}, Capacité: {capacity}, Occupation: {currentOccupancy + assignedCount})";
             return RedirectToAction("BusOccupancy");
         }
 
@@ -264,7 +293,42 @@ namespace TransportManagementSystem.Controllers
             return RedirectToAction("BusOccupancy");
         }
 
-        // ========== SYNCHRONISATION : ASSIGNEDBUSID DEPUIS STOP ET TRAJECTOIRE ==========
+        // ========== OBTENIR LES PERSONNELS NON ASSIGNÉS POUR UN BUS ==========
+        [HttpGet]
+        public async Task<IActionResult> GetUnassignedPersonnelForBus(long busId)
+        {
+            var bus = await _context.Buses
+                .FirstOrDefaultAsync(b => b.Bus_Id == busId);
+
+            if (bus == null)
+                return NotFound();
+
+            var trajectoryId = bus.Bus_CurrentTrajectoryId;
+            if (trajectoryId == null || trajectoryId == 1)
+                return Ok(new List<object>());
+
+            var unassignedWorkers = await _context.Personnel
+                .Where(p => p.AssignedTrajectoryId == trajectoryId
+                            && p.IsMotorized == false
+                            && p.Personnel_Status == "Active"
+                            && (p.AssignedBusId == null || p.AssignedBusId == 0))
+                .Select(p => new
+                {
+                    p.Personnel_Id,
+                    p.Personnel_FirstName,
+                    p.Personnel_LastName,
+                    p.AssignedStopId,
+                    StopName = _context.TrajectoryStops
+                        .Where(s => s.TS_Id == p.AssignedStopId)
+                        .Select(s => s.TS_Name)
+                        .FirstOrDefault() ?? "N/A"
+                })
+                .ToListAsync();
+
+            return Ok(unassignedWorkers);
+        }
+
+        // ========== SYNCHRONISATION ==========
         [HttpPost]
         public async Task<IActionResult> SyncPersonnelBusAssignments()
         {
@@ -296,7 +360,7 @@ namespace TransportManagementSystem.Controllers
             return RedirectToAction("BusOccupancy");
         }
 
-        // ========== NOUVELLES MÉTHODES POUR ASSIGNER/DÉSASSIGNER LES BUS ==========
+        // ========== GESTION BUS-TRAJECTOIRE ==========
         [HttpGet]
         public async Task<IActionResult> GetAvailableBuses()
         {
@@ -320,7 +384,6 @@ namespace TransportManagementSystem.Controllers
         }
 
         [HttpPost]
-        
         public async Task<IActionResult> AssignBusToTrajectory(long busId, int trajectoryId)
         {
             var bus = await _context.Buses.FindAsync(busId);
@@ -341,7 +404,6 @@ namespace TransportManagementSystem.Controllers
         }
 
         [HttpPost]
-        
         public async Task<IActionResult> UnassignBus(long busId)
         {
             var bus = await _context.Buses.FindAsync(busId);
