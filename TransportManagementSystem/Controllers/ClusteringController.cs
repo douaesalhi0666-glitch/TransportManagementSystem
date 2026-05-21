@@ -6,6 +6,7 @@ using System.Linq;
 using System.Threading.Tasks;
 using TransportManagementSystem.Data;
 using TransportManagementSystem.Models;
+using TransportManagementSystem.Services;
 
 namespace TransportManagementSystem.Controllers
 {
@@ -826,6 +827,9 @@ namespace TransportManagementSystem.Controllers
         // ================================================
         // IA ÉVOLUTIONNAIRE POUR LA GÉNÉRATION DE TRAJETS OPTIMISÉS
         // ================================================
+        // ================================================
+        // IA ÉVOLUTIONNAIRE POUR LA GÉNÉRATION DE TRAJETS OPTIMISÉS
+        // ================================================
         [HttpPost]
         public async Task<IActionResult> GenerateSmartTrajectories()
         {
@@ -838,10 +842,10 @@ namespace TransportManagementSystem.Controllers
 
                 _context.ChangeTracker.Clear();
 
-                // 1. Get all stops with workers assigned
+                // 1. Get all stops with workers assigned (from default trajectory)
                 var stopsData = await _context.TrajectoryStops
                     .AsNoTracking()
-                    .Where(s => s.TS_Latitude != 0 && s.TS_Longitude != 0)
+                    .Where(s => s.TS_TrajectoryId == 1 && s.TS_Latitude != 0 && s.TS_Longitude != 0)
                     .Select(s => new
                     {
                         Stop = s,
@@ -856,14 +860,13 @@ namespace TransportManagementSystem.Controllers
                     .ToList();
 
                 if (!validStops.Any())
-                    return Ok(new { success = false, message = "No pickup points with personnel found." });
+                    return Ok(new { success = false, message = "Aucun point de ramassage avec personnel trouvé." });
 
-                // 2. Delete only generated trajectories (keep default trajectory ID = 1)
+                // 2. Delete ALL previously generated trajectories AND their stops (keep only default trajectory ID = 1)
+                await _context.Database.ExecuteSqlRawAsync("DELETE FROM [Transport].[TrajectoryStop_tbl] WHERE TS_TrajectoryId > 1");
                 await _context.Database.ExecuteSqlRawAsync("DELETE FROM [Transport].[Trajectory_tbl] WHERE Trajectory_Id > 1");
                 await _context.Database.ExecuteSqlRawAsync("DBCC CHECKIDENT ('[Transport].[Trajectory_tbl]', RESEED, 1)");
-
-                // 3. Reset all stops to trajectory ID = 1 (default)
-                await _context.Database.ExecuteSqlRawAsync("UPDATE [Transport].[TrajectoryStop_tbl] SET TS_TrajectoryId = 1, TS_OrderIndex = 0");
+                await _context.Database.ExecuteSqlRawAsync("DBCC CHECKIDENT ('[Transport].[TrajectoryStop_tbl]', RESEED, 1)");
 
                 var stopList = validStops.Select(s => s.Stop).ToList();
                 var remainingList = validStops.Select(s => s.WorkerCount).ToList();
@@ -871,10 +874,10 @@ namespace TransportManagementSystem.Controllers
                 int trajectoryCounter = 1;
                 string timestamp = DateTime.Now.ToString("yyyyMMddHHmmss");
 
-                // 4. Process stops to create trajectories
+                // 3. Process stops to create trajectories
                 while (remainingList.Any(r => r > 0))
                 {
-                    var currentTrajectoryStops = new List<(TrajectoryStop Stop, int WorkersToPick)>();
+                    var currentTrajectoryStops = new List<(TrajectoryStop OriginalStop, int WorkersToPick)>();
                     int currentLoad = 0;
                     var newRemainingList = remainingList.ToList();
 
@@ -927,8 +930,8 @@ namespace TransportManagementSystem.Controllers
                             Trajectory_Description = $"{currentTrajectoryStops.Count} stops, {totalWorkers} workers",
                             Trajectory_StartLatitude = (decimal)startLat,
                             Trajectory_StartLongitude = (decimal)startLng,
-                            Trajectory_EndLatitude = (decimal)currentTrajectoryStops.Last().Stop.TS_Latitude,
-                            Trajectory_EndLongitude = (decimal)currentTrajectoryStops.Last().Stop.TS_Longitude,
+                            Trajectory_EndLatitude = (decimal)currentTrajectoryStops.Last().OriginalStop.TS_Latitude,
+                            Trajectory_EndLongitude = (decimal)currentTrajectoryStops.Last().OriginalStop.TS_Longitude,
                             Trajectory_DistanceKm = (decimal)Math.Round(totalDistance, 2),
                             Trajectory_EstimatedDurationMinutes = (int)Math.Ceiling(estimatedTime),
                             Trajectory_Status = "Active",
@@ -939,17 +942,26 @@ namespace TransportManagementSystem.Controllers
                         _context.Trajectories.Add(traj);
                         await _context.SaveChangesAsync();
 
-                        // UPDATE existing stops to point to this trajectory
+                        // CREATE NEW stops for this trajectory AND assign workers
                         for (int i = 0; i < currentTrajectoryStops.Count; i++)
                         {
-                            var (stop, workersToPick) = currentTrajectoryStops[i];
+                            var (originalStop, workersToPick) = currentTrajectoryStops[i];
 
-                            stop.TS_TrajectoryId = traj.Trajectory_Id;
-                            stop.TS_OrderIndex = i + 1;
-                            _context.TrajectoryStops.Update(stop);
+                            // Create a brand new stop for this trajectory
+                            var newStop = new TrajectoryStop
+                            {
+                                TS_TrajectoryId = traj.Trajectory_Id,
+                                TS_Name = $"{originalStop.TS_Name} (Trajet {trajectoryCounter})",
+                                TS_OrderIndex = i + 1,
+                                TS_Latitude = originalStop.TS_Latitude,
+                                TS_Longitude = originalStop.TS_Longitude
+                            };
+                            _context.TrajectoryStops.Add(newStop);
+                            await _context.SaveChangesAsync(); // Sauvegarde pour obtenir l'ID du nouveau stop
 
+                            // Assign workers to this trajectory AND to the new stop
                             var workersToAssign = await _context.Personnel
-                                .Where(p => p.AssignedStopId == stop.TS_Id
+                                .Where(p => p.AssignedStopId == originalStop.TS_Id
                                             && p.IsAssigned == true
                                             && p.AssignedTrajectoryId == null)
                                 .Take(workersToPick)
@@ -958,6 +970,7 @@ namespace TransportManagementSystem.Controllers
                             foreach (var worker in workersToAssign)
                             {
                                 worker.AssignedTrajectoryId = traj.Trajectory_Id;
+                                worker.AssignedStopId = newStop.TS_Id;  // ← Assigner le nouveau stop
                             }
                         }
                         await _context.SaveChangesAsync();
@@ -966,36 +979,17 @@ namespace TransportManagementSystem.Controllers
                     }
                 }
 
-                // ================================================
-                // PERMANENT FIX: Automatically sync stops and assign buses
-                // ================================================
-
-                // Sync stops to ensure they have the correct trajectory IDs
-                await _context.Database.ExecuteSqlRawAsync(@"
-                    UPDATE s
-                    SET s.TS_TrajectoryId = p.AssignedTrajectoryId
-                    FROM [Transport].[TrajectoryStop_tbl] s
-                    INNER JOIN [Security].[Personnel_tbl] p ON p.AssignedStopId = s.TS_Id
-                    WHERE p.IsMotorized = 0 
-                      AND p.AssignedTrajectoryId IS NOT NULL
-                      AND p.AssignedTrajectoryId > 1
-                      AND s.TS_TrajectoryId != p.AssignedTrajectoryId
-                ");
-
-                // Automatically assign buses to trajectories AND personnel to buses
-                //await AutoAssignBusesToTrajectories();
-
                 var finalTrajectories = await _context.Trajectories.Where(t => t.Trajectory_Id > 1).CountAsync();
                 var assignedWorkers = await _context.Personnel.CountAsync(p => p.AssignedTrajectoryId != null);
-                var workersWithBuses = await _context.Personnel.CountAsync(p => p.AssignedBusId != null);
+                var workersWithStops = await _context.Personnel.CountAsync(p => p.AssignedStopId != null && p.AssignedTrajectoryId != null);
 
                 return Ok(new
                 {
                     success = true,
-                    message = $"✅ {finalTrajectories} trajectories generated. {assignedWorkers} workers assigned to trajectories. {workersWithBuses} workers assigned to buses.",
+                    message = $"✅ {finalTrajectories} trajectoires générées. {assignedWorkers} personnels assignés aux trajets. {workersWithStops} personnels assignés aux nouveaux stops.",
                     trajectoryCount = finalTrajectories,
                     workerCount = assignedWorkers,
-                    workersWithBuses = workersWithBuses
+                    workersWithStops = workersWithStops
                 });
             }
             catch (Exception ex)
@@ -1074,6 +1068,14 @@ namespace TransportManagementSystem.Controllers
             {
                 return StatusCode(500, new { success = false, message = ex.Message });
             }
+        }
+
+        [HttpPost]
+        public async Task<IActionResult> TrainIsolationForest()
+        {
+            var service = HttpContext.RequestServices.GetRequiredService<IsolationForestService>();
+            await service.TrainAll();
+            return Ok(new { success = true, message = "Modèles entraînés." });
         }
 
         private double CalculateDistance(double lat1, double lon1, double lat2, double lon2)

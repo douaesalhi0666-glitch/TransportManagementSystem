@@ -5,12 +5,11 @@ using TransportManagementSystem.Services;
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddControllersWithViews();
-
+builder.Services.AddScoped<DelayDetectionService>();
 builder.Services.AddSingleton<OsrmRoutingService>();
-
 builder.Services.AddScoped<VrpSolverService>();
-
 builder.Services.AddScoped<AnomalyDetectionService>();
+builder.Services.AddScoped<IsolationForestService>();
 
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
     options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
@@ -25,7 +24,7 @@ builder.Services.AddSession(options =>
 
 // Services personnalisés
 builder.Services.AddSingleton<ETAPredictionService>();
-builder.Services.AddScoped<IAssignmentService, AssignmentService>();   // ← AJOUT
+builder.Services.AddScoped<IAssignmentService, AssignmentService>();
 
 var app = builder.Build();
 
@@ -50,5 +49,11 @@ app.MapControllerRoute(
     name: "default",
     pattern: "{controller=Account}/{action=Login}/{id?}");
 
-app.Run();
+// ⚠️ Entraînement des modèles APRÈS la construction de l'application
+using (var scope = app.Services.CreateScope())
+{
+    var isolationForestService = scope.ServiceProvider.GetRequiredService<IsolationForestService>();
+    await isolationForestService.TrainAll();
+}
 
+app.Run();

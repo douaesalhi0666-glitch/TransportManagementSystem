@@ -152,11 +152,58 @@
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 
     <style>
-        .stop-marker { background-color: #ff8c00; color: white; border-radius: 50%; text-align: center; font-size: 12px; width: 28px; height: 28px; display: flex; align-items: center; justify-content: center; border: 2px solid white; cursor: pointer; }
-        .sews-marker { background-color: #2ecc71; color: white; border-radius: 50%; text-align: center; font-size: 18px; width: 40px; height: 40px; display: flex; align-items: center; justify-content: center; border: 3px solid white; cursor: pointer; }
-        .toast-notification { position: fixed; bottom: 20px; right: 20px; background-color: #28a745; color: white; padding: 12px 20px; border-radius: 8px; z-index: 10000; }
-        .toast-notification.error { background-color: #dc3545; }
-        .worker-item { border-left: 3px solid #28a745; margin-bottom: 8px; padding: 10px; background: #f8f9fa; border-radius: 5px; }
+        .stop-marker {
+        background-color: #ff8c00;
+        color: white;
+        border-radius: 50%;
+        text-align: center;
+        font-size: 12px;
+        width: 28px;
+        height: 28px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border: 2px solid white;
+        cursor: pointer;
+        }
+
+        .sews-marker {
+        background-color: #2ecc71;
+        color: white;
+        border-radius: 50%;
+        text-align: center;
+        font-size: 18px;
+        width: 40px;
+        height: 40px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border: 3px solid white;
+        cursor: pointer;
+        }
+
+        .toast-notification {
+        position: fixed;
+        bottom: 20px;
+        right: 20px;
+        background-color: #28a745;
+        color: white;
+        padding: 12px 20px;
+        border-radius: 8px;
+        z-index: 10000;
+        }
+
+        .toast-notification.error {
+        background-color: #dc3545;
+        }
+
+        .worker-item {
+        border-left: 3px solid #28a745;
+        margin-bottom: 8px;
+        padding: 10px;
+        background: #f8f9fa;
+        border-radius: 5px;
+        }
     </style>
 
     <script>
@@ -166,362 +213,363 @@
         const KENITRA_CENTER_LAT = 34.2610, KENITRA_CENTER_LNG = -6.5800;
 
         function showNotification(msg, isError = false) {
-            let div = document.createElement('div');
-            div.className = 'toast-notification' + (isError ? ' error' : '');
-            div.innerText = msg;
-            document.body.appendChild(div);
-            setTimeout(() => { div.style.opacity = '0'; setTimeout(() => div.remove(), 500); }, 3000);
+        let div = document.createElement('div');
+        div.className = 'toast-notification' + (isError ? ' error' : '');
+        div.innerText = msg;
+        document.body.appendChild(div);
+        setTimeout(() => { div.style.opacity = '0'; setTimeout(() => div.remove(), 500); }, 3000);
         }
 
         async function loadTrajectoriesFilter() {
-            const response = await fetch('/Clustering/GetTrajectoriesForPickup');
-            const trajectories = await response.json();
-            const filter = document.getElementById('trajectoryFilter');
-            filter.innerHTML = '<option value="all">-- Toutes les trajectoires --</option>';
-            trajectories.forEach(t => {
-                const option = document.createElement('option');
-                option.value = t.trajectory_Id;
-                option.textContent = `${t.trajectory_Name} (${t.trajectory_Code})`;
-                filter.appendChild(option);
-            });
-            const defaultTraj = Array.from(filter.options).find(opt => opt.value == 1);
-            if (defaultTraj) filter.value = 1;
-            await loadStops();
-            await loadAndDisplayTrajectories();
+        const response = await fetch('/Clustering/GetTrajectoriesForPickup');
+        const trajectories = await response.json();
+        const filter = document.getElementById('trajectoryFilter');
+        filter.innerHTML = '<option value="all">-- Toutes les trajectoires --</option>';
+        trajectories.forEach(t => {
+        const option = document.createElement('option');
+        option.value = t.trajectory_Id;
+        option.textContent = `${t.trajectory_Name} (${t.trajectory_Code})`;
+        filter.appendChild(option);
+        });
+        // FORCER "all" pour voir toutes les trajectoires
+        filter.value = "all";
+        await loadStops();
+        await loadAndDisplayTrajectories();
         }
 
         async function loadAndDisplayTrajectories() {
-            const selectedTrajId = document.getElementById('trajectoryFilter').value;
-            currentTrajectoryId = selectedTrajId === 'all' ? null : parseInt(selectedTrajId);
-            currentPolylines.forEach(poly => map.removeLayer(poly));
-            currentPolylines = [];
-            const response = await fetch('/Clustering/GetTrajectoriesWithStops');
-            const trajectories = await response.json();
-            trajectories.forEach(traj => {
-                if (currentTrajectoryId && traj.trajectory_Id !== currentTrajectoryId) return;
-                if (traj.stops && traj.stops.length >= 1) {
-                    const points = [[SEWS_LAT, SEWS_LNG]];
-                    traj.stops.forEach(s => points.push([s.tS_Latitude, s.tS_Longitude]));
-                    const polyline = L.polyline(points, { color: '#3388ff', weight: 4, opacity: 0.8 })
-                        .bindPopup(`<strong>${traj.trajectory_Name}</strong><br>${traj.trajectory_Code}<br>${traj.stops.length} arrêts`);
-                    polyline.addTo(map);
-                    currentPolylines.push(polyline);
-                }
-            });
+        const selectedTrajId = document.getElementById('trajectoryFilter').value;
+        currentTrajectoryId = selectedTrajId === 'all' ? null : parseInt(selectedTrajId);
+        currentPolylines.forEach(poly => map.removeLayer(poly));
+        currentPolylines = [];
+        const response = await fetch('/Clustering/GetTrajectoriesWithStops');
+        const trajectories = await response.json();
+        console.log("Trajectoires reçues:", trajectories);
+        trajectories.forEach(traj => {
+        if (currentTrajectoryId && traj.trajectory_Id !== currentTrajectoryId) return;
+        if (traj.stops && traj.stops.length >= 1) {
+        const points = [[SEWS_LAT, SEWS_LNG]];
+        traj.stops.forEach(s => points.push([s.tS_Latitude, s.tS_Longitude]));
+        const polyline = L.polyline(points, { color: '#3388ff', weight: 4, opacity: 0.8 })
+        .bindPopup(`<strong>${traj.trajectory_Name}</strong><br>${traj.trajectory_Code}<br>${traj.stops.length} arrêts`);
+        polyline.addTo(map);
+        currentPolylines.push(polyline);
+        }
+        });
         }
 
         async function loadStops() {
-            const selectedTraj = document.getElementById('trajectoryFilter').value;
-            const url = selectedTraj === 'all'
-                ? '/Clustering/GetFilteredStops'
-                : `/Clustering/GetFilteredStops?trajectoryId=${selectedTraj}`;
-            console.log("🔍 Chargement stops depuis:", url);
-            try {
-                const response = await fetch(url);
-                const stops = await response.json();
-                console.log("📦 Stops reçus:", stops);
-                currentMarkers.forEach(m => map.removeLayer(m));
-                currentMarkers = [];
-                stops.forEach(stop => {
-                    const workerCount = stop.workers ? stop.workers.length : 0;
-                    console.log(`📍 ${stop.tS_Name} (ID ${stop.tS_Id}) -> ${workerCount} personnels`);
-                    const icon = L.divIcon({
-                        html: stop.tS_OrderIndex.toString(),
-                        iconSize: [28, 28],
-                        className: 'stop-marker'
-                    });
-                    const popupContent = `
-                        <strong>${stop.tS_Name}</strong><br/>
-                        Ordre: ${stop.tS_OrderIndex}<br/>
-                        👥 ${workerCount} personnels<br/>
-                        <button class="btn btn-sm btn-success mt-1" onclick="openAssignModal(${stop.tS_Id}, '${stop.tS_Name}')">➕ Assigner</button>
-                        <button class="btn btn-sm btn-info mt-1" onclick="viewWorkers(${stop.tS_Id}, '${stop.tS_Name}')">👥 Voir</button>
-                        <button class="btn btn-sm btn-warning mt-1" onclick="editStop(${stop.tS_Id}, '${stop.tS_Name}', ${stop.tS_Latitude}, ${stop.tS_Longitude}, ${stop.tS_OrderIndex})">✏️</button>
-                        <button class="btn btn-sm btn-danger mt-1" onclick="deleteStop(${stop.tS_Id}, '${stop.tS_Name}')">🗑️</button>
-                    `;
-                    const marker = L.marker([stop.tS_Latitude, stop.tS_Longitude], { icon }).bindPopup(popupContent);
-                    marker.addTo(map);
-                    currentMarkers.push(marker);
-                });
-                updateTable(stops);
-                map.invalidateSize();
-            } catch (err) {
-                console.error(err);
-                showNotification("Erreur chargement des points", true);
-            }
+        const selectedTraj = document.getElementById('trajectoryFilter').value;
+        const url = selectedTraj === 'all'
+        ? '/Clustering/GetFilteredStops'
+        : `/Clustering/GetFilteredStops?trajectoryId=${selectedTraj}`;
+        console.log("🔍 Chargement stops depuis:", url);
+        try {
+        const response = await fetch(url);
+        const stops = await response.json();
+        console.log("📦 Stops reçus:", stops.length);
+        currentMarkers.forEach(m => map.removeLayer(m));
+        currentMarkers = [];
+        stops.forEach(stop => {
+        const workerCount = stop.workers ? stop.workers.length : 0;
+        console.log(`📍 ${stop.tS_Name} (ID ${stop.tS_Id}) -> ${workerCount} personnels`);
+        const icon = L.divIcon({
+        html: stop.tS_OrderIndex.toString(),
+        iconSize: [28, 28],
+        className: 'stop-marker'
+        });
+        const popupContent = `
+        <strong>${stop.tS_Name}</strong><br/>
+        Ordre: ${stop.tS_OrderIndex}<br/>
+        👥 ${workerCount} personnels<br/>
+        <button class="btn btn-sm btn-success mt-1" onclick="openAssignModal(${stop.tS_Id}, '${stop.tS_Name}')">➕ Assigner</button>
+        <button class="btn btn-sm btn-info mt-1" onclick="viewWorkers(${stop.tS_Id}, '${stop.tS_Name}')">👥 Voir</button>
+        <button class="btn btn-sm btn-warning mt-1" onclick="editStop(${stop.tS_Id}, '${stop.tS_Name}', ${stop.tS_Latitude}, ${stop.tS_Longitude}, ${stop.tS_OrderIndex})">✏️</button>
+        <button class="btn btn-sm btn-danger mt-1" onclick="deleteStop(${stop.tS_Id}, '${stop.tS_Name}')">🗑️</button>
+        `;
+        const marker = L.marker([stop.tS_Latitude, stop.tS_Longitude], { icon }).bindPopup(popupContent);
+        marker.addTo(map);
+        currentMarkers.push(marker);
+        });
+        updateTable(stops);
+        map.invalidateSize();
+        } catch (err) {
+        console.error(err);
+        showNotification("Erreur chargement des points", true);
+        }
         }
 
         function updateTable(stops) {
-            const tbody = document.getElementById('stopsTableBody');
-            tbody.innerHTML = '';
-            if (!stops || stops.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="7" class="text-center">Aucun point de ramassage</td></tr>';
-                return;
-            }
-            stops.forEach(s => {
-                const row = tbody.insertRow();
-                const workerCount = s.workers ? s.workers.length : 0;
-                row.insertCell(0).innerHTML = s.tS_Id;
-                row.insertCell(1).innerHTML = escapeHtml(s.tS_Name);
-                row.insertCell(2).innerHTML = s.tS_Latitude;
-                row.insertCell(3).innerHTML = s.tS_Longitude;
-                row.insertCell(4).innerHTML = s.tS_OrderIndex;
-                row.insertCell(5).innerHTML = `<span class="badge bg-info">${workerCount}</span>`;
-                row.insertCell(6).innerHTML = `
-                    <button class="btn btn-sm btn-success" onclick="openAssignModal(${s.tS_Id}, '${escapeHtml(s.tS_Name)}')">➕</button>
-                    <button class="btn btn-sm btn-info" onclick="viewWorkers(${s.tS_Id}, '${escapeHtml(s.tS_Name)}')">👥</button>
-                    <button class="btn btn-sm btn-warning" onclick="editStop(${s.tS_Id}, '${escapeHtml(s.tS_Name)}', ${s.tS_Latitude}, ${s.tS_Longitude}, ${s.tS_OrderIndex})">✏️</button>
-                    <button class="btn btn-sm btn-danger" onclick="deleteStop(${s.tS_Id}, '${escapeHtml(s.tS_Name)}')">🗑️</button>
-                `;
-            });
+        const tbody = document.getElementById('stopsTableBody');
+        tbody.innerHTML = '';
+        if (!stops || stops.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="7" class="text-center">Aucun point de ramassage</td></tr>';
+        return;
+        }
+        stops.forEach(s => {
+        const row = tbody.insertRow();
+        const workerCount = s.workers ? s.workers.length : 0;
+        row.insertCell(0).innerHTML = s.tS_Id;
+        row.insertCell(1).innerHTML = escapeHtml(s.tS_Name);
+        row.insertCell(2).innerHTML = s.tS_Latitude;
+        row.insertCell(3).innerHTML = s.tS_Longitude;
+        row.insertCell(4).innerHTML = s.tS_OrderIndex;
+        row.insertCell(5).innerHTML = `<span class="badge bg-info">${workerCount}</span>`;
+        row.insertCell(6).innerHTML = `
+        <button class="btn btn-sm btn-success" onclick="openAssignModal(${s.tS_Id}, '${escapeHtml(s.tS_Name)}')">➕</button>
+        <button class="btn btn-sm btn-info" onclick="viewWorkers(${s.tS_Id}, '${escapeHtml(s.tS_Name)}')">👥</button>
+        <button class="btn btn-sm btn-warning" onclick="editStop(${s.tS_Id}, '${escapeHtml(s.tS_Name)}', ${s.tS_Latitude}, ${s.tS_Longitude}, ${s.tS_OrderIndex})">✏️</button>
+        <button class="btn btn-sm btn-danger" onclick="deleteStop(${s.tS_Id}, '${escapeHtml(s.tS_Name)}')">🗑️</button>
+        `;
+        });
         }
 
         function escapeHtml(text) {
-            if (!text) return '';
-            return text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+        if (!text) return '';
+        return text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
         }
 
-        // --- MODAL FUNCTIONS (à conserver identiques à celles que vous aviez) ---
+        // --- MODAL FUNCTIONS ---
         window.viewWorkers = async function(stopId, stopName) {
-            try {
-                const res = await fetch('/Clustering/GetWorkersByStop?stopId=' + stopId);
-                const data = await res.json();
-                let html = `<h5>${data.stopName}</h5><hr>`;
-                if (data.workers && data.workers.length) {
-                    data.workers.forEach(w => {
-                        html += `<div class="worker-item">
-                            <strong>${w.personnel_FirstName} ${w.personnel_LastName}</strong><br>
-                            <small>📞 ${w.personnel_PhoneNumber || '-'}</small><br>
-                            <small>🏠 ${w.homeAddress || '-'}</small><br>
-                            <button class="btn btn-sm btn-danger mt-2" onclick="removeWorker(${w.personnel_Id}, ${stopId}, '${w.personnel_FirstName} ${w.personnel_LastName}')">❌ Désassigner</button>
-                        </div>`;
-                    });
-                } else html += '<div class="alert alert-info">Aucun personnel</div>';
-                document.getElementById('workersList').innerHTML = html;
-                new bootstrap.Modal(document.getElementById('viewWorkersModal')).show();
-            } catch (err) {
-                showNotification('Erreur chargement personnels', true);
-            }
+        try {
+        const res = await fetch('/Clustering/GetWorkersByStop?stopId=' + stopId);
+        const data = await res.json();
+        let html = `<h5>${data.stopName}</h5><hr>`;
+        if (data.workers && data.workers.length) {
+        data.workers.forEach(w => {
+        html += `<div class="worker-item">
+        <strong>${w.personnel_FirstName} ${w.personnel_LastName}</strong><br>
+        <small>📞 ${w.personnel_PhoneNumber || '-'}</small><br>
+        <small>🏠 ${w.homeAddress || '-'}</small><br>
+        <button class="btn btn-sm btn-danger mt-2" onclick="removeWorker(${w.personnel_Id}, ${stopId}, '${w.personnel_FirstName} ${w.personnel_LastName}')">❌ Désassigner</button>
+        </div>`;
+        });
+        } else html += '<div class="alert alert-info">Aucun personnel</div>';
+        document.getElementById('workersList').innerHTML = html;
+        new bootstrap.Modal(document.getElementById('viewWorkersModal')).show();
+        } catch (err) {
+        showNotification('Erreur chargement personnels', true);
+        }
         };
 
         window.removeWorker = async (workerId, stopId, name) => {
-            if (confirm(`Retirer ${name} de cet arrêt ?`)) {
-                const res = await fetch('/Clustering/RemoveWorkerFromStop', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ workerId })
-                });
-                const result = await res.json();
-                if (result.success) {
-                    showNotification(`${name} désassigné`);
-                    loadStops();
-                    loadAndDisplayTrajectories();
-                } else showNotification('Erreur', true);
-            }
+        if (confirm(`Retirer ${name} de cet arrêt ?`)) {
+        const res = await fetch('/Clustering/RemoveWorkerFromStop', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ workerId })
+        });
+        const result = await res.json();
+        if (result.success) {
+        showNotification(`${name} désassigné`);
+        loadStops();
+        loadAndDisplayTrajectories();
+        } else showNotification('Erreur', true);
+        }
         };
 
         window.openAssignModal = async (stopId, stopName) => {
-            document.getElementById('assignStopId').value = stopId;
-            document.getElementById('assignStopName').value = stopName;
-            const select = document.getElementById('workerSelect');
-            select.innerHTML = '<option>-- Chargement --</option>';
-            const res = await fetch('/Clustering/GetUnassignedWorkers');
-            const workers = await res.json();
-            if (workers && workers.length) {
-                select.innerHTML = '<option value="">-- Sélectionner --</option>';
-                workers.forEach(w => {
-                    select.innerHTML += `<option value="${w.personnel_Id}">${w.personnel_FirstName} ${w.personnel_LastName} - ${w.homeAddress || '-'}</option>`;
-                });
-            } else select.innerHTML = '<option>Aucun personnel disponible</option>';
-            new bootstrap.Modal(document.getElementById('assignWorkerModal')).show();
+        document.getElementById('assignStopId').value = stopId;
+        document.getElementById('assignStopName').value = stopName;
+        const select = document.getElementById('workerSelect');
+        select.innerHTML = '<option>-- Chargement --</option>';
+        const res = await fetch('/Clustering/GetUnassignedWorkers');
+        const workers = await res.json();
+        if (workers && workers.length) {
+        select.innerHTML = '<option value="">-- Sélectionner --</option>';
+        workers.forEach(w => {
+        select.innerHTML += `<option value="${w.personnel_Id}">${w.personnel_FirstName} ${w.personnel_LastName} - ${w.homeAddress || '-'}</option>`;
+        });
+        } else select.innerHTML = '<option>Aucun personnel disponible</option>';
+        new bootstrap.Modal(document.getElementById('assignWorkerModal')).show();
         };
 
         window.confirmAssign = async () => {
-            const stopId = document.getElementById('assignStopId').value;
-            const workerId = document.getElementById('workerSelect').value;
-            if (!workerId) { showNotification('Sélectionnez un personnel', true); return; }
-            const res = await fetch('/Clustering/AssignWorkerToStop', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ workerId: parseInt(workerId), stopId: parseInt(stopId) })
-            });
-            const result = await res.json();
-            if (result.success) {
-                showNotification(result.message);
-                bootstrap.Modal.getInstance(document.getElementById('assignWorkerModal')).hide();
-                loadStops();
-                loadAndDisplayTrajectories();
-            } else showNotification('Erreur', true);
+        const stopId = document.getElementById('assignStopId').value;
+        const workerId = document.getElementById('workerSelect').value;
+        if (!workerId) { showNotification('Sélectionnez un personnel', true); return; }
+        const res = await fetch('/Clustering/AssignWorkerToStop', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ workerId: parseInt(workerId), stopId: parseInt(stopId) })
+        });
+        const result = await res.json();
+        if (result.success) {
+        showNotification(result.message);
+        bootstrap.Modal.getInstance(document.getElementById('assignWorkerModal')).hide();
+        loadStops();
+        loadAndDisplayTrajectories();
+        } else showNotification('Erreur', true);
         };
 
         window.autoAssignToStop = async () => {
-            const stopId = document.getElementById('assignStopId').value;
-            const stopName = document.getElementById('assignStopName').value;
-            if (confirm(`Assigner automatiquement les personnels à ${stopName} ?`)) {
-                const res = await fetch(`/Clustering/AutoAssignWorkersToStop?stopId=${stopId}`, { method: 'POST' });
-                const result = await res.json();
-                if (result.success) {
-                    showNotification(result.message);
-                    bootstrap.Modal.getInstance(document.getElementById('assignWorkerModal')).hide();
-                    loadStops();
-                    loadAndDisplayTrajectories();
-                } else showNotification('Erreur', true);
-            }
+        const stopId = document.getElementById('assignStopId').value;
+        const stopName = document.getElementById('assignStopName').value;
+        if (confirm(`Assigner automatiquement les personnels à ${stopName} ?`)) {
+        const res = await fetch(`/Clustering/AutoAssignWorkersToStop?stopId=${stopId}`, { method: 'POST' });
+        const result = await res.json();
+        if (result.success) {
+        showNotification(result.message);
+        bootstrap.Modal.getInstance(document.getElementById('assignWorkerModal')).hide();
+        loadStops();
+        loadAndDisplayTrajectories();
+        } else showNotification('Erreur', true);
+        }
         };
 
         window.autoAssignAll = async () => {
-            if (confirm('Assigner TOUS les personnels au point le plus proche ?')) {
-                const res = await fetch('/Clustering/AutoAssignAllWorkersToNearestStop?trajectoryId=1', { method: 'POST' });
-                const result = await res.json();
-                if (result.success) {
-                    showNotification(result.message);
-                    loadStops();
-                    loadAndDisplayTrajectories();
-                } else showNotification('Erreur', true);
-            }
+        if (confirm('Assigner TOUS les personnels au point le plus proche ?')) {
+        const res = await fetch('/Clustering/AutoAssignAllWorkersToNearestStop?trajectoryId=1', { method: 'POST' });
+        const result = await res.json();
+        if (result.success) {
+        showNotification(result.message);
+        loadStops();
+        loadAndDisplayTrajectories();
+        } else showNotification('Erreur', true);
+        }
         };
 
         window.editStop = (id, name, lat, lng, order) => {
-            document.getElementById('editStopId').value = id;
-            document.getElementById('editStopName').value = name;
-            document.getElementById('editStopLat').value = lat;
-            document.getElementById('editStopLng').value = lng;
-            document.getElementById('editStopOrder').value = order;
-            new bootstrap.Modal(document.getElementById('editStopModal')).show();
+        document.getElementById('editStopId').value = id;
+        document.getElementById('editStopName').value = name;
+        document.getElementById('editStopLat').value = lat;
+        document.getElementById('editStopLng').value = lng;
+        document.getElementById('editStopOrder').value = order;
+        new bootstrap.Modal(document.getElementById('editStopModal')).show();
         };
 
         window.deleteStop = async (id, name) => {
-            if (confirm(`Supprimer "${name}" ?`)) {
-                const res = await fetch(`/Clustering/DeleteStop?id=${id}`, { method: 'DELETE' });
-                if (res.ok) {
-                    showNotification('✅ Supprimé');
-                    loadStops();
-                    loadAndDisplayTrajectories();
-                } else showNotification('❌ Erreur', true);
-            }
+        if (confirm(`Supprimer "${name}" ?`)) {
+        const res = await fetch(`/Clustering/DeleteStop?id=${id}`, { method: 'DELETE' });
+        if (res.ok) {
+        showNotification('✅ Supprimé');
+        loadStops();
+        loadAndDisplayTrajectories();
+        } else showNotification('❌ Erreur', true);
+        }
         };
 
         window.saveStopChanges = async () => {
-            const id = document.getElementById('editStopId').value;
-            const name = document.getElementById('editStopName').value;
-            const lat = parseFloat(document.getElementById('editStopLat').value);
-            const lng = parseFloat(document.getElementById('editStopLng').value);
-            const order = parseInt(document.getElementById('editStopOrder').value);
-            if (!name || isNaN(lat) || isNaN(lng) || isNaN(order)) {
-                showNotification('Champs invalides', true);
-                return;
-            }
-            const res = await fetch('/Clustering/UpdateStop', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ id: parseInt(id), name, latitude: lat, longitude: lng, orderIndex: order })
-            });
-            if (res.ok) {
-                showNotification('✅ Modifié');
-                bootstrap.Modal.getInstance(document.getElementById('editStopModal')).hide();
-                loadStops();
-                loadAndDisplayTrajectories();
-            } else showNotification('❌ Erreur', true);
+        const id = document.getElementById('editStopId').value;
+        const name = document.getElementById('editStopName').value;
+        const lat = parseFloat(document.getElementById('editStopLat').value);
+        const lng = parseFloat(document.getElementById('editStopLng').value);
+        const order = parseInt(document.getElementById('editStopOrder').value);
+        if (!name || isNaN(lat) || isNaN(lng) || isNaN(order)) {
+        showNotification('Champs invalides', true);
+        return;
+        }
+        const res = await fetch('/Clustering/UpdateStop', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: parseInt(id), name, latitude: lat, longitude: lng, orderIndex: order })
+        });
+        if (res.ok) {
+        showNotification('✅ Modifié');
+        bootstrap.Modal.getInstance(document.getElementById('editStopModal')).hide();
+        loadStops();
+        loadAndDisplayTrajectories();
+        } else showNotification('❌ Erreur', true);
         };
 
         window.generateRoutes = async () => {
-            const capacity = document.getElementById('busCapacity').value;
-            showNotification('🔄 Génération...');
-            try {
-                const res = await fetch('/Clustering/GenerateRoutesFromPickupPoints', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ busCapacity: parseInt(capacity) })
-                });
-                const data = await res.json();
-                if (data.success) {
-                    let html = `<div class="alert alert-success">✅ ${data.message}</div>`;
-                    if (data.routes && data.routes.length) {
-                        html += `<div class="accordion">`;
-                        data.routes.forEach((r, i) => {
-                            html += `<div class="accordion-item">
-                                <h2 class="accordion-header">
-                                    <button class="accordion-button ${i > 0 ? 'collapsed' : ''}" data-bs-toggle="collapse" data-bs-target="#c${i}">
-                                        🚌 Trajet ${i+1} - ${r.totalPassengers} pers. (${r.stops.length} arrêts)
-                                    </button>
-                                </h2>
-                                <div id="c${i}" class="accordion-collapse collapse ${i === 0 ? 'show' : ''}">
-                                    <div class="accordion-body">
-                                        <ul>${r.stops.map(s => `<li><strong>${s.stopName}</strong> - ${s.passengerCount} pers.</li>`).join('')}</ul>
-                                        <strong>Personnels:</strong><ul>${r.passengers.map(p => `<li>${p.firstName} ${p.lastName}</li>`).join('')}</ul>
-                                    </div>
-                                </div>
-                            </div>`;
-                        });
-                        html += `</div>`;
-                    }
-                    document.getElementById('routesResultBody').innerHTML = html;
-                    new bootstrap.Modal(document.getElementById('routesResultModal')).show();
-                } else {
-                    showNotification('❌ ' + data.message, true);
-                }
-            } catch (err) {
-                showNotification('Erreur réseau', true);
-            }
+        const capacity = document.getElementById('busCapacity').value;
+        showNotification('🔄 Génération...');
+        try {
+        const res = await fetch('/Clustering/GenerateRoutesFromPickupPoints', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ busCapacity: parseInt(capacity) })
+        });
+        const data = await res.json();
+        if (data.success) {
+        let html = `<div class="alert alert-success">✅ ${data.message}</div>`;
+        if (data.routes && data.routes.length) {
+        html += `<div class="accordion">`;
+        data.routes.forEach((r, i) => {
+        html += `<div class="accordion-item">
+        <h2 class="accordion-header">
+        <button class="accordion-button ${i > 0 ? 'collapsed' : ''}" data-bs-toggle="collapse" data-bs-target="#c${i}">
+        🚌 Trajet ${i+1} - ${r.totalPassengers} pers. (${r.stops.length} arrêts)
+        </button>
+        </h2>
+        <div id="c${i}" class="accordion-collapse collapse ${i === 0 ? 'show' : ''}">
+        <div class="accordion-body">
+        <ul>${r.stops.map(s => `<li><strong>${s.stopName}</strong> - ${s.passengerCount} pers.</li>`).join('')}</ul>
+        <strong>Personnels:</strong><ul>${r.passengers.map(p => `<li>${p.firstName} ${p.lastName}</li>`).join('')}</ul>
+        </div>
+        </div>
+        </div>`;
+        });
+        html += `</div>`;
+        }
+        document.getElementById('routesResultBody').innerHTML = html;
+        new bootstrap.Modal(document.getElementById('routesResultModal')).show();
+        } else {
+        showNotification('❌ ' + data.message, true);
+        }
+        } catch (err) {
+        showNotification('Erreur réseau', true);
+        }
         };
 
         window.saveRoutes = async () => {
-            const capacity = document.getElementById('busCapacity').value;
-            const res = await fetch('/Clustering/SaveGeneratedRoutes', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ busCapacity: parseInt(capacity) })
-            });
-            const data = await res.json();
-            if (data.success) {
-                showNotification('✅ Trajets sauvegardés');
-                bootstrap.Modal.getInstance(document.getElementById('routesResultModal')).hide();
-                loadAndDisplayTrajectories();
-            } else showNotification('❌ ' + data.message, true);
+        const capacity = document.getElementById('busCapacity').value;
+        const res = await fetch('/Clustering/SaveGeneratedRoutes', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ busCapacity: parseInt(capacity) })
+        });
+        const data = await res.json();
+        if (data.success) {
+        showNotification('✅ Trajets sauvegardés');
+        bootstrap.Modal.getInstance(document.getElementById('routesResultModal')).hide();
+        loadAndDisplayTrajectories();
+        } else showNotification('❌ ' + data.message, true);
         };
 
         window.generateSmartTrajectories = async () => {
-            showNotification('🔄 Calcul IA en cours...');
-            try {
-                const res = await fetch('/Clustering/GenerateSmartTrajectories', { method: 'POST' });
-                const data = await res.json();
-                if (data.success) {
-                    showNotification(`✅ ${data.trajectoryCount} trajets générés avec succès.`);
-                    location.reload();
-                } else {
-                    showNotification('❌ ' + data.message, true);
-                }
-            } catch (err) {
-                showNotification('Erreur réseau', true);
-            }
+        showNotification('🔄 Calcul IA en cours...');
+        try {
+        const res = await fetch('/Clustering/GenerateSmartTrajectories', { method: 'POST' });
+        const data = await res.json();
+        if (data.success) {
+        showNotification(`✅ ${data.trajectoryCount} trajets générés avec succès.`);
+        location.reload();
+        } else {
+        showNotification('❌ ' + data.message, true);
+        }
+        } catch (err) {
+        showNotification('Erreur réseau', true);
+        }
         };
 
         window.autoAssignBuses = async () => {
-            showNotification('🔄 Assignation des bus en cours...');
-            try {
-                const res = await fetch('/Clustering/AutoAssignBusesToTrajectories', { method: 'POST' });
-                const data = await res.json();
-                if (data.success) {
-                    showNotification(`✅ ${data.message}`);
-                    setTimeout(() => location.reload(), 1500);
-                } else {
-                    showNotification('❌ ' + data.message, true);
-                }
-            } catch (err) {
-                showNotification('Erreur réseau', true);
-            }
+        showNotification('🔄 Assignation des bus en cours...');
+        try {
+        const res = await fetch('/Clustering/AutoAssignBusesToTrajectories', { method: 'POST' });
+        const data = await res.json();
+        if (data.success) {
+        showNotification(`✅ ${data.message}`);
+        setTimeout(() => location.reload(), 1500);
+        } else {
+        showNotification('❌ ' + data.message, true);
+        }
+        } catch (err) {
+        showNotification('Erreur réseau', true);
+        }
         };
 
         // Initialisation de la carte
         function init() {
-            if (!map) {
-                map = L.map('map').setView([KENITRA_CENTER_LAT, KENITRA_CENTER_LNG], 12);
-                L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', { attribution: '&copy; OSM' }).addTo(map);
-                L.control.scale({ metric: true, imperial: false }).addTo(map);
-                const sewsIcon = L.divIcon({ html: '🏭', iconSize: [40, 40], className: 'sews-marker' });
-                L.marker([SEWS_LAT, SEWS_LNG], { icon: sewsIcon }).bindPopup('<strong>🏭 SEWS Maroc</strong>').addTo(map);
-            }
-            loadTrajectoriesFilter();
+        if (!map) {
+        map = L.map('map').setView([KENITRA_CENTER_LAT, KENITRA_CENTER_LNG], 12);
+        L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', { attribution: '&copy; OSM' }).addTo(map);
+        L.control.scale({ metric: true, imperial: false }).addTo(map);
+        const sewsIcon = L.divIcon({ html: '🏭', iconSize: [40, 40], className: 'sews-marker' });
+        L.marker([SEWS_LAT, SEWS_LNG], { icon: sewsIcon }).bindPopup('<strong>🏭 SEWS Maroc</strong>').addTo(map);
+        }
+        loadTrajectoriesFilter();
         }
 
         // Attacher les événements
@@ -534,8 +582,8 @@
         document.getElementById('saveStopChanges').onclick = saveStopChanges;
         document.getElementById('saveRoutesBtn').onclick = saveRoutes;
         document.getElementById('trajectoryFilter').addEventListener('change', () => {
-            loadStops();
-            loadAndDisplayTrajectories();
+        loadStops();
+        loadAndDisplayTrajectories();
         });
 
         init();

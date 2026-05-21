@@ -1,5 +1,6 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using TransportManagementSystem.Models;
+using TransportManagementSystem.Services;
 
 namespace TransportManagementSystem.Data
 {
@@ -30,6 +31,10 @@ namespace TransportManagementSystem.Data
         // NOUVEAU
         public DbSet<PersonnelBusAssignment> PersonnelBusAssignments { get; set; }
         public DbSet<AnomalyLog> AnomalyLogs { get; set; }
+        public DbSet<FuelConsumption> FuelConsumptions { get; set; }
+
+        public DbSet<TransportManagementSystem.Models.BusLocationHistory> BusLocationHistory { get; set; }
+        public DbSet<ArrivalHistory> ArrivalHistories { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
