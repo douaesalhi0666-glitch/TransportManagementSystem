@@ -240,6 +240,25 @@ namespace TransportManagementSystem.Controllers
             }
         }
 
+        // ========== NOUVELLES MÉTHODES POUR LA CRÉATION ==========
+
+        // GET: Personnel/GetNextId
+        [HttpGet]
+        public async Task<IActionResult> GetNextId()
+        {
+            var maxId = await _context.Personnel.MaxAsync(p => (long?)p.Personnel_Id) ?? 0;
+            var nextId = maxId + 1;
+            return Ok(new { nextId = nextId });
+        }
+
+        // GET: Personnel/CheckIdExists
+        [HttpGet]
+        public async Task<IActionResult> CheckIdExists(long id)
+        {
+            var exists = await _context.Personnel.AnyAsync(p => p.Personnel_Id == id);
+            return Ok(new { exists = exists });
+        }
+
         private bool PersonnelExists(long id) => _context.Personnel.Any(e => e.Personnel_Id == id);
     }
 

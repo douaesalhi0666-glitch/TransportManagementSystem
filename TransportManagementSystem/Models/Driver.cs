@@ -40,8 +40,24 @@ namespace TransportManagementSystem.Models
         [Display(Name = "Date d'expiration du permis")]
         public DateTime? Driver_LicenseExpiryDate { get; set; }
 
-        [Display(Name = "Années d'expérience")]
-        public int? Driver_ExperienceYears { get; set; }
+        // ========== NOUVEAUX CHAMPS ==========
+
+        [Display(Name = "Date d'entrée dans l'entreprise")]
+        public DateTime Driver_HireDate { get; set; }
+
+        [MaxLength(20)]
+        [Display(Name = "Note / Performance")]
+        public string? Driver_Rating { get; set; } = "Bon";
+
+        [Column(TypeName = "decimal(10,8)")]
+        [Display(Name = "Latitude domicile")]
+        public decimal? Driver_HomeLatitude { get; set; }
+
+        [Column(TypeName = "decimal(11,8)")]
+        [Display(Name = "Longitude domicile")]
+        public decimal? Driver_HomeLongitude { get; set; }
+
+        // ========== FIN NOUVEAUX CHAMPS ==========
 
         [MaxLength(20)]
         [Display(Name = "Statut")]
@@ -56,7 +72,7 @@ namespace TransportManagementSystem.Models
         [Display(Name = "Date de modification")]
         public DateTime? Driver_UpdatedAt { get; set; }
 
-        // Navigation property - THIS IS WHAT YOU NEED
+        // Navigation property
         [ForeignKey("Driver_AssignedBusId")]
         public virtual Bus? AssignedBus { get; set; }
     }

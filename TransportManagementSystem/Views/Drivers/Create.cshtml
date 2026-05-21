@@ -7,15 +7,15 @@
 
 <h1>Ajouter un chauffeur</h1>
 
-<form asp-action="Create">
+<form asp-action="Create" id="createForm">
     <div asp-validation-summary="ModelOnly" class="text-danger"></div>
 
-    <!-- ID Field -->
     <div class="form-group mb-3">
         <label>ID Chauffeur <span class="text-danger">*</span></label>
-        <input asp-for="Driver_id" type="number" class="form-control" placeholder="Ex: 1001" step="1" />
-        <small class="text-muted">Entrez un ID unique (nombres uniquement)</small>
+        <input asp-for="Driver_id" type="number" class="form-control" id="Driver_id" placeholder="Ex: 1001" step="1" />
+        <small class="text-muted">ID automatiquement suggéré (modifiable). Doit être unique.</small>
         <span asp-validation-for="Driver_id" class="text-danger"></span>
+        <div id="idError" class="text-danger" style="display:none;">❌ Cet ID existe déjà. Veuillez en choisir un autre.</div>
     </div>
 
     <div class="row">
@@ -69,29 +69,83 @@
         </div>
     </div>
 
-    <div class="row">
-        <div class="col-md-6">
-            <div class="form-group">
-                <label>Années d'expérience</label>
-                <input asp-for="Driver_ExperienceYears" type="number" class="form-control" />
-                <span asp-validation-for="Driver_ExperienceYears" class="text-danger"></span>
-            </div>
-        </div>
-        <div class="col-md-6">
-            <div class="form-group">
-                <label>Statut</label>
-                <select asp-for="Driver_Status" class="form-control">
-                    <option value="Available">Disponible</option>
-                    <option value="On Route">En route</option>
-                    <option value="Off Duty">Hors service</option>
-                </select>
-                <span asp-validation-for="Driver_Status" class="text-danger"></span>
-            </div>
-        </div>
+    <div class="form-group">
+        <label>Note / Performance</label>
+        <select asp-for="Driver_Rating" class="form-control">
+            <option value="Excellent">🌟🌟🌟🌟🌟 Excellent</option>
+            <option value="Bon">🌟🌟🌟🌟 Bon</option>
+            <option value="Moyen">🌟🌟🌟 Moyen</option>
+            <option value="Médiocre">🌟🌟 Médiocre</option>
+        </select>
+        <span asp-validation-for="Driver_Rating" class="text-danger"></span>
     </div>
 
     <div class="form-group mt-3">
-        <input type="submit" value="Créer" class="btn btn-primary" />
+        <input type="submit" value="Créer" class="btn btn-primary" id="submitBtn" />
         <a asp-action="Index" class="btn btn-secondary">Retour</a>
     </div>
 </form>
+
+@section Scripts {
+    @{
+        await Html.RenderPartialAsync("_ValidationScriptsPartial");
+    }
+    <script>
+        async function getNextDriverId() {
+            try {
+                const response = await fetch('/Drivers/GetNextId');
+                const data = await response.json();
+                return data.nextId;
+            } catch (err) {
+                console.error('Erreur:', err);
+                return 1001;
+            }
+        }
+
+        async function checkIdExists(id) {
+            try {
+                const response = await fetch(`/Drivers/CheckIdExists?id=${id}`);
+                const data = await response.json();
+                return data.exists;
+            } catch (err) {
+                console.error('Erreur:', err);
+                return true;
+            }
+        }
+
+        async function validateId() {
+            const idInput = document.getElementById('Driver_id');
+            const idError = document.getElementById('idError');
+            const submitBtn = document.getElementById('submitBtn');
+            const id = parseInt(idInput.value);
+
+            if (!id || isNaN(id) || id <= 0) {
+                idError.style.display = 'block';
+                idError.innerText = '❌ Veuillez entrer un ID valide (nombre positif).';
+                submitBtn.disabled = true;
+                return false;
+            }
+
+            const exists = await checkIdExists(id);
+            if (exists) {
+                idError.style.display = 'block';
+                idError.innerText = '❌ Cet ID existe déjà. Veuillez en choisir un autre.';
+                submitBtn.disabled = true;
+                return false;
+            } else {
+                idError.style.display = 'none';
+                submitBtn.disabled = false;
+                return true;
+            }
+        }
+
+        async function init() {
+            const nextId = await getNextDriverId();
+            document.getElementById('Driver_id').value = nextId;
+            document.getElementById('Driver_id').addEventListener('input', validateId);
+            await validateId();
+        }
+
+        init();
+    </script>
+}

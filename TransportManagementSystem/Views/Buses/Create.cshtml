@@ -5,17 +5,19 @@
     Layout = "~/Views/Shared/_Layout.cshtml";
 }
 
-<h1>Ajouter un bus</h1>
+<h1>➕ Ajouter un bus</h1>
 
-<form asp-action="Create">
+<form asp-action="Create" id="createForm">
     <div asp-validation-summary="ModelOnly" class="text-danger"></div>
 
     <div class="row">
         <div class="col-md-6">
             <div class="form-group">
                 <label>Code du bus</label>
-                <input asp-for="Bus_Code" class="form-control" placeholder="Ex: BUS-001" />
+                <input asp-for="Bus_Code" class="form-control" id="Bus_Code" placeholder="Ex: BUS-001" />
+                <small class="text-muted">Code automatiquement suggéré (modifiable). Doit être unique.</small>
                 <span asp-validation-for="Bus_Code" class="text-danger"></span>
+                <div id="codeError" class="text-danger" style="display:none;">❌ Ce code existe déjà. Veuillez en choisir un autre.</div>
             </div>
         </div>
         <div class="col-md-6">
@@ -73,7 +75,81 @@
     </div>
 
     <div class="form-group mt-3">
-        <input type="submit" value="Créer" class="btn btn-primary" />
+        <input type="submit" value="Créer" class="btn btn-primary" id="submitBtn" />
         <a href="/Buses/Index" class="btn btn-secondary">Retour</a>
     </div>
 </form>
+
+@section Scripts {
+    @{
+        await Html.RenderPartialAsync("_ValidationScriptsPartial");
+    }
+    <script>
+        // Fonction pour récupérer le prochain code disponible
+        async function getNextBusCode() {
+            try {
+                const response = await fetch('/Buses/GetNextCode');
+                const data = await response.json();
+                return data.nextCode;
+            } catch (err) {
+                console.error('Erreur:', err);
+                return 'BUS-001';
+            }
+        }
+
+        // Fonction pour vérifier si un code existe déjà
+        async function checkCodeExists(code) {
+            try {
+                const response = await fetch(`/Buses/CheckCodeExists?code=${encodeURIComponent(code)}`);
+                const data = await response.json();
+                return data.exists;
+            } catch (err) {
+                console.error('Erreur:', err);
+                return true;
+            }
+        }
+
+        // Valider le code en temps réel
+        async function validateCode() {
+            const codeInput = document.getElementById('Bus_Code');
+            const codeError = document.getElementById('codeError');
+            const submitBtn = document.getElementById('submitBtn');
+            const code = codeInput.value.trim();
+
+            if (!code || code === '') {
+                codeError.style.display = 'block';
+                codeError.innerText = '❌ Veuillez entrer un code valide.';
+                submitBtn.disabled = true;
+                return false;
+            }
+
+            const exists = await checkCodeExists(code);
+            if (exists) {
+                codeError.style.display = 'block';
+                codeError.innerText = '❌ Ce code existe déjà. Veuillez en choisir un autre.';
+                submitBtn.disabled = true;
+                return false;
+            } else {
+                codeError.style.display = 'none';
+                submitBtn.disabled = false;
+                return true;
+            }
+        }
+
+        // Initialisation : charger le prochain code
+        async function init() {
+            const nextCode = await getNextBusCode();
+            const codeInput = document.getElementById('Bus_Code');
+            codeInput.value = nextCode;
+
+            // Ajouter un écouteur pour valider à chaque modification
+            codeInput.addEventListener('input', validateCode);
+
+            // Valider au chargement
+            await validateCode();
+        }
+
+        // Lancer l'initialisation
+        init();
+    </script>
+}

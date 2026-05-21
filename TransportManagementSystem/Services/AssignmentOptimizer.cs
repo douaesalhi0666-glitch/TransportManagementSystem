@@ -89,8 +89,23 @@ namespace TransportManagementSystem.Services
 
             return availableDrivers
                 .OrderByDescending(d => GetDriverScoreForTrajectory(d, trajectory))
-                .ThenBy(d => d.Driver_ExperienceYears ?? 0)
+                .ThenBy(d => GetDriverExperienceYears(d))
                 .FirstOrDefault();
+        }
+
+        // Nouvelle méthode pour calculer les années d'expérience à partir de la date d'embauche
+        private int GetDriverExperienceYears(Driver driver)
+        {
+            if (driver.Driver_HireDate == default || driver.Driver_HireDate > DateTime.Now)
+                return 0;
+
+            int years = DateTime.Now.Year - driver.Driver_HireDate.Year;
+
+            // Ajustement si la date d'anniversaire d'embauche n'est pas encore passée cette année
+            if (driver.Driver_HireDate.Date > DateTime.Now.Date.AddYears(-years))
+                years--;
+
+            return Math.Max(0, years);
         }
 
         private double GetDriverScoreForTrajectory(Driver driver, Trajectory trajectory)
@@ -116,7 +131,8 @@ namespace TransportManagementSystem.Services
             double score = 0;
 
             // Driver availability and experience (30%)
-            var experienceScore = Math.Min(100, (driver.Driver_ExperienceYears ?? 0) * 10);
+            var experienceYears = GetDriverExperienceYears(driver);
+            var experienceScore = Math.Min(100, experienceYears * 10);
             score += experienceScore * 0.3;
 
             // Bus capacity match (20%)
@@ -142,9 +158,10 @@ namespace TransportManagementSystem.Services
         private string GetRecommendationReason(Driver driver, Bus bus, Trajectory trajectory, double score)
         {
             var reasons = new List<string>();
+            var experienceYears = GetDriverExperienceYears(driver);
 
-            if ((driver.Driver_ExperienceYears ?? 0) >= 5)
-                reasons.Add($"Expérimenté ({driver.Driver_ExperienceYears} ans)");
+            if (experienceYears >= 5)
+                reasons.Add($"Expérimenté ({experienceYears} ans)");
 
             var performance = _context.DriverPerformance_tbl
                 .FirstOrDefault(p => p.Driver_Id == driver.Driver_id && p.Trajectory_Id == trajectory.Trajectory_Id);

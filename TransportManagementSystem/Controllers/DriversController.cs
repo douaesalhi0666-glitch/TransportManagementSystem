@@ -45,6 +45,8 @@ namespace TransportManagementSystem.Controllers
 
                 driver.Driver_CreatedAt = DateTime.Now;
                 driver.Driver_UpdatedAt = DateTime.Now;
+                driver.Driver_HireDate = DateTime.Now; // Date d'entrée automatique
+                driver.Driver_Rating = "Bon"; // Valeur par défaut
                 driver.Driver_Status = "Available";
 
                 _context.Add(driver);
@@ -59,19 +61,13 @@ namespace TransportManagementSystem.Controllers
 
         public async Task<IActionResult> Edit(long? id)
         {
-            if (id == null)
-            {
-                return NotFound();
-            }
+            if (id == null) return NotFound();
 
             var driver = await _context.Drivers
                 .Include(d => d.AssignedBus)
                 .FirstOrDefaultAsync(d => d.Driver_id == id);
 
-            if (driver == null)
-            {
-                return NotFound();
-            }
+            if (driver == null) return NotFound();
 
             ViewBag.Buses = await _context.Buses.ToListAsync();
 
@@ -82,10 +78,7 @@ namespace TransportManagementSystem.Controllers
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> Edit(long id, Driver driver)
         {
-            if (id != driver.Driver_id)
-            {
-                return NotFound();
-            }
+            if (id != driver.Driver_id) return NotFound();
 
             if (ModelState.IsValid)
             {
@@ -98,8 +91,6 @@ namespace TransportManagementSystem.Controllers
 
                     if (existingDriver != null)
                     {
-                        bool statusChanged = existingDriver.Driver_Status != driver.Driver_Status;
-
                         if (existingDriver.Driver_AssignedBusId != null &&
                             driver.Driver_Status == "Off Duty" &&
                             existingDriver.Driver_Status != "Off Duty")
@@ -109,7 +100,6 @@ namespace TransportManagementSystem.Controllers
                             {
                                 bus.Bus_CurrentDriverId = null;
                                 TempData["Warning"] = $"⚠️ Attention: Le chauffeur a été retiré du bus {bus.Bus_Code}. Ce bus n'a plus de chauffeur.";
-
                                 DashboardController.AddNotification("warning", "Chauffeur retiré du bus", $"Le chauffeur {driver.Driver_FirstName} {driver.Driver_LastName} a été retiré du bus {bus.Bus_Code}.");
                             }
                             driver.Driver_AssignedBusId = null;
@@ -117,26 +107,16 @@ namespace TransportManagementSystem.Controllers
 
                         driver.Driver_CreatedAt = existingDriver.Driver_CreatedAt;
                         driver.Driver_UpdatedAt = DateTime.Now;
+                        driver.Driver_HireDate = existingDriver.Driver_HireDate;
 
                         _context.Update(driver);
                         await _context.SaveChangesAsync();
-
-                        if (statusChanged)
-                        {
-                            DashboardController.AddNotification("info", "Statut chauffeur modifié", $"Le statut du chauffeur {driver.Driver_FirstName} {driver.Driver_LastName} est passé à {driver.Driver_Status}.");
-                        }
                     }
                 }
                 catch (DbUpdateConcurrencyException)
                 {
-                    if (!DriverExists(driver.Driver_id))
-                    {
-                        return NotFound();
-                    }
-                    else
-                    {
-                        throw;
-                    }
+                    if (!DriverExists(driver.Driver_id)) return NotFound();
+                    else throw;
                 }
                 return RedirectToAction(nameof(Index));
             }
@@ -147,18 +127,12 @@ namespace TransportManagementSystem.Controllers
 
         public async Task<IActionResult> Delete(long? id)
         {
-            if (id == null)
-            {
-                return NotFound();
-            }
+            if (id == null) return NotFound();
 
             var driver = await _context.Drivers
                 .Include(d => d.AssignedBus)
                 .FirstOrDefaultAsync(m => m.Driver_id == id);
-            if (driver == null)
-            {
-                return NotFound();
-            }
+            if (driver == null) return NotFound();
 
             return View(driver);
         }
@@ -366,7 +340,8 @@ namespace TransportManagementSystem.Controllers
                 driver.Driver_PhoneNumber,
                 driver.Driver_LicenseNumber,
                 driver.Driver_LicenseExpiryDate,
-                driver.Driver_ExperienceYears,
+                driver.Driver_HireDate,
+                driver.Driver_Rating,
                 driver.Driver_Status,
                 driver.Driver_AssignedBusId
             });
@@ -388,8 +363,7 @@ namespace TransportManagementSystem.Controllers
             driver.Driver_PhoneNumber = model.Driver_PhoneNumber;
             driver.Driver_LicenseNumber = model.Driver_LicenseNumber;
             driver.Driver_LicenseExpiryDate = model.Driver_LicenseExpiryDate;
-            driver.Driver_ExperienceYears = model.Driver_ExperienceYears;
-            driver.Driver_Status = model.Driver_Status;
+            driver.Driver_Rating = model.Driver_Rating;
 
             if (driver.Driver_AssignedBusId != model.Driver_AssignedBusId)
             {
@@ -420,20 +394,36 @@ namespace TransportManagementSystem.Controllers
             return Ok(new { success = true, message = "Chauffeur mis à jour avec succès." });
         }
 
+        // ========== NOUVELLES MÉTHODES ==========
+
+        [HttpGet]
+        public async Task<IActionResult> GetNextId()
+        {
+            var maxId = await _context.Drivers.MaxAsync(d => (long?)d.Driver_id) ?? 0;
+            var nextId = maxId + 1;
+            return Ok(new { nextId = nextId });
+        }
+
+        [HttpGet]
+        public async Task<IActionResult> CheckIdExists(long id)
+        {
+            var exists = await _context.Drivers.AnyAsync(d => d.Driver_id == id);
+            return Ok(new { exists = exists });
+        }
+
         private async Task<string> CalculateDriverStatus(long driverId)
         {
             var now = DateTime.Now;
             var currentHour = now.Hour;
+            var currentDay = now.DayOfWeek;
 
-            var mission = await _context.DriverMissions_tbl
-                .Where(m => m.Driver_Id == driverId && m.Mission_Date == now.Date && m.Status == "Completed")
-                .FirstOrDefaultAsync();
-
-            if (mission != null)
+            // Week-end : Hors service toute la journée
+            if (currentDay == DayOfWeek.Saturday || currentDay == DayOfWeek.Sunday)
             {
                 return "Off Duty";
             }
 
+            // Lundi au Vendredi
             if (currentHour >= 7 && currentHour < 8)
             {
                 return "On Route";
@@ -442,7 +432,7 @@ namespace TransportManagementSystem.Controllers
             {
                 return "Available";
             }
-            else if (currentHour >= 17)
+            else if (currentHour >= 17 && currentHour < 18)
             {
                 return "On Route";
             }
@@ -452,10 +442,7 @@ namespace TransportManagementSystem.Controllers
             }
         }
 
-        private bool DriverExists(long id)
-        {
-            return _context.Drivers.Any(e => e.Driver_id == id);
-        }
+        private bool DriverExists(long id) => _context.Drivers.Any(e => e.Driver_id == id);
     }
 
     public class DriverUpdateModel
@@ -467,8 +454,7 @@ namespace TransportManagementSystem.Controllers
         public string? Driver_PhoneNumber { get; set; }
         public string Driver_LicenseNumber { get; set; } = string.Empty;
         public DateTime? Driver_LicenseExpiryDate { get; set; }
-        public int? Driver_ExperienceYears { get; set; }
-        public string Driver_Status { get; set; } = string.Empty;
+        public string? Driver_Rating { get; set; }
         public long? Driver_AssignedBusId { get; set; }
     }
 

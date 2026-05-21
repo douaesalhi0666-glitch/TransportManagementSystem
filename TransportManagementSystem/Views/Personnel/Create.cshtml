@@ -7,14 +7,15 @@
 
 <h1>Ajouter un personnel</h1>
 
-<form asp-action="Create">
+<form asp-action="Create" id="createForm">
     <div asp-validation-summary="ModelOnly" class="text-danger"></div>
 
     <div class="form-group mb-3">
         <label>ID Personnel <span class="text-danger">*</span></label>
-        <input asp-for="Personnel_Id" type="number" class="form-control" placeholder="Ex: 1001" step="1" />
-        <small class="text-muted">Entrez un ID unique (nombres uniquement)</small>
+        <input asp-for="Personnel_Id" type="number" class="form-control" id="Personnel_Id" placeholder="Ex: 1001" step="1" />
+        <small class="text-muted">ID automatiquement suggéré (modifiable). Doit être unique.</small>
         <span asp-validation-for="Personnel_Id" class="text-danger"></span>
+        <div id="idError" class="text-danger" style="display:none;">❌ Cet ID existe déjà. Veuillez en choisir un autre.</div>
     </div>
 
     <div class="row">
@@ -144,7 +145,7 @@
     </div>
 
     <div class="form-group mt-3">
-        <input type="submit" value="Créer" class="btn btn-primary" />
+        <input type="submit" value="Créer" class="btn btn-primary" id="submitBtn" />
         <a href="/Personnel/Index" class="btn btn-secondary">Retour</a>
     </div>
 </form>
@@ -153,4 +154,72 @@
     @{
         await Html.RenderPartialAsync("_ValidationScriptsPartial");
     }
+    <script>
+        // Fonction pour récupérer le prochain ID disponible
+        async function getNextPersonnelId() {
+            try {
+                const response = await fetch('/Personnel/GetNextId');
+                const data = await response.json();
+                return data.nextId;
+            } catch (err) {
+                console.error('Erreur lors de la récupération du prochain ID:', err);
+                return 1001; // Valeur par défaut si erreur
+            }
+        }
+
+        // Fonction pour vérifier si un ID existe déjà
+        async function checkIdExists(id) {
+            try {
+                const response = await fetch(`/Personnel/CheckIdExists?id=${id}`);
+                const data = await response.json();
+                return data.exists;
+            } catch (err) {
+                console.error('Erreur lors de la vérification ID:', err);
+                return true; // Par sécurité, on suppose qu'il existe
+            }
+        }
+
+        // Valider l'ID en temps réel
+        async function validateId() {
+            const idInput = document.getElementById('Personnel_Id');
+            const idError = document.getElementById('idError');
+            const submitBtn = document.getElementById('submitBtn');
+            const id = parseInt(idInput.value);
+
+            if (!id || isNaN(id) || id <= 0) {
+                idError.style.display = 'block';
+                idError.innerText = '❌ Veuillez entrer un ID valide (nombre positif).';
+                submitBtn.disabled = true;
+                return false;
+            }
+
+            const exists = await checkIdExists(id);
+            if (exists) {
+                idError.style.display = 'block';
+                idError.innerText = '❌ Cet ID existe déjà. Veuillez en choisir un autre.';
+                submitBtn.disabled = true;
+                return false;
+            } else {
+                idError.style.display = 'none';
+                submitBtn.disabled = false;
+                return true;
+            }
+        }
+
+        // Initialisation : charger le prochain ID
+        async function init() {
+            const nextId = await getNextPersonnelId();
+            const idInput = document.getElementById('Personnel_Id');
+            idInput.value = nextId;
+
+            // Ajouter un écouteur pour valider à chaque modification
+            idInput.addEventListener('input', validateId);
+
+            // Valider au chargement
+            await validateId();
+        }
+
+        // Lancer l'initialisation
+        init();
+    </script>
 }
