@@ -231,7 +231,7 @@
         option.textContent = `${t.trajectory_Name} (${t.trajectory_Code})`;
         filter.appendChild(option);
         });
-        // FORCER "all" pour voir toutes les trajectoires
+        // FORCER "all" pour voir tous les points de ramassage
         filter.value = "all";
         await loadStops();
         await loadAndDisplayTrajectories();
