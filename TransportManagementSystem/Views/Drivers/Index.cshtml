@@ -6,102 +6,227 @@
 }
 
 <style>
-    .details-card {
-        margin-bottom: 10px;
+    :root {
+        --navy: #0f1c2e;
+        --navy-mid: #162436;
+        --navy-light: #1e3250;
+        --amber: #f5a623;
+        --amber-light: #fbbf24;
+        --amber-glow: rgba(245, 166, 35, 0.1);
+        --text-muted: #64748b;
     }
 
-        .details-card .card-header {
-            font-weight: bold;
+    .page-header {
+        margin-bottom: 1.5rem;
+        padding-bottom: 0.5rem;
+        border-bottom: 2px solid var(--amber-glow);
+    }
+
+        .page-header h1 {
+            font-family: 'Sora', sans-serif;
+            font-size: 1.5rem;
+            font-weight: 700;
+            margin: 0;
         }
 
-    .rating-excellent {
-        background-color: #28a745;
-        color: white;
-        padding: 4px 8px;
-        border-radius: 4px;
-        font-size: 11px;
+        .page-header p {
+            color: var(--text-muted);
+            font-size: 0.85rem;
+            margin: 4px 0 0 0;
+        }
+
+    .btn-primary-custom {
+        background: linear-gradient(135deg, #1d4ed8, #3b82f6);
+        border: none;
+        border-radius: 10px;
+        padding: 8px 18px;
+        font-weight: 600;
+        font-size: 0.85rem;
+        transition: transform 0.15s, box-shadow 0.15s;
+    }
+
+        .btn-primary-custom:hover {
+            background: linear-gradient(135deg, #1e40af, #2563eb);
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(37, 99, 235, 0.3);
+        }
+
+    .filter-bar {
+        background: linear-gradient(135deg, #f8fafc, #ffffff);
+        padding: 1.25rem;
+        border-radius: 16px;
+        margin-bottom: 1.5rem;
+        border: 1px solid #e2e8f0;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.03);
+    }
+
+    .table-custom {
+        font-size: 0.8rem;
+        border-radius: 12px;
+        overflow: hidden;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+    }
+
+        .table-custom thead {
+            background: linear-gradient(135deg, var(--navy), var(--navy-mid));
+            color: white;
+        }
+
+            .table-custom thead th {
+                font-family: 'Sora', sans-serif;
+                font-size: 0.8rem;
+                font-weight: 700;
+                text-transform: uppercase;
+                letter-spacing: 0.05em;
+                padding: 14px 12px;
+                border: none;
+            }
+
+        .table-custom tbody td {
+            padding: 12px;
+            vertical-align: middle;
+            border-bottom: 1px solid #e2e8f0;
+        }
+
+        .table-custom tbody tr:hover {
+            background-color: var(--amber-glow);
+            transition: background 0.2s;
+        }
+
+    .badge-rating {
         display: inline-block;
+        padding: 4px 10px;
+        border-radius: 20px;
+        font-size: 0.7rem;
+        font-weight: 600;
     }
 
-    .rating-bon {
-        background-color: #17a2b8;
+    .badge-excellent {
+        background: linear-gradient(135deg, #10b981, #059669);
         color: white;
-        padding: 4px 8px;
-        border-radius: 4px;
-        font-size: 11px;
-        display: inline-block;
     }
 
-    .rating-moyen {
-        background-color: #ffc107;
-        color: #212529;
-        padding: 4px 8px;
-        border-radius: 4px;
-        font-size: 11px;
-        display: inline-block;
-    }
-
-    .rating-mediocre {
-        background-color: #dc3545;
+    .badge-bon {
+        background: linear-gradient(135deg, #3b82f6, #2563eb);
         color: white;
-        padding: 4px 8px;
-        border-radius: 4px;
-        font-size: 11px;
-        display: inline-block;
     }
 
-    .badge-status-available {
-        background-color: #28a745;
+    .badge-moyen {
+        background: linear-gradient(135deg, #f59e0b, #d97706);
         color: white;
-        padding: 4px 8px;
-        border-radius: 4px;
-        font-size: 11px;
     }
 
-    .badge-status-onroute {
-        background-color: #ffc107;
-        color: #212529;
-        padding: 4px 8px;
-        border-radius: 4px;
-        font-size: 11px;
-    }
-
-    .badge-status-offduty {
-        background-color: #dc3545;
+    .badge-mediocre {
+        background: linear-gradient(135deg, #ef4444, #dc2626);
         color: white;
-        padding: 4px 8px;
-        border-radius: 4px;
-        font-size: 11px;
+    }
+
+    .action-buttons {
+        display: flex;
+        gap: 6px;
+        flex-wrap: wrap;
+    }
+
+    .btn-sm-custom {
+        padding: 5px 12px;
+        font-size: 0.7rem;
+        font-weight: 500;
+        border-radius: 8px;
+        transition: all 0.15s;
+    }
+
+    .btn-details {
+        background: linear-gradient(135deg, #3b82f6, #2563eb);
+        color: white;
+        border: none;
+    }
+
+        .btn-details:hover {
+            background: linear-gradient(135deg, #2563eb, #1d4ed8);
+            transform: translateY(-1px);
+            box-shadow: 0 2px 6px rgba(59, 130, 246, 0.4);
+        }
+
+    .btn-edit {
+        background: linear-gradient(135deg, #f59e0b, #d97706);
+        color: white;
+        border: none;
+    }
+
+        .btn-edit:hover {
+            background: linear-gradient(135deg, #d97706, #b45309);
+            transform: translateY(-1px);
+            box-shadow: 0 2px 6px rgba(245, 158, 11, 0.4);
+        }
+
+    .btn-delete {
+        background: linear-gradient(135deg, #ef4444, #dc2626);
+        color: white;
+        border: none;
+    }
+
+        .btn-delete:hover {
+            background: linear-gradient(135deg, #dc2626, #b91c1c);
+            transform: translateY(-1px);
+            box-shadow: 0 2px 6px rgba(239, 68, 68, 0.4);
+        }
+
+    .btn-secondary-custom {
+        background: #64748b;
+        border: none;
+        border-radius: 10px;
+        padding: 8px 18px;
+        font-weight: 500;
+        font-size: 0.85rem;
+        transition: background 0.15s;
+    }
+
+        .btn-secondary-custom:hover {
+            background: #475569;
+        }
+
+    .search-input:focus, .form-select:focus {
+        border-color: var(--amber);
+        box-shadow: 0 0 0 3px rgba(245, 166, 35, 0.15);
     }
 </style>
 
-<h1>Gestion des Chauffeurs</h1>
-
-<p>
-    <a asp-action="Create" class="btn btn-primary">➕ Ajouter un chauffeur</a>
-</p>
-
-<!-- Barre de recherche et filtre -->
-<div class="row mb-3">
-    <div class="col-md-4">
-        <input type="text" id="searchInput" class="form-control" placeholder="🔍 Rechercher par ID, prénom ou nom" />
+<div class="page-header d-flex justify-content-between align-items-center flex-wrap gap-3">
+    <div>
+        <h1><i class="fas fa-id-card me-2" style="color: var(--amber);"></i>Gestion des Chauffeurs</h1>
+        <p>Gérez les conducteurs et leurs informations</p>
     </div>
-    <div class="col-md-3">
-        <select id="ratingFilter" class="form-select">
-            <option value="">⭐ Toutes les notes</option>
-            <option value="Excellent">🌟🌟🌟🌟🌟 Excellent</option>
-            <option value="Bon">🌟🌟🌟🌟 Bon</option>
-            <option value="Moyen">🌟🌟🌟 Moyen</option>
-            <option value="Médiocre">🌟🌟 Médiocre</option>
-        </select>
+    <div>
+        <a href="/Drivers/Create" class="btn btn-primary-custom">
+            <i class="fas fa-plus me-2"></i>Ajouter un chauffeur
+        </a>
     </div>
-    <div class="col-md-2">
-        <button id="resetFilter" class="btn btn-secondary">⟳ Réinitialiser</button>
+</div>
+
+<div class="filter-bar">
+    <div class="row g-3">
+        <div class="col-md-4">
+            <input type="text" id="searchInput" class="form-control search-input" placeholder="Rechercher par ID, prénom ou nom" />
+        </div>
+        <div class="col-md-4">
+            <select id="ratingFilter" class="form-select">
+                <option value="">Toutes les notes</option>
+                <option value="Excellent">Excellent</option>
+                <option value="Bon">Bon</option>
+                <option value="Moyen">Moyen</option>
+                <option value="Médiocre">Médiocre</option>
+            </select>
+        </div>
+        <div class="col-md-4">
+            <button id="resetFilter" class="btn btn-secondary-custom w-100">
+                <i class="fas fa-undo-alt me-1"></i>Réinitialiser
+            </button>
+        </div>
     </div>
 </div>
 
 <div class="table-responsive">
-    <table class="table table-striped" id="driversTable">
+    <table class="table table-custom" id="driversTable">
         <thead>
             <tr>
                 <th>ID</th>
@@ -109,74 +234,58 @@
                 <th>Nom</th>
                 <th>Email</th>
                 <th>Téléphone</th>
-                <th>📅 Date entrée</th>
-                <th>⭐ Note</th>
-                <th>🚌 Bus assigné</th>
-                <th>📌 Statut</th>
+                <th>Numéro permis</th>
+                <th>Expiration permis</th>
+                <th>Note</th>
                 <th>Actions</th>
             </tr>
         </thead>
         <tbody>
             @foreach (var item in Model)
             {
+                var ratingClass = item.Driver_Rating == "Excellent" ? "badge-excellent" :
+                                 (item.Driver_Rating == "Bon" ? "badge-bon" :
+                                 (item.Driver_Rating == "Moyen" ? "badge-moyen" : "badge-mediocre"));
+
                 <tr id="row-@item.Driver_id" data-rating="@item.Driver_Rating">
                     <td>@item.Driver_id</td>
                     <td>@item.Driver_FirstName</td>
                     <td>@item.Driver_LastName</td>
                     <td>@item.Driver_Email</td>
                     <td>@item.Driver_PhoneNumber</td>
-                    <td>@item.Driver_HireDate.ToString("dd/MM/yyyy")</td>
+                    <td>@item.Driver_LicenseNumber</td>
+                    <td>@(item.Driver_LicenseExpiryDate?.ToString("dd/MM/yyyy") ?? "-")</td>
                     <td>
-                        @switch (item.Driver_Rating)
-                        {
-                            case "Excellent":
-                                <span class="rating-excellent">🌟🌟🌟🌟🌟 Excellent</span>
-                                break;
-                            case "Bon":
-                                <span class="rating-bon">🌟🌟🌟🌟 Bon</span>
-                                break;
-                            case "Moyen":
-                                <span class="rating-moyen">🌟🌟🌟 Moyen</span>
-                                break;
-                            case "Médiocre":
-                                <span class="rating-mediocre">🌟🌟 Médiocre</span>
-                                break;
-                            default:
-                                <span class="rating-bon">⭐ @item.Driver_Rating</span>
-                                break;
-                        }
+                        <span class="badge-rating @ratingClass">
+                            @if (item.Driver_Rating == "Excellent")
+                            {
+                                <i class="fas fa-star me-1"></i>
+                            }
+                            else if (item.Driver_Rating == "Bon")
+                            {
+
+                                <i class="fas fa-star me-1"></i>
+                            }
+                            else if (item.Driver_Rating == "Moyen")
+                            {
+
+                                <i class="fas fa-star-half-alt me-1"></i>
+                            }
+                            else
+                            {
+
+                                <i class="fas fa-star me-1"></i>
+                            }
+                            @item.Driver_Rating
+                        </span>
                     </td>
-                    <td>
-                        @if (item.AssignedBus != null)
-                        {
-                            @item.AssignedBus.Bus_Code
-                        }
-                        else
-                        {
-                            <span class="text-muted">Non assigné</span>
-                        }
-                    </td>
-                    <td>
-                        @switch (item.Driver_Status)
-                        {
-                            case "Available":
-                                <span class="badge-status-available">✅ Disponible</span>
-                                break;
-                            case "On Route":
-                                <span class="badge-status-onroute">🔄 En route</span>
-                                break;
-                            default:
-                                <span class="badge-status-offduty">🔴 Hors service</span>
-                                break;
-                        }
-                    </td>
-                    <td>
-                        <button class="btn btn-sm btn-info details-btn" data-id="@item.Driver_id" title="Voir détails">🔍 Détails</button>
-                        <button class="btn btn-sm btn-warning edit-btn" data-id="@item.Driver_id" title="Modifier">✏️ Modifier</button>
-                        <form asp-action="Delete" asp-route-id="@item.Driver_id" method="post" style="display:inline;" onsubmit="return confirm('Supprimer définitivement ce chauffeur ?');">
-                            @Html.AntiForgeryToken()
-                            <button type="submit" class="btn btn-sm btn-danger" title="Supprimer">🗑️ Supprimer</button>
-                        </form>
+                    <td class="action-buttons">
+                        <a href="/Drivers/Edit/@item.Driver_id" class="btn btn-sm-custom btn-edit" title="Modifier">
+                            <i class="fas fa-pen"></i> Modifier
+                        </a>
+                        <a href="/Drivers/Delete/@item.Driver_id" class="btn btn-sm-custom btn-delete" title="Supprimer">
+                            <i class="fas fa-trash"></i> Supprimer
+                        </a>
                     </td>
                 </tr>
             }
@@ -184,109 +293,14 @@
     </table>
 </div>
 
-<a asp-controller="Dashboard" asp-action="AdminDashboard" class="btn btn-secondary">← Retour au Dashboard</a>
-
-<!-- Modal d'édition -->
-<div class="modal fade" id="editModal" tabindex="-1" aria-labelledby="editModalLabel" aria-hidden="true">
-    <div class="modal-dialog modal-lg">
-        <div class="modal-content">
-            <div class="modal-header bg-primary text-white">
-                <h5 class="modal-title" id="editModalLabel">✏️ Modifier le chauffeur - ID <span id="editDriverIdDisplay">0</span></h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-            </div>
-            <div class="modal-body">
-                <form id="editForm">
-                    <input type="hidden" id="edit_Driver_Id" name="Driver_id" />
-
-                    <!-- Affichage visible de l'ID -->
-                    <div class="alert alert-info mb-3">
-                        <strong>🆔 ID du chauffeur :</strong> <span id="editDriverIdDisplayBody">0</span>
-                    </div>
-
-                    <div class="row">
-                        <div class="col-md-6 mb-2">
-                            <label>Prénom</label>
-                            <input type="text" id="edit_FirstName" name="Driver_FirstName" class="form-control" required />
-                        </div>
-                        <div class="col-md-6 mb-2">
-                            <label>Nom</label>
-                            <input type="text" id="edit_LastName" name="Driver_LastName" class="form-control" required />
-                        </div>
-                    </div>
-                    <div class="row">
-                        <div class="col-md-6 mb-2">
-                            <label>Email</label>
-                            <input type="email" id="edit_Email" name="Driver_Email" class="form-control" />
-                        </div>
-                        <div class="col-md-6 mb-2">
-                            <label>Téléphone</label>
-                            <input type="text" id="edit_PhoneNumber" name="Driver_PhoneNumber" class="form-control" />
-                        </div>
-                    </div>
-                    <div class="row">
-                        <div class="col-md-6 mb-2">
-                            <label>Numéro de permis</label>
-                            <input type="text" id="edit_LicenseNumber" name="Driver_LicenseNumber" class="form-control" required />
-                        </div>
-                        <div class="col-md-6 mb-2">
-                            <label>Date d'expiration du permis</label>
-                            <input type="date" id="edit_LicenseExpiryDate" name="Driver_LicenseExpiryDate" class="form-control" />
-                        </div>
-                    </div>
-                    <div class="row">
-                        <div class="col-md-6 mb-2">
-                            <label>Latitude domicile</label>
-                            <input type="number" step="any" id="edit_HomeLatitude" name="Driver_HomeLatitude" class="form-control" placeholder="Ex: 34.2610" />
-                        </div>
-                        <div class="col-md-6 mb-2">
-                            <label>Longitude domicile</label>
-                            <input type="number" step="any" id="edit_HomeLongitude" name="Driver_HomeLongitude" class="form-control" placeholder="Ex: -6.5800" />
-                        </div>
-                    </div>
-                    <div class="row">
-                        <div class="col-md-6 mb-2">
-                            <label>Note / Performance</label>
-                            <select id="edit_Rating" name="Driver_Rating" class="form-select">
-                                <option value="Excellent">🌟🌟🌟🌟🌟 Excellent</option>
-                                <option value="Bon">🌟🌟🌟🌟 Bon</option>
-                                <option value="Moyen">🌟🌟🌟 Moyen</option>
-                                <option value="Médiocre">🌟🌟 Médiocre</option>
-                            </select>
-                        </div>
-                    </div>
-                </form>
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
-                <button type="button" id="saveEditBtn" class="btn btn-primary">💾 Enregistrer</button>
-            </div>
-        </div>
-    </div>
-</div>
-
-<!-- Modal Détails Chauffeur -->
-<div class="modal fade" id="detailsModal" tabindex="-1" aria-labelledby="detailsModalLabel" aria-hidden="true">
-    <div class="modal-dialog modal-lg">
-        <div class="modal-content">
-            <div class="modal-header bg-info text-white">
-                <h5 class="modal-title" id="detailsModalLabel">📋 Détails du chauffeur</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-            </div>
-            <div class="modal-body">
-                <div id="detailsContent" class="row">
-                    <div class="col-12 text-center">Chargement...</div>
-                </div>
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fermer</button>
-            </div>
-        </div>
-    </div>
+<div class="mt-4">
+    <a href="/Dashboard/AdminDashboard" class="btn btn-secondary-custom">
+        <i class="fas fa-arrow-left me-2"></i>Retour au Dashboard
+    </a>
 </div>
 
 @section Scripts {
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script>
         $(document).ready(function() {
         function filterTable() {
@@ -298,10 +312,12 @@
         var firstName = $(this).find('td:nth-child(2)').text();
         var lastName = $(this).find('td:nth-child(3)').text();
         var rowRating = $(this).data('rating');
+
         var matchSearch = (id.toLowerCase().indexOf(searchText) !== -1) ||
         (firstName.toLowerCase().indexOf(searchText) !== -1) ||
         (lastName.toLowerCase().indexOf(searchText) !== -1);
         var matchRating = (rating === '' || rowRating === rating);
+
         if (matchSearch && matchRating) {
         $(this).show();
         } else {
@@ -316,131 +332,6 @@
         $('#searchInput').val('');
         $('#ratingFilter').val('');
         filterTable();
-        });
-
-        // Détails button click
-        $('.details-btn').click(function() {
-        var id = $(this).data('id');
-        $.get('/Drivers/GetDriverData/' + id, function(data) {
-        var ratingText = '';
-        switch(data.driver_Rating) {
-        case 'Excellent': ratingText = '🌟🌟🌟🌟🌟 Excellent'; break;
-        case 'Bon': ratingText = '🌟🌟🌟🌟 Bon'; break;
-        case 'Moyen': ratingText = '🌟🌟🌟 Moyen'; break;
-        case 'Médiocre': ratingText = '🌟🌟 Médiocre'; break;
-        default: ratingText = data.driver_Rating || '-';
-        }
-        var statusText = '';
-        switch(data.driver_Status) {
-        case 'Available': statusText = '✅ Disponible'; break;
-        case 'On Route': statusText = '🔄 En route'; break;
-        default: statusText = '🔴 Hors service';
-        }
-        var html = `
-        <div class="col-md-6">
-        <div class="card details-card">
-        <div class="card-header bg-primary text-white">Informations personnelles</div>
-        <div class="card-body">
-        <p><strong>ID:</strong> ${data.driver_id}</p>
-        <p><strong>Prénom:</strong> ${data.driver_FirstName}</p>
-        <p><strong>Nom:</strong> ${data.driver_LastName}</p>
-        <p><strong>Email:</strong> ${data.driver_Email || '-'}</p>
-        <p><strong>Téléphone:</strong> ${data.driver_PhoneNumber || '-'}</p>
-        <p><strong>Date d'entrée:</strong> ${data.driver_HireDate ? new Date(data.driver_HireDate).toLocaleDateString() : '-'}</p>
-        </div>
-        </div>
-        </div>
-        <div class="col-md-6">
-        <div class="card details-card">
-        <div class="card-header bg-success text-white">Permis de conduire</div>
-        <div class="card-body">
-        <p><strong>Numéro de permis:</strong> ${data.driver_LicenseNumber || '-'}</p>
-        <p><strong>Date d'expiration:</strong> ${data.driver_LicenseExpiryDate ? new Date(data.driver_LicenseExpiryDate).toLocaleDateString() : '-'}</p>
-        <p><strong>Note:</strong> ${ratingText}</p>
-        </div>
-        </div>
-        </div>
-        <div class="col-md-12">
-        <div class="card details-card">
-        <div class="card-header bg-warning text-dark">Localisation</div>
-        <div class="card-body">
-        <p><strong>Latitude domicile:</strong> ${data.driver_HomeLatitude || '-'}</p>
-        <p><strong>Longitude domicile:</strong> ${data.driver_HomeLongitude || '-'}</p>
-        </div>
-        </div>
-        </div>
-        <div class="col-md-12">
-        <div class="card details-card">
-        <div class="card-header bg-secondary text-white">Statut et assignation</div>
-        <div class="card-body">
-        <p><strong>Statut:</strong> ${statusText}</p>
-        <p><strong>Bus assigné:</strong> ${data.driver_AssignedBusId ? '🚌 Bus ID: ' + data.driver_AssignedBusId : 'Non assigné'}</p>
-        </div>
-        </div>
-        </div>
-        `;
-        $('#detailsContent').html(html);
-        $('#detailsModal').modal('show');
-        }).fail(function() {
-        $('#detailsContent').html('<div class="col-12 text-center text-danger">❌ Erreur lors du chargement des données.</div>');
-        $('#detailsModal').modal('show');
-        });
-        });
-
-        // Édition en ligne (modal)
-        $('.edit-btn').click(function() {
-        var id = $(this).data('id');
-        $.get('/Drivers/GetDriverData/' + id, function(data) {
-        $('#editDriverIdDisplay').text(data.driver_id);
-        $('#editDriverIdDisplayBody').text(data.driver_id);
-        $('#edit_Driver_Id').val(data.driver_id);
-        $('#edit_FirstName').val(data.driver_FirstName);
-        $('#edit_LastName').val(data.driver_LastName);
-        $('#edit_Email').val(data.driver_Email);
-        $('#edit_PhoneNumber').val(data.driver_PhoneNumber);
-        $('#edit_LicenseNumber').val(data.driver_LicenseNumber);
-        var expiry = data.driver_LicenseExpiryDate ? data.driver_LicenseExpiryDate.split('T')[0] : '';
-        $('#edit_LicenseExpiryDate').val(expiry);
-        $('#edit_HomeLatitude').val(data.driver_HomeLatitude);
-        $('#edit_HomeLongitude').val(data.driver_HomeLongitude);
-        $('#edit_Rating').val(data.driver_Rating);
-        $('#editModal').modal('show');
-        }).fail(function() {
-        alert('❌ Erreur lors du chargement des données.');
-        });
-        });
-
-        $('#saveEditBtn').click(function() {
-        var formData = {
-        Driver_id: $('#edit_Driver_Id').val(),
-        Driver_FirstName: $('#edit_FirstName').val(),
-        Driver_LastName: $('#edit_LastName').val(),
-        Driver_Email: $('#edit_Email').val(),
-        Driver_PhoneNumber: $('#edit_PhoneNumber').val(),
-        Driver_LicenseNumber: $('#edit_LicenseNumber').val(),
-        Driver_LicenseExpiryDate: $('#edit_LicenseExpiryDate').val() || null,
-        Driver_HomeLatitude: $('#edit_HomeLatitude').val() === '' ? null : parseFloat($('#edit_HomeLatitude').val()),
-        Driver_HomeLongitude: $('#edit_HomeLongitude').val() === '' ? null : parseFloat($('#edit_HomeLongitude').val()),
-        Driver_Rating: $('#edit_Rating').val()
-        };
-
-        $.ajax({
-        url: '/Drivers/UpdateDriver',
-        type: 'POST',
-        contentType: 'application/json',
-        data: JSON.stringify(formData),
-        success: function(response) {
-        if (response.success) {
-        alert('✅ ' + response.message);
-        location.reload();
-        } else {
-        alert('❌ Erreur : ' + (response.message || 'Vérifiez les données'));
-        }
-        },
-        error: function() {
-        alert('❌ Erreur lors de l\'envoi.');
-        }
-        });
         });
         });
     </script>

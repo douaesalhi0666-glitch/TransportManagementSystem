@@ -6,6 +6,7 @@
     <title>@ViewData["Title"] - Système de Gestion de Transport</title>
     <link rel="stylesheet" href="~/lib/bootstrap/css/bootstrap.min.css" />
     <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
     <style>
             /* Style de la sidebar pour l'admin */
             .admin-sidebar {
@@ -73,7 +74,7 @@
                 box-shadow: 0 2px 5px rgba(0,0,0,0.1);
                 display: flex;
                 align-items: center;
-                justify-content: flex-end;
+                justify-content: space-between;
                 padding: 0 30px;
                 z-index: 1020;
                 transition: all 0.3s;
@@ -95,6 +96,23 @@
                 margin-right: 15px;
                 display: none;
             }
+
+            .topbar-left {
+                display: flex;
+                align-items: center;
+                gap: 15px;
+            }
+
+            .topbar-right {
+                display: flex;
+                align-items: center;
+            }
+
+            .sews-logo {
+                height: 50px;
+                width: auto;
+            }
+
             /* Responsive */
             @@media (max-width: 768px) {
                 .admin-sidebar {
@@ -139,7 +157,7 @@
         <!-- Layout Admin avec sidebar -->
         <div class="admin-sidebar" id="adminSidebar">
             <div class="sidebar-header">
-                <h3>🚍 TransportMS</h3>
+                <h3><i class="fas fa-bus-alt"></i> TransportMS</h3>
                 <small>Administration</small>
             </div>
             <ul class="components">
@@ -191,9 +209,14 @@
         </div>
 
         <div class="admin-topbar">
-            <button class="toggle-sidebar" id="toggleSidebarBtn">☰</button>
-            <div class="user-info">
-                <span>👋 Bonjour, <strong>@Context.Session.GetString("UserName")</strong></span>
+            <div class="topbar-left">
+                <button class="toggle-sidebar" id="toggleSidebarBtn">☰</button>
+                <div class="user-info">
+                    <span>Bonjour, <strong>@Context.Session.GetString("UserName")</strong></span>
+                </div>
+            </div>
+            <div class="topbar-right">
+                <img src="~/images/sews_logo.png" alt="SEWS" class="sews-logo" />
             </div>
         </div>
 

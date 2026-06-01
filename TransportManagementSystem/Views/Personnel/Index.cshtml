@@ -7,115 +7,308 @@
 }
 
 <style>
-    .table th, .table td {
-        vertical-align: middle;
-        white-space: normal;
-        word-wrap: break-word;
+    :root {
+        --navy: #0f1c2e;
+        --navy-mid: #162436;
+        --navy-light: #1e3250;
+        --amber: #f5a623;
+        --amber-light: #fbbf24;
+        --amber-glow: rgba(245, 166, 35, 0.1);
+        --text-muted: #64748b;
     }
 
-    .table {
-        font-size: 13px;
+    .page-header {
+        margin-bottom: 1.5rem;
+        padding-bottom: 0.5rem;
+        border-bottom: 2px solid var(--amber-glow);
     }
+
+        .page-header h1 {
+            font-family: 'Sora', sans-serif;
+            font-size: 1.5rem;
+            font-weight: 700;
+            margin: 0;
+        }
+
+        .page-header p {
+            color: var(--text-muted);
+            font-size: 0.85rem;
+            margin: 4px 0 0 0;
+        }
+
+    .btn-primary-custom {
+        background: linear-gradient(135deg, #1d4ed8, #3b82f6);
+        border: none;
+        border-radius: 10px;
+        padding: 8px 18px;
+        font-weight: 600;
+        font-size: 0.85rem;
+        transition: transform 0.15s, box-shadow 0.15s;
+    }
+
+        .btn-primary-custom:hover {
+            background: linear-gradient(135deg, #1e40af, #2563eb);
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(37, 99, 235, 0.3);
+        }
+
+    .filter-bar {
+        background: linear-gradient(135deg, #f8fafc, #ffffff);
+        padding: 1.25rem;
+        border-radius: 16px;
+        margin-bottom: 1.5rem;
+        border: 1px solid #e2e8f0;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.03);
+    }
+
+    .table-custom {
+        font-size: 0.8rem;
+        border-radius: 12px;
+        overflow: hidden;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+    }
+
+        .table-custom thead {
+            background: linear-gradient(135deg, var(--navy), var(--navy-mid));
+            color: white;
+        }
+
+            .table-custom thead th {
+                font-family: 'Sora', sans-serif;
+                font-size: 0.8rem;
+                font-weight: 700;
+                text-transform: uppercase;
+                letter-spacing: 0.05em;
+                padding: 14px 12px;
+                border: none;
+            }
+
+        .table-custom tbody td {
+            padding: 12px;
+            vertical-align: middle;
+            border-bottom: 1px solid #e2e8f0;
+        }
+
+        .table-custom tbody tr:hover {
+            background-color: var(--amber-glow);
+            transition: background 0.2s;
+        }
 
     .badge-active {
-        background-color: #28a745;
+        background: linear-gradient(135deg, #10b981, #059669);
         color: white;
-        padding: 4px 8px;
-        border-radius: 4px;
-        font-size: 11px;
+        padding: 4px 10px;
+        border-radius: 20px;
+        font-size: 0.7rem;
+        font-weight: 600;
+        display: inline-block;
+        box-shadow: 0 1px 2px rgba(0,0,0,0.05);
     }
 
     .badge-inactive {
-        background-color: #dc3545;
+        background: linear-gradient(135deg, #ef4444, #dc2626);
         color: white;
-        padding: 4px 8px;
-        border-radius: 4px;
-        font-size: 11px;
+        padding: 4px 10px;
+        border-radius: 20px;
+        font-size: 0.7rem;
+        font-weight: 600;
+        display: inline-block;
     }
 
     .badge-motorized {
-        background-color: #17a2b8;
+        background: linear-gradient(135deg, #06b6d4, #0891b2);
         color: white;
-        padding: 4px 8px;
-        border-radius: 4px;
-        font-size: 11px;
+        padding: 4px 10px;
+        border-radius: 20px;
+        font-size: 0.7rem;
+        font-weight: 600;
+        display: inline-block;
     }
 
     .badge-non-motorized {
-        background-color: #6c757d;
+        background: #94a3b8;
         color: white;
-        padding: 4px 8px;
-        border-radius: 4px;
-        font-size: 11px;
+        padding: 4px 10px;
+        border-radius: 20px;
+        font-size: 0.7rem;
+        font-weight: 600;
+        display: inline-block;
     }
 
     .badge-pickup {
-        background-color: #fd7e14;
-        color: white;
-        padding: 4px 8px;
-        border-radius: 4px;
-        font-size: 11px;
-    }
-
-    .filter-bar {
-        background: #f8f9fa;
-        padding: 15px;
-        border-radius: 8px;
-        margin-bottom: 20px;
+        background: linear-gradient(135deg, var(--amber), #e69500);
+        color: var(--navy);
+        padding: 4px 10px;
+        border-radius: 20px;
+        font-size: 0.7rem;
+        font-weight: 600;
+        display: inline-block;
+        box-shadow: 0 1px 3px rgba(245, 166, 35, 0.3);
     }
 
     .action-buttons {
         display: flex;
-        gap: 5px;
+        gap: 6px;
         flex-wrap: wrap;
     }
 
-    .table-responsive {
-        overflow-x: auto;
+    .btn-sm-custom {
+        padding: 5px 12px;
+        font-size: 0.7rem;
+        font-weight: 500;
+        border-radius: 8px;
+        transition: all 0.15s;
+    }
+
+    .btn-details {
+        background: linear-gradient(135deg, #3b82f6, #2563eb);
+        color: white;
+        border: none;
+    }
+
+        .btn-details:hover {
+            background: linear-gradient(135deg, #2563eb, #1d4ed8);
+            transform: translateY(-1px);
+            box-shadow: 0 2px 6px rgba(59, 130, 246, 0.4);
+        }
+
+    .btn-edit {
+        background: linear-gradient(135deg, #f59e0b, #d97706);
+        color: white;
+        border: none;
+    }
+
+        .btn-edit:hover {
+            background: linear-gradient(135deg, #d97706, #b45309);
+            transform: translateY(-1px);
+            box-shadow: 0 2px 6px rgba(245, 158, 11, 0.4);
+        }
+
+    .btn-delete {
+        background: linear-gradient(135deg, #ef4444, #dc2626);
+        color: white;
+        border: none;
+    }
+
+        .btn-delete:hover {
+            background: linear-gradient(135deg, #dc2626, #b91c1c);
+            transform: translateY(-1px);
+            box-shadow: 0 2px 6px rgba(239, 68, 68, 0.4);
+        }
+
+    .btn-secondary-custom {
+        background: #64748b;
+        border: none;
+        border-radius: 10px;
+        padding: 8px 18px;
+        font-weight: 500;
+        font-size: 0.85rem;
+        transition: background 0.15s;
+    }
+
+        .btn-secondary-custom:hover {
+            background: #475569;
+        }
+
+    .modal-header-custom {
+        background: linear-gradient(135deg, var(--navy), var(--navy-mid));
+        color: white;
+        border: none;
+    }
+
+    .form-label-custom {
+        font-size: 0.7rem;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        color: var(--text-muted);
+        margin-bottom: 4px;
+    }
+
+    .details-card {
+        border: 1px solid #e2e8f0;
+        border-radius: 12px;
+        overflow: hidden;
+        margin-bottom: 1rem;
+        transition: transform 0.15s, box-shadow 0.15s;
+    }
+
+        .details-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 16px rgba(0, 0, 0, 0.08);
+        }
+
+        .details-card .card-header {
+            font-family: 'Sora', sans-serif;
+            font-weight: 600;
+            font-size: 0.85rem;
+            padding: 12px 16px;
+        }
+
+        .details-card .card-body {
+            padding: 16px;
+            font-size: 0.8rem;
+        }
+
+            .details-card .card-body p {
+                margin-bottom: 8px;
+            }
+
+    .search-input:focus, .form-select:focus {
+        border-color: var(--amber);
+        box-shadow: 0 0 0 3px rgba(245, 166, 35, 0.15);
     }
 </style>
 
-<h1>📋 Gestion du Personnel</h1>
-
-<p>
-    <a href="/Personnel/Create" class="btn btn-primary">➕ Ajouter un personnel</a>
-</p>
+<div class="page-header d-flex justify-content-between align-items-center flex-wrap gap-3">
+    <div>
+        <h1><i class="fas fa-users me-2" style="color: var(--amber);"></i>Gestion du Personnel</h1>
+        <p>Gérez les informations et assignations des employés</p>
+    </div>
+    <div>
+        <a href="/Personnel/Create" class="btn btn-primary-custom">
+            <i class="fas fa-plus me-2"></i>Ajouter un personnel
+        </a>
+    </div>
+</div>
 
 <div class="filter-bar">
-    <div class="row">
-        <div class="col-md-4 mb-2">
-            <input type="text" id="searchInput" class="form-control" placeholder="🔍 Rechercher par ID, prénom ou nom" />
+    <div class="row g-3">
+        <div class="col-md-4">
+            <input type="text" id="searchInput" class="form-control search-input" placeholder="Rechercher par ID, prénom ou nom" />
         </div>
-        <div class="col-md-2 mb-2">
+        <div class="col-md-3">
             <select id="statusFilter" class="form-select">
-                <option value="">📊 Tous les statuts</option>
-                <option value="Active">✅ Actif</option>
-                <option value="Inactive">❌ Inactif</option>
+                <option value="">Tous les statuts</option>
+                <option value="Active">Actif</option>
+                <option value="Inactive">Inactif</option>
             </select>
         </div>
-        <div class="col-md-2 mb-2">
+        <div class="col-md-3">
             <select id="assignedFilter" class="form-select">
-                <option value="">👥 Tous</option>
-                <option value="assigned">✅ Assigné</option>
-                <option value="unassigned">❌ Non assigné</option>
+                <option value="">Tous</option>
+                <option value="assigned">Assigné</option>
+                <option value="unassigned">Non assigné</option>
             </select>
         </div>
-        <div class="col-md-2 mb-2">
-            <button id="resetFilter" class="btn btn-secondary w-100">⟳ Réinitialiser</button>
+        <div class="col-md-2">
+            <button id="resetFilter" class="btn btn-secondary-custom w-100">
+                <i class="fas fa-undo-alt me-1"></i>Réinitialiser
+            </button>
         </div>
     </div>
 </div>
 
 <div class="table-responsive">
-    <table class="table table-striped table-bordered" id="personnelTable">
-        <thead class="table-dark">
+    <table class="table table-custom" id="personnelTable">
+        <thead>
             <tr>
                 <th>ID</th>
                 <th>Prénom</th>
                 <th>Nom</th>
-                <th>📍 Point de ramassage</th>
-                <th>📌 Trajet</th>
-                <th>🚌 Bus</th>
+                <th>Point de ramassage</th>
+                <th>Trajet</th>
+                <th>Bus</th>
                 <th>Statut</th>
                 <th>Motorisé</th>
                 <th>Actions</th>
@@ -135,7 +328,7 @@
                     <td>
                         @if (assignedStop != null)
                         {
-                            <span class="badge badge-pickup">📍 @assignedStop.TS_Name</span>
+                            <span class="badge-pickup"><i class="fas fa-map-pin me-1"></i>@assignedStop.TS_Name</span>
                         }
                         else
                         {
@@ -165,27 +358,33 @@
                     <td>
                         @if (item.Personnel_Status == "Active")
                         {
-                            <span class="badge-active">✅ Actif</span>
+                            <span class="badge-active"><i class="fas fa-check-circle me-1"></i>Actif</span>
                         }
                         else
                         {
-                            <span class="badge-inactive">❌ Inactif</span>
+                            <span class="badge-inactive"><i class="fas fa-times-circle me-1"></i>Inactif</span>
                         }
                     </td>
                     <td>
                         @if (item.IsMotorized)
                         {
-                            <span class="badge-motorized">🛵 Oui</span>
+                            <span class="badge-motorized"><i class="fas fa-car me-1"></i>Oui</span>
                         }
                         else
                         {
-                            <span class="badge-non-motorized">🚶 Non</span>
+                            <span class="badge-non-motorized"><i class="fas fa-walking me-1"></i>Non</span>
                         }
                     </td>
                     <td class="action-buttons">
-                        <button class="btn btn-sm btn-info details-btn" data-id="@item.Personnel_Id" title="Voir détails">🔍 Détails</button>
-                        <button class="btn btn-sm btn-warning edit-btn" data-id="@item.Personnel_Id" title="Modifier">✏️ Modifier</button>
-                        <a href="/Personnel/Delete/@item.Personnel_Id" class="btn btn-sm btn-danger" title="Supprimer">🗑️ Supprimer</a>
+                        <button class="btn btn-sm-custom btn-details details-btn" data-id="@item.Personnel_Id" title="Voir détails">
+                            <i class="fas fa-eye"></i> Détails
+                        </button>
+                        <button class="btn btn-sm-custom btn-edit edit-btn" data-id="@item.Personnel_Id" title="Modifier">
+                            <i class="fas fa-pen"></i> Modifier
+                        </button>
+                        <a href="/Personnel/Delete/@item.Personnel_Id" class="btn btn-sm-custom btn-delete" title="Supprimer">
+                            <i class="fas fa-trash"></i> Supprimer
+                        </a>
                     </td>
                 </tr>
             }
@@ -193,133 +392,140 @@
     </table>
 </div>
 
-<div class="mt-3">
-    <a href="/Dashboard/AdminDashboard" class="btn btn-secondary">← Retour au Dashboard</a>
+<div class="mt-4">
+    <a href="/Dashboard/AdminDashboard" class="btn btn-secondary-custom">
+        <i class="fas fa-arrow-left me-2"></i>Retour au Dashboard
+    </a>
 </div>
 
-<!-- Modal d'édition (SANS assignations) -->
+<!-- Edit Modal -->
 <div class="modal fade" id="editModal" tabindex="-1" aria-labelledby="editModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-lg">
         <div class="modal-content">
-            <div class="modal-header bg-primary text-white">
-                <h5 class="modal-title" id="editModalLabel">✏️ Modifier le personnel - ID <span id="editPersonnelIdDisplay">0</span></h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            <div class="modal-header modal-header-custom">
+                <h5 class="modal-title" id="editModalLabel">
+                    <i class="fas fa-pen me-2"></i>Modifier le personnel - ID <span id="editPersonnelIdDisplay">0</span>
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body">
                 <form id="editForm">
                     <input type="hidden" id="edit_Personnel_Id" name="Personnel_Id" />
 
-                    <!-- Affichage visible de l'ID -->
-                    <div class="alert alert-info mb-3">
-                        <strong>🆔 ID du personnel :</strong> <span id="editPersonnelIdDisplayBody">0</span>
+                    <div class="alert alert-info mb-3" style="background: var(--amber-glow); border-left: 4px solid var(--amber);">
+                        <i class="fas fa-info-circle me-2" style="color: var(--amber);"></i>ID du personnel : <strong><span id="editPersonnelIdDisplayBody">0</span></strong>
                     </div>
 
-                    <div class="row">
-                        <div class="col-md-6 mb-2">
-                            <label class="fw-bold">Prénom</label>
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label class="form-label-custom">Prénom</label>
                             <input type="text" id="edit_FirstName" name="Personnel_FirstName" class="form-control" required />
                         </div>
-                        <div class="col-md-6 mb-2">
-                            <label class="fw-bold">Nom</label>
+                        <div class="col-md-6">
+                            <label class="form-label-custom">Nom</label>
                             <input type="text" id="edit_LastName" name="Personnel_LastName" class="form-control" required />
                         </div>
                     </div>
 
-                    <div class="row">
-                        <div class="col-md-4 mb-2">
-                            <label class="fw-bold">Genre</label>
+                    <div class="row g-3 mt-1">
+                        <div class="col-md-4">
+                            <label class="form-label-custom">Genre</label>
                             <select id="edit_Gender" name="Personnel_Gender" class="form-select">
-                                <option value="Male">👨 Homme</option>
-                                <option value="Female">👩 Femme</option>
+                                <option value="Male">Homme</option>
+                                <option value="Female">Femme</option>
                             </select>
                         </div>
-                        <div class="col-md-4 mb-2">
-                            <label class="fw-bold">Date de naissance</label>
+                        <div class="col-md-4">
+                            <label class="form-label-custom">Date de naissance</label>
                             <input type="date" id="edit_DateOfBirth" name="Personnel_DateOfBirth" class="form-control" />
                         </div>
-                        <div class="col-md-4 mb-2">
-                            <label class="fw-bold">Statut</label>
+                        <div class="col-md-4">
+                            <label class="form-label-custom">Statut</label>
                             <select id="edit_Status" name="Personnel_Status" class="form-select">
-                                <option value="Active">✅ Actif</option>
-                                <option value="Inactive">❌ Inactif</option>
+                                <option value="Active">Actif</option>
+                                <option value="Inactive">Inactif</option>
                             </select>
                         </div>
                     </div>
 
-                    <div class="row">
-                        <div class="col-md-6 mb-2">
-                            <label class="fw-bold">Email</label>
+                    <div class="row g-3 mt-1">
+                        <div class="col-md-6">
+                            <label class="form-label-custom">Email</label>
                             <input type="email" id="edit_Email" name="Personnel_Email" class="form-control" />
                         </div>
-                        <div class="col-md-6 mb-2">
-                            <label class="fw-bold">Téléphone</label>
+                        <div class="col-md-6">
+                            <label class="form-label-custom">Téléphone</label>
                             <input type="text" id="edit_PhoneNumber" name="Personnel_PhoneNumber" class="form-control" />
                         </div>
                     </div>
 
-                    <div class="row">
-                        <div class="col-md-6 mb-2">
-                            <label class="fw-bold">Code employé</label>
+                    <div class="row g-3 mt-1">
+                        <div class="col-md-6">
+                            <label class="form-label-custom">Code employé</label>
                             <input type="text" id="edit_EmployeeCode" name="Personnel_EmployeeCode" class="form-control" required />
                         </div>
-                        <div class="col-md-6 mb-2">
-                            <label class="fw-bold">Département</label>
+                        <div class="col-md-6">
+                            <label class="form-label-custom">Département</label>
                             <input type="text" id="edit_Department" name="Personnel_Department" class="form-control" />
                         </div>
                     </div>
 
-                    <div class="mb-2">
-                        <label class="fw-bold">Adresse domicile</label>
+                    <div class="mt-2">
+                        <label class="form-label-custom">Adresse domicile</label>
                         <input type="text" id="edit_HomeAddress" name="HomeAddress" class="form-control" placeholder="Rue, numéro, quartier" />
                     </div>
 
-                    <div class="row">
-                        <div class="col-md-6 mb-2">
-                            <label class="fw-bold">Adresse (rue)</label>
+                    <div class="row g-3 mt-1">
+                        <div class="col-md-6">
+                            <label class="form-label-custom">Adresse (rue)</label>
                             <input type="text" id="edit_Address" name="Personnel_Address" class="form-control" />
                         </div>
-                        <div class="col-md-6 mb-2">
-                            <label class="fw-bold">Ville</label>
+                        <div class="col-md-6">
+                            <label class="form-label-custom">Ville</label>
                             <input type="text" id="edit_City" name="Personnel_City" class="form-control" />
                         </div>
                     </div>
 
-                    <div class="row">
-                        <div class="col-md-6 mb-2">
-                            <label class="fw-bold">Latitude</label>
+                    <div class="row g-3 mt-1">
+                        <div class="col-md-6">
+                            <label class="form-label-custom">Latitude</label>
                             <input type="number" step="any" id="edit_Latitude" name="Personnel_Latitude" class="form-control" placeholder="Ex: 34.2610" />
                         </div>
-                        <div class="col-md-6 mb-2">
-                            <label class="fw-bold">Longitude</label>
+                        <div class="col-md-6">
+                            <label class="form-label-custom">Longitude</label>
                             <input type="number" step="any" id="edit_Longitude" name="Personnel_Longitude" class="form-control" placeholder="Ex: -6.5800" />
                         </div>
                     </div>
 
-                    <div class="form-check mb-2">
+                    <div class="form-check mt-3">
                         <input type="checkbox" id="edit_IsMotorized" name="IsMotorized" class="form-check-input" value="true" />
-                        <label class="form-check-label fw-bold">🛵 Motorisé (véhicule personnel)</label>
+                        <label class="form-check-label fw-semibold">Motorisé (véhicule personnel)</label>
                     </div>
                 </form>
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
-                <button type="button" id="saveEditBtn" class="btn btn-primary">💾 Enregistrer</button>
+                <button type="button" id="saveEditBtn" class="btn btn-primary-custom">
+                    <i class="fas fa-save me-2"></i>Enregistrer
+                </button>
             </div>
         </div>
     </div>
 </div>
 
-<!-- Modal Détails Personnel -->
+<!-- Details Modal -->
 <div class="modal fade" id="detailsModal" tabindex="-1" aria-labelledby="detailsModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-lg">
         <div class="modal-content">
-            <div class="modal-header bg-info text-white">
-                <h5 class="modal-title" id="detailsModalLabel">📋 Détails du personnel</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            <div class="modal-header" style="background: linear-gradient(135deg, #0f1c2e, #162436); color: white;">
+                <h5 class="modal-title" id="detailsModalLabel">
+                    <i class="fas fa-id-card me-2"></i>Détails du personnel
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body">
                 <div id="detailsContent" class="row">
-                    <div class="col-12 text-center">Chargement...</div>
+                    <div class="col-12 text-center py-4">Chargement...</div>
                 </div>
             </div>
             <div class="modal-footer">
@@ -368,49 +574,54 @@
         filterTable();
         });
 
-        // Details button click
         $('.details-btn').click(function() {
         var id = $(this).data('id');
         $.get('/Personnel/GetPersonnelData/' + id, function(data) {
         var html = `
         <div class="col-md-6">
-        <div class="card details-card">
-        <div class="card-header bg-primary text-white">Informations personnelles</div>
+        <div class="details-card">
+        <div class="card-header" style="background: linear-gradient(135deg, #1d4ed8, #3b82f6); color: white;">
+        <i class="fas fa-user me-2"></i>Informations personnelles
+        </div>
         <div class="card-body">
-        <p><strong>ID:</strong> ${data.personnel_Id}</p>
-        <p><strong>Prénom:</strong> ${data.personnel_FirstName}</p>
-        <p><strong>Nom:</strong> ${data.personnel_LastName}</p>
-        <p><strong>Genre:</strong> ${data.personnel_Gender === 'Male' ? '👨 Homme' : (data.personnel_Gender === 'Female' ? '👩 Femme' : data.personnel_Gender)}</p>
-        <p><strong>Date de naissance:</strong> ${data.personnel_DateOfBirth ? new Date(data.personnel_DateOfBirth).toLocaleDateString() : '-'}</p>
-        <p><strong>Email:</strong> ${data.personnel_Email || '-'}</p>
-        <p><strong>Téléphone:</strong> ${data.personnel_PhoneNumber || '-'}</p>
-        <p><strong>Code employé:</strong> ${data.personnel_EmployeeCode}</p>
-        <p><strong>Département:</strong> ${data.personnel_Department || '-'}</p>
+        <p><strong>ID :</strong> ${data.personnel_Id}</p>
+        <p><strong>Prénom :</strong> ${data.personnel_FirstName}</p>
+        <p><strong>Nom :</strong> ${data.personnel_LastName}</p>
+        <p><strong>Genre :</strong> ${data.personnel_Gender === 'Male' ? 'Homme' : (data.personnel_Gender === 'Female' ? 'Femme' : data.personnel_Gender)}</p>
+        <p><strong>Date de naissance :</strong> ${data.personnel_DateOfBirth ? new Date(data.personnel_DateOfBirth).toLocaleDateString() : '-'}</p>
+        <p><strong>Email :</strong> ${data.personnel_Email || '-'}</p>
+        <p><strong>Téléphone :</strong> ${data.personnel_PhoneNumber || '-'}</p>
+        <p><strong>Code employé :</strong> ${data.personnel_EmployeeCode}</p>
+        <p><strong>Département :</strong> ${data.personnel_Department || '-'}</p>
         </div>
         </div>
         </div>
         <div class="col-md-6">
-        <div class="card details-card">
-        <div class="card-header bg-success text-white">Adresse et localisation</div>
+        <div class="details-card">
+        <div class="card-header" style="background: linear-gradient(135deg, #059669, #10b981); color: white;">
+        <i class="fas fa-location-dot me-2"></i>Adresse et localisation
+        </div>
         <div class="card-body">
-        <p><strong>Adresse domicile:</strong> ${data.homeAddress || '-'}</p>
-        <p><strong>Adresse (rue):</strong> ${data.personnel_Address || '-'}</p>
-        <p><strong>Ville:</strong> ${data.personnel_City || '-'}</p>
-        <p><strong>Latitude:</strong> ${data.personnel_Latitude || '-'}</p>
-        <p><strong>Longitude:</strong> ${data.personnel_Longitude || '-'}</p>
+        <p><strong>Adresse domicile :</strong> ${data.homeAddress || '-'}</p>
+        <p><strong>Adresse (rue) :</strong> ${data.personnel_Address || '-'}</p>
+        <p><strong>Ville :</strong> ${data.personnel_City || '-'}</p>
+        <p><strong>Latitude :</strong> ${data.personnel_Latitude || '-'}</p>
+        <p><strong>Longitude :</strong> ${data.personnel_Longitude || '-'}</p>
         </div>
         </div>
         </div>
         <div class="col-md-12">
-        <div class="card details-card">
-        <div class="card-header bg-warning text-dark">Assignations et statut</div>
+        <div class="details-card">
+        <div class="card-header" style="background: linear-gradient(135deg, var(--amber), #e69500); color: var(--navy);">
+        <i class="fas fa-tasks me-2"></i>Assignations et statut
+        </div>
         <div class="card-body">
-        <p><strong>Statut:</strong> ${data.personnel_Status === 'Active' ? '✅ Actif' : '❌ Inactif'}</p>
-        <p><strong>Motorisé:</strong> ${data.isMotorized ? '🛵 Oui' : '🚶 Non'}</p>
-        <p><strong>Assigné:</strong> ${data.isAssigned ? '✅ Oui' : '❌ Non'}</p>
-        <p><strong>📍 Point de ramassage:</strong> ${data.assignedStopId || 'Non assigné'}</p>
-        <p><strong>📌 Trajet assigné:</strong> ${data.assignedTrajectoryId || 'Non assigné'}</p>
-        <p><strong>🚌 Bus assigné:</strong> ${data.assignedBusId || 'Non assigné'}</p>
+        <p><strong>Statut :</strong> ${data.personnel_Status === 'Active' ? 'Actif' : 'Inactif'}</p>
+        <p><strong>Motorisé :</strong> ${data.isMotorized ? 'Oui' : 'Non'}</p>
+        <p><strong>Assigné :</strong> ${data.isAssigned ? 'Oui' : 'Non'}</p>
+        <p><strong>Point de ramassage :</strong> ${data.assignedStopId || 'Non assigné'}</p>
+        <p><strong>Trajet assigné :</strong> ${data.assignedTrajectoryId || 'Non assigné'}</p>
+        <p><strong>Bus assigné :</strong> ${data.assignedBusId || 'Non assigné'}</p>
         </div>
         </div>
         </div>
@@ -418,19 +629,16 @@
         $('#detailsContent').html(html);
         $('#detailsModal').modal('show');
         }).fail(function() {
-        $('#detailsContent').html('<div class="col-12 text-center text-danger">❌ Erreur lors du chargement des données.</div>');
+        $('#detailsContent').html('<div class="col-12 text-center text-danger py-4"><i class="fas fa-exclamation-circle me-2"></i>Erreur lors du chargement des données.</div>');
         $('#detailsModal').modal('show');
         });
         });
 
-        // Edit button click
         $('.edit-btn').click(function() {
         var id = $(this).data('id');
         $.get('/Personnel/GetPersonnelData/' + id, function(data) {
-        // Afficher l'ID dans le titre et dans le corps
         $('#editPersonnelIdDisplay').text(data.personnel_Id);
         $('#editPersonnelIdDisplayBody').text(data.personnel_Id);
-
         $('#edit_Personnel_Id').val(data.personnel_Id);
         $('#edit_FirstName').val(data.personnel_FirstName);
         $('#edit_LastName').val(data.personnel_LastName);
@@ -450,7 +658,7 @@
         $('#edit_IsMotorized').prop('checked', data.isMotorized === true);
         $('#editModal').modal('show');
         }).fail(function() {
-        alert('❌ Erreur lors du chargement des données.');
+        alert('Erreur lors du chargement des données.');
         });
         });
 
@@ -481,14 +689,14 @@
         data: JSON.stringify(formData),
         success: function(response) {
         if (response.success) {
-        alert('✅ ' + response.message);
+        alert('Personnel mis à jour avec succès !');
         location.reload();
         } else {
-        alert('❌ Erreur : ' + (response.message || 'Vérifiez les données'));
+        alert('Erreur : ' + (response.message || 'Vérifiez les données'));
         }
         },
         error: function() {
-        alert('❌ Erreur lors de l\'envoi.');
+        alert('Erreur lors de l\'envoi.');
         }
         });
         });
