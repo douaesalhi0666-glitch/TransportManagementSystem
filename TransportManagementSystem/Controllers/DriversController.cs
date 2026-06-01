@@ -271,6 +271,7 @@ namespace TransportManagementSystem.Controllers
             var driverId = long.Parse(driverIdStr);
             var driver = await _context.Drivers
                 .Include(d => d.AssignedBus)
+                    .ThenInclude(b => b.CurrentTrajectory)  // ← IMPORTANT: Include trajectory
                 .FirstOrDefaultAsync(d => d.Driver_id == driverId);
 
             if (driver?.AssignedBus == null)
@@ -283,6 +284,26 @@ namespace TransportManagementSystem.Controllers
             }
 
             var bus = driver.AssignedBus;
+            var trajectory = bus.CurrentTrajectory;
+
+            // Get stops for the trajectory (if assigned)
+            List<object> stops = new List<object>();
+            if (trajectory != null)
+            {
+                stops = await _context.TrajectoryStops
+                    .Where(s => s.TS_TrajectoryId == trajectory.Trajectory_Id)
+                    .OrderBy(s => s.TS_OrderIndex)
+                    .Select(s => new
+                    {
+                        s.TS_Id,
+                        s.TS_Name,
+                        s.TS_OrderIndex,
+                        s.TS_Latitude,
+                        s.TS_Longitude,
+                        workers_At_Stop = _context.Personnel.Count(p => p.AssignedStopId == s.TS_Id && p.IsAssigned == true)
+                    })
+                    .ToListAsync<object>();
+            }
 
             return Ok(new
             {
@@ -297,7 +318,15 @@ namespace TransportManagementSystem.Controllers
                     bus.Bus_Status,
                     currentLatitude = bus.Bus_CurrentLatitude ?? 0,
                     currentLongitude = bus.Bus_CurrentLongitude ?? 0
-                }
+                },
+                trajectory = trajectory != null ? new
+                {
+                    trajectory.Trajectory_Id,
+                    trajectory.Trajectory_Name,
+                    trajectory.Trajectory_Code,
+                    trajectory.Trajectory_Description
+                } : null,
+                stops = stops
             });
         }
 
