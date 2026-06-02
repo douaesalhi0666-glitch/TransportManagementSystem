@@ -154,6 +154,8 @@
         border-bottom: 2px solid var(--amber-glow);
         display: flex;
         align-items: center;
+        justify-content: space-between;
+        flex-wrap: wrap;
         gap: 10px;
     }
 
@@ -231,6 +233,45 @@
         border-color: #e2e8f0;
         margin: 1.5rem 0;
     }
+
+    /* Barre de recherche dans l'en-tête */
+    .search-wrapper {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    .search-input {
+        border: 1.5px solid #e2e8f0;
+        border-radius: 10px;
+        padding: 0.4rem 0.75rem;
+        font-size: 0.85rem;
+        width: 250px;
+        transition: all 0.15s;
+    }
+
+        .search-input:focus {
+            border-color: var(--amber);
+            box-shadow: 0 0 0 3px rgba(245, 166, 35, 0.15);
+            outline: none;
+        }
+
+    .btn-reset {
+        background: #64748b;
+        border: none;
+        border-radius: 8px;
+        padding: 0.4rem 0.9rem;
+        font-size: 0.75rem;
+        font-weight: 600;
+        color: white;
+        cursor: pointer;
+        transition: all 0.15s;
+    }
+
+        .btn-reset:hover {
+            background: #475569;
+            transform: translateY(-1px);
+        }
 </style>
 
 <div class="page-header">
@@ -295,13 +336,22 @@
     </div>
 </div>
 
+<!-- Titre avec barre de recherche intégrée -->
 <div class="section-title">
-    <i class="fas fa-list-check" style="color: var(--amber);"></i>
-    Assignations actuelles (Chauffeur ↔ Bus)
+    <div>
+        <i class="fas fa-list-check" style="color: var(--amber);"></i>
+        Assignations actuelles (Chauffeur ↔ Bus)
+    </div>
+    <div class="search-wrapper">
+        <input type="text" id="searchInput" class="search-input" placeholder="🔍 Rechercher bus (code/plaque) ou chauffeur..." />
+        <button id="resetSearchBtn" class="btn-reset">
+            <i class="fas fa-undo-alt me-1"></i>Réinitialiser
+        </button>
+    </div>
 </div>
 
 <div class="table-responsive">
-    <table class="table-custom">
+    <table class="table-custom" id="assignmentsTable">
         <thead>
             <tr>
                 <th><i class="fas fa-bus me-1"></i>Bus</th>
@@ -313,7 +363,8 @@
         <tbody>
             @foreach (var bus in ViewBag.Buses)
             {
-                <tr>
+                <tr data-bus="@bus.Bus_Code.ToLower()" data-plaque="@bus.Bus_PlateNumber.ToLower()"
+                    data-chauffeur="@(bus.CurrentDriver != null ? (bus.CurrentDriver.Driver_FirstName + " " + bus.CurrentDriver.Driver_LastName).ToLower() : "")">
                     <td><strong>@bus.Bus_Code</strong></td>
                     <td>@bus.Bus_PlateNumber</td>
                     <td>
@@ -356,3 +407,30 @@
         <i class="fas fa-arrow-left me-2"></i>Retour au Dashboard
     </a>
 </div>
+
+@section Scripts {
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script>
+        $(document).ready(function() {
+        function filterTable() {
+        var searchText = $('#searchInput').val().toLowerCase().trim();
+        $('#assignmentsTable tbody tr').each(function() {
+        var bus = $(this).data('bus') || '';
+        var plaque = $(this).data('plaque') || '';
+        var chauffeur = $(this).data('chauffeur') || '';
+        var match = (searchText === '' ||
+        bus.indexOf(searchText) !== -1 ||
+        plaque.indexOf(searchText) !== -1 ||
+        chauffeur.indexOf(searchText) !== -1);
+        $(this).toggle(match);
+        });
+        }
+
+        $('#searchInput').on('keyup', filterTable);
+        $('#resetSearchBtn').click(function() {
+        $('#searchInput').val('');
+        filterTable();
+        });
+        });
+    </script>
+}
