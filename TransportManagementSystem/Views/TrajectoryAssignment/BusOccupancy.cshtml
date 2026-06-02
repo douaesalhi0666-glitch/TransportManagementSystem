@@ -247,6 +247,20 @@
         max-height: 300px;
         overflow-y: auto;
     }
+
+    /* Nouveau style pour la barre de recherche dans l'en-tête */
+    .header-search {
+        width: 250px;
+    }
+
+        .header-search .input-group-text {
+            background: white;
+            border-right: none;
+        }
+
+        .header-search input {
+            border-left: none;
+        }
 </style>
 
 <div class="page-header d-flex justify-content-between align-items-center flex-wrap gap-3">
@@ -337,14 +351,28 @@
 
                 <div class="collapse mt-3" id="collapse-@item.Bus.Bus_Id">
                     <div class="card" style="border-radius: 12px; border: 1px solid #e2e8f0;">
-                        <div class="card-header" style="background: #f8fafc; border-bottom: 1px solid #e2e8f0;">
+                        <div class="card-header" style="background: #f8fafc; border-bottom: 1px solid #e2e8f0; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap;">
                             <h5 class="mb-0"><i class="fas fa-users me-2" style="color: var(--amber);"></i>Personnels assignés à ce bus</h5>
+                            @if (item.Personnel != null && item.Personnel.Any())
+                            {
+                                <div class="header-search">
+                                    <div class="input-group" style="border-radius: 10px; overflow: hidden;">
+                                        <span class="input-group-text bg-white border-end-0">
+                                            <i class="fas fa-search text-muted"></i>
+                                        </span>
+                                        <input type="text" class="form-control border-start-0 personnel-search"
+                                               data-busid="@item.Bus.Bus_Id"
+                                               placeholder="Rechercher..."
+                                               style="border-radius: 0 10px 10px 0;">
+                                    </div>
+                                </div>
+                            }
                         </div>
                         <div class="card-body">
                             @if (item.Personnel != null && item.Personnel.Count > 0)
                             {
                                 <div class="personnel-scroll-container">
-                                    <table class="table-custom">
+                                    <table class="table-custom" id="personnelTable-@item.Bus.Bus_Id">
                                         <thead>
                                             <tr>
                                                 <th>ID</th>
@@ -615,6 +643,58 @@ else
         document.getElementById('assignBusModal').addEventListener('show.bs.modal', function() {
             loadAvailableBuses();
             loadAvailableTrajectories();
+        });
+
+        // Filtrage des personnels assignés par bus (recherche en temps réel)
+        function initPersonnelSearch() {
+            document.querySelectorAll('.personnel-search').forEach(input => {
+                // Supprimer les anciens écouteurs pour éviter les doublons
+                input.removeEventListener('keyup', input._listener);
+                const handler = function() {
+                    const busId = this.getAttribute('data-busid');
+                    const filter = this.value.toLowerCase();
+                    const table = document.getElementById(`personnelTable-${busId}`);
+                    if (!table) return;
+
+                    const rows = table.querySelectorAll('tbody tr');
+                    let hasVisible = false;
+
+                    rows.forEach(row => {
+                        const text = row.innerText.toLowerCase();
+                        if (text.includes(filter)) {
+                            row.style.display = '';
+                            hasVisible = true;
+                        } else {
+                            row.style.display = 'none';
+                        }
+                    });
+
+                    let noResultMsg = table.parentNode.querySelector('.no-result-message');
+                    if (!hasVisible) {
+                        if (!noResultMsg) {
+                            noResultMsg = document.createElement('div');
+                            noResultMsg.className = 'alert alert-info text-center mt-3 no-result-message';
+                            noResultMsg.innerHTML = '<i class="fas fa-info-circle me-2"></i>Aucun personnel ne correspond à votre recherche.';
+                            table.parentNode.appendChild(noResultMsg);
+                        }
+                    } else if (noResultMsg) {
+                        noResultMsg.remove();
+                    }
+                };
+                input.addEventListener('keyup', handler);
+                input._listener = handler; // pour référence
+            });
+        }
+
+        // Initialiser après chaque chargement de page (et pour les collapses dynamiques)
+        document.addEventListener('DOMContentLoaded', function() {
+            initPersonnelSearch();
+            // Réinitialiser quand un collapse est ouvert (au cas où)
+            document.querySelectorAll('[data-bs-toggle="collapse"]').forEach(btn => {
+                btn.addEventListener('shown.bs.collapse', function() {
+                    initPersonnelSearch();
+                });
+            });
         });
     </script>
 }
