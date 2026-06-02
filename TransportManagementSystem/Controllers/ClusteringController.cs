@@ -460,7 +460,7 @@ namespace TransportManagementSystem.Controllers
         public async Task<IActionResult> GetTrajectoriesForPickup()
         {
             var trajectories = await _context.Trajectories
-                .Where(t => t.Trajectory_Status == "Active" && t.Trajectory_Id != 1)  // Exclude default trajectory
+                .Where(t => t.Trajectory_Status == "Active" && t.Trajectory_Id != 1)
                 .Select(t => new { t.Trajectory_Id, t.Trajectory_Name, t.Trajectory_Code })
                 .ToListAsync();
             return Ok(trajectories);

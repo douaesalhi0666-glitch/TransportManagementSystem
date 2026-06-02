@@ -254,6 +254,16 @@
         box-shadow: 0 0 0 3px rgba(245, 166, 35, 0.15);
         outline: none;
     }
+
+    .form-label-custom {
+        font-size: 0.7rem;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        color: #475569;
+        margin-bottom: 0.5rem;
+        display: block;
+    }
 </style>
 
 <div class="page-header d-flex justify-content-between align-items-center flex-wrap gap-3">
@@ -361,9 +371,12 @@
                         <button class="btn-sm-custom btn-edit edit-btn" data-id="@item.Driver_id">
                             <i class="fas fa-pen"></i> Modifier
                         </button>
-                        <a href="/Drivers/Delete/@item.Driver_id" class="btn-sm-custom btn-delete" onclick="return confirm('Supprimer ce chauffeur ?');">
-                            <i class="fas fa-trash"></i> Supprimer
-                        </a>
+                        <form asp-action="DeleteDriver" asp-route-id="@item.Driver_id" method="post" style="display:inline;" onsubmit="return confirm('Supprimer ce chauffeur ?');">
+                            @Html.AntiForgeryToken()
+                            <button type="submit" class="btn-sm-custom btn-delete">
+                                <i class="fas fa-trash"></i> Supprimer
+                            </button>
+                        </form>
                     </td>
                 </tr>
             }
@@ -456,18 +469,6 @@
         </div>
     </div>
 </div>
-
-<style>
-    .form-label-custom {
-        font-size: 0.7rem;
-        font-weight: 600;
-        text-transform: uppercase;
-        letter-spacing: 0.05em;
-        color: #475569;
-        margin-bottom: 0.5rem;
-        display: block;
-    }
-</style>
 
 @section Scripts {
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>

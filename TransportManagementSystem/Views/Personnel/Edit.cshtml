@@ -5,148 +5,314 @@
     Layout = "~/Views/Shared/_Layout.cshtml";
 }
 
-<h1>Modifier un personnel</h1>
+<style>
+    :root {
+        --navy: #0f1c2e;
+        --navy-mid: #162436;
+        --amber: #f5a623;
+        --amber-glow: rgba(245, 166, 35, 0.1);
+        --text-muted: #64748b;
+    }
 
-<form asp-action="Edit">
-    <div asp-validation-summary="ModelOnly" class="text-danger"></div>
+    .form-container {
+        background: white;
+        border-radius: 20px;
+        padding: 2rem;
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+        border: 1px solid #e2e8f0;
+    }
 
-    <div class="form-group mb-3">
-        <label>ID Personnel</label>
-        <input class="form-control" value="@Model.Personnel_Id" readonly disabled />
-        <input type="hidden" asp-for="Personnel_Id" />
-    </div>
+    .page-header {
+        margin-bottom: 1.5rem;
+    }
 
-    <div class="row">
-        <div class="col-md-6">
-            <div class="form-group">
-                <label>Prénom</label>
-                <input asp-for="Personnel_FirstName" class="form-control" />
-                <span asp-validation-for="Personnel_FirstName" class="text-danger"></span>
+        .page-header h1 {
+            font-family: 'Sora', sans-serif;
+            font-size: 1.6rem;
+            font-weight: 700;
+            margin: 0;
+            background: linear-gradient(135deg, #0f1c2e, #1e3250);
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+        }
+
+        .page-header p {
+            color: var(--text-muted);
+            font-size: 0.85rem;
+            margin: 5px 0 0 0;
+        }
+
+    .form-group {
+        margin-bottom: 1.25rem;
+    }
+
+        .form-group label {
+            font-size: 0.75rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: #475569;
+            margin-bottom: 0.5rem;
+            display: block;
+        }
+
+    .form-control, .form-select {
+        border: 1.5px solid #e2e8f0;
+        border-radius: 10px;
+        padding: 0.6rem 0.75rem;
+        font-size: 0.9rem;
+        transition: all 0.15s;
+    }
+
+        .form-control:focus, .form-select:focus {
+            border-color: var(--amber);
+            box-shadow: 0 0 0 3px rgba(245, 166, 35, 0.15);
+            outline: none;
+        }
+
+    .form-check-input {
+        width: 1.1rem;
+        height: 1.1rem;
+        border-radius: 4px;
+        border: 1.5px solid #cbd5e1;
+        cursor: pointer;
+    }
+
+        .form-check-input:checked {
+            background-color: var(--amber);
+            border-color: var(--amber);
+        }
+
+    .form-check-label {
+        font-size: 0.85rem;
+        font-weight: 500;
+        color: #334155;
+        margin-left: 0.5rem;
+        cursor: pointer;
+    }
+
+    .btn-primary-custom {
+        background: linear-gradient(135deg, #1d4ed8, #3b82f6);
+        border: none;
+        border-radius: 10px;
+        padding: 10px 24px;
+        font-weight: 600;
+        font-size: 0.85rem;
+        transition: transform 0.15s, box-shadow 0.15s;
+        color: white;
+        cursor: pointer;
+    }
+
+        .btn-primary-custom:hover {
+            background: linear-gradient(135deg, #1e40af, #2563eb);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(37, 99, 235, 0.3);
+        }
+
+    .btn-secondary-custom {
+        background: #64748b;
+        border: none;
+        border-radius: 10px;
+        padding: 10px 24px;
+        font-weight: 600;
+        font-size: 0.85rem;
+        transition: background 0.15s, transform 0.15s;
+        color: white;
+        cursor: pointer;
+        text-decoration: none;
+        display: inline-block;
+    }
+
+        .btn-secondary-custom:hover {
+            background: #475569;
+            transform: translateY(-2px);
+            color: white;
+            text-decoration: none;
+        }
+
+    .alert-info-custom {
+        background: #eff6ff;
+        border-left: 4px solid #3b82f6;
+        padding: 0.75rem 1rem;
+        border-radius: 10px;
+        margin-bottom: 1.25rem;
+        font-size: 0.8rem;
+    }
+
+    hr {
+        margin: 1.5rem 0;
+        border-color: #e2e8f0;
+    }
+
+    .required-star {
+        color: #ef4444;
+        margin-left: 2px;
+    }
+</style>
+
+<div class="page-header">
+    <h1><i class="fas fa-user-edit me-2" style="color: var(--amber);"></i>Modifier un personnel</h1>
+    <p>Modifiez les informations d'un employé</p>
+</div>
+
+<div class="form-container">
+    <form asp-action="Edit">
+        <div asp-validation-summary="ModelOnly" class="text-danger"></div>
+
+        <div class="alert-info-custom">
+            <i class="fas fa-info-circle me-2" style="color: #3b82f6;"></i>
+            Les champs marqués d'un <span class="required-star">*</span> sont obligatoires.
+        </div>
+
+        <div class="form-group mb-3">
+            <label>ID Personnel</label>
+            <input class="form-control" value="@Model.Personnel_Id" readonly disabled style="background: #f8fafc;" />
+            <input type="hidden" asp-for="Personnel_Id" />
+        </div>
+
+        <!-- CRITICAL: Hidden fields to preserve assignments -->
+        <input type="hidden" asp-for="AssignedStopId" />
+        <input type="hidden" asp-for="AssignedTrajectoryId" />
+        <input type="hidden" asp-for="AssignedBusId" />
+        <input type="hidden" asp-for="IsAssigned" />
+
+        <div class="row g-3">
+            <div class="col-md-6">
+                <div class="form-group">
+                    <label>Prénom <span class="text-danger">*</span></label>
+                    <input asp-for="Personnel_FirstName" class="form-control" placeholder="Entrez le prénom" />
+                    <span asp-validation-for="Personnel_FirstName" class="text-danger"></span>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="form-group">
+                    <label>Nom <span class="text-danger">*</span></label>
+                    <input asp-for="Personnel_LastName" class="form-control" placeholder="Entrez le nom" />
+                    <span asp-validation-for="Personnel_LastName" class="text-danger"></span>
+                </div>
             </div>
         </div>
-        <div class="col-md-6">
-            <div class="form-group">
-                <label>Nom</label>
-                <input asp-for="Personnel_LastName" class="form-control" />
-                <span asp-validation-for="Personnel_LastName" class="text-danger"></span>
-            </div>
-        </div>
-    </div>
 
-    <div class="row">
-        <div class="col-md-6">
-            <div class="form-group">
-                <label>Genre</label>
-                <select asp-for="Personnel_Gender" class="form-control">
-                    <option value="">Sélectionner...</option>
-                    <option value="Male">Homme</option>
-                    <option value="Female">Femme</option>
-                </select>
-                <span asp-validation-for="Personnel_Gender" class="text-danger"></span>
+        <div class="row g-3">
+            <div class="col-md-6">
+                <div class="form-group">
+                    <label>Genre</label>
+                    <select asp-for="Personnel_Gender" class="form-select">
+                        <option value="">Sélectionner...</option>
+                        <option value="Male">Homme</option>
+                        <option value="Female">Femme</option>
+                    </select>
+                    <span asp-validation-for="Personnel_Gender" class="text-danger"></span>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="form-group">
+                    <label>Date de naissance</label>
+                    <input asp-for="Personnel_DateOfBirth" type="date" class="form-control" />
+                    <span asp-validation-for="Personnel_DateOfBirth" class="text-danger"></span>
+                </div>
             </div>
         </div>
-        <div class="col-md-6">
-            <div class="form-group">
-                <label>Date de naissance</label>
-                <input asp-for="Personnel_DateOfBirth" type="date" class="form-control" />
-                <span asp-validation-for="Personnel_DateOfBirth" class="text-danger"></span>
-            </div>
-        </div>
-    </div>
 
-    <div class="row">
-        <div class="col-md-6">
-            <div class="form-group">
-                <label>Email</label>
-                <input asp-for="Personnel_Email" class="form-control" />
-                <span asp-validation-for="Personnel_Email" class="text-danger"></span>
+        <div class="row g-3">
+            <div class="col-md-6">
+                <div class="form-group">
+                    <label>Email</label>
+                    <input asp-for="Personnel_Email" class="form-control" type="email" placeholder="exemple@email.com" />
+                    <span asp-validation-for="Personnel_Email" class="text-danger"></span>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="form-group">
+                    <label>Téléphone</label>
+                    <input asp-for="Personnel_PhoneNumber" class="form-control" placeholder="+212 6XX XXX XXX" />
+                    <span asp-validation-for="Personnel_PhoneNumber" class="text-danger"></span>
+                </div>
             </div>
         </div>
-        <div class="col-md-6">
-            <div class="form-group">
-                <label>Téléphone</label>
-                <input asp-for="Personnel_PhoneNumber" class="form-control" />
-                <span asp-validation-for="Personnel_PhoneNumber" class="text-danger"></span>
-            </div>
-        </div>
-    </div>
 
-    <div class="row">
-        <div class="col-md-6">
-            <div class="form-group">
-                <label>Code employé</label>
-                <input asp-for="Personnel_EmployeeCode" class="form-control" />
-                <span asp-validation-for="Personnel_EmployeeCode" class="text-danger"></span>
+        <div class="row g-3">
+            <div class="col-md-6">
+                <div class="form-group">
+                    <label>Code employé <span class="text-danger">*</span></label>
+                    <input asp-for="Personnel_EmployeeCode" class="form-control" placeholder="Ex: EMP001" />
+                    <span asp-validation-for="Personnel_EmployeeCode" class="text-danger"></span>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="form-group">
+                    <label>Département</label>
+                    <input asp-for="Personnel_Department" class="form-control" placeholder="Ex: RH, Logistique, Transport" />
+                    <span asp-validation-for="Personnel_Department" class="text-danger"></span>
+                </div>
             </div>
         </div>
-        <div class="col-md-6">
-            <div class="form-group">
-                <label>Département</label>
-                <input asp-for="Personnel_Department" class="form-control" />
-                <span asp-validation-for="Personnel_Department" class="text-danger"></span>
+
+        <div class="row g-3">
+            <div class="col-md-6">
+                <div class="form-group">
+                    <label>Statut</label>
+                    <select asp-for="Personnel_Status" class="form-select">
+                        <option value="Active">Actif</option>
+                        <option value="Inactive">Inactif</option>
+                    </select>
+                    <span asp-validation-for="Personnel_Status" class="text-danger"></span>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="form-group">
+                    <label>Ville</label>
+                    <input asp-for="Personnel_City" class="form-control" placeholder="Ex: Casablanca, Rabat" />
+                    <span asp-validation-for="Personnel_City" class="text-danger"></span>
+                </div>
             </div>
         </div>
-    </div>
 
-    <div class="row">
-        <div class="col-md-6">
-            <div class="form-group">
-                <label>Statut</label>
-                <select asp-for="Personnel_Status" class="form-control">
-                    <option value="Active">Actif</option>
-                    <option value="Inactive">Inactif</option>
-                </select>
-                <span asp-validation-for="Personnel_Status" class="text-danger"></span>
+        <div class="form-group">
+            <label>Adresse domicile</label>
+            <input asp-for="HomeAddress" class="form-control" placeholder="Rue, numéro, quartier" />
+            <span asp-validation-for="HomeAddress" class="text-danger"></span>
+        </div>
+
+        <div class="form-group">
+            <label>Adresse (rue)</label>
+            <input asp-for="Personnel_Address" class="form-control" placeholder="Adresse complète" />
+            <span asp-validation-for="Personnel_Address" class="text-danger"></span>
+        </div>
+
+        <div class="row g-3">
+            <div class="col-md-6">
+                <div class="form-group">
+                    <label>Latitude</label>
+                    <input asp-for="Personnel_Latitude" type="number" step="any" class="form-control" placeholder="Ex: 34.2610" />
+                    <span asp-validation-for="Personnel_Latitude" class="text-danger"></span>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="form-group">
+                    <label>Longitude</label>
+                    <input asp-for="Personnel_Longitude" type="number" step="any" class="form-control" placeholder="Ex: -6.5800" />
+                    <span asp-validation-for="Personnel_Longitude" class="text-danger"></span>
+                </div>
             </div>
         </div>
-        <div class="col-md-6">
-            <div class="form-group">
-                <label>Ville</label>
-                <input asp-for="Personnel_City" class="form-control" />
-                <span asp-validation-for="Personnel_City" class="text-danger"></span>
-            </div>
+
+        <div class="form-group form-check mt-3">
+            <input class="form-check-input" asp-for="IsMotorized" />
+            <label class="form-check-label" asp-for="IsMotorized">
+                <i class="fas fa-car me-1" style="color: #06b6d4;"></i>Motorisé (véhicule personnel)
+            </label>
         </div>
-    </div>
 
-    <div class="form-group">
-        <label>Adresse domicile</label>
-        <input asp-for="HomeAddress" class="form-control" />
-        <span asp-validation-for="HomeAddress" class="text-danger"></span>
-    </div>
+        <hr />
 
-    <div class="form-group">
-        <label>Adresse (rue)</label>
-        <input asp-for="Personnel_Address" class="form-control" />
-        <span asp-validation-for="Personnel_Address" class="text-danger"></span>
-    </div>
-
-    <div class="row">
-        <div class="col-md-6">
-            <div class="form-group">
-                <label>Latitude</label>
-                <input asp-for="Personnel_Latitude" type="number" step="any" class="form-control" />
-                <span asp-validation-for="Personnel_Latitude" class="text-danger"></span>
-            </div>
+        <div class="form-group d-flex gap-3 mt-3">
+            <input type="submit" value="Enregistrer" class="btn-primary-custom" />
+            <a href="/Personnel/Index" class="btn-secondary-custom">Annuler</a>
         </div>
-        <div class="col-md-6">
-            <div class="form-group">
-                <label>Longitude</label>
-                <input asp-for="Personnel_Longitude" type="number" step="any" class="form-control" />
-                <span asp-validation-for="Personnel_Longitude" class="text-danger"></span>
-            </div>
-        </div>
-    </div>
-
-    <div class="form-group form-check">
-        <input class="form-check-input" asp-for="IsMotorized" />
-        <label class="form-check-label" asp-for="IsMotorized">Motorisé (véhicule personnel)</label>
-    </div>
-
-    <div class="form-group mt-3">
-        <input type="submit" value="Enregistrer" class="btn btn-primary" />
-        <a href="/Personnel/Index" class="btn btn-secondary">Retour</a>
-    </div>
-</form>
+    </form>
+</div>
 
 @section Scripts {
     @{

@@ -78,6 +78,7 @@ namespace TransportManagementSystem.Controllers
         }
 
         // POST: Personnel/Edit/5
+        // POST: Personnel/Edit/5
         [HttpPost]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> Edit(long id, Personnel personnel)
@@ -88,31 +89,53 @@ namespace TransportManagementSystem.Controllers
             {
                 try
                 {
-                    var existingPersonnel = await _context.Personnel.AsNoTracking().FirstOrDefaultAsync(p => p.Personnel_Id == id);
+                    // Get the existing entity from database (tracked)
+                    var existingPersonnel = await _context.Personnel.FindAsync(id);
                     if (existingPersonnel == null) return NotFound();
 
+                    // Store the assignment values that should NEVER change during edit
+                    var assignedStopId = existingPersonnel.AssignedStopId;
+                    var assignedTrajectoryId = existingPersonnel.AssignedTrajectoryId;
+                    var assignedBusId = existingPersonnel.AssignedBusId;
+                    var isAssigned = existingPersonnel.IsAssigned;
+                    var createdAt = existingPersonnel.Personnel_CreatedAt;
                     bool wasMotorized = existingPersonnel.IsMotorized;
                     bool isNowMotorized = personnel.IsMotorized;
 
-                    personnel.Personnel_CreatedAt = existingPersonnel.Personnel_CreatedAt;
-                    personnel.Personnel_UpdatedAt = DateTime.Now;
+                    // Update only the fields that can be edited
+                    existingPersonnel.Personnel_FirstName = personnel.Personnel_FirstName;
+                    existingPersonnel.Personnel_LastName = personnel.Personnel_LastName;
+                    existingPersonnel.Personnel_Gender = personnel.Personnel_Gender;
+                    existingPersonnel.Personnel_DateOfBirth = personnel.Personnel_DateOfBirth;
+                    existingPersonnel.Personnel_PhoneNumber = personnel.Personnel_PhoneNumber;
+                    existingPersonnel.Personnel_Email = personnel.Personnel_Email;
+                    existingPersonnel.Personnel_EmployeeCode = personnel.Personnel_EmployeeCode;
+                    existingPersonnel.Personnel_Department = personnel.Personnel_Department;
+                    existingPersonnel.Personnel_Status = personnel.Personnel_Status;
+                    existingPersonnel.Personnel_Address = personnel.Personnel_Address;
+                    existingPersonnel.Personnel_City = personnel.Personnel_City;
+                    existingPersonnel.Personnel_Latitude = personnel.Personnel_Latitude;
+                    existingPersonnel.Personnel_Longitude = personnel.Personnel_Longitude;
+                    existingPersonnel.HomeAddress = personnel.HomeAddress;
+                    existingPersonnel.IsMotorized = personnel.IsMotorized;
+                    existingPersonnel.Personnel_UpdatedAt = DateTime.Now;
 
-                    // Preserve assignment fields (they should not be changed here)
-                    personnel.AssignedStopId = existingPersonnel.AssignedStopId;
-                    personnel.AssignedTrajectoryId = existingPersonnel.AssignedTrajectoryId;
-                    personnel.AssignedBusId = existingPersonnel.AssignedBusId;
-                    personnel.IsAssigned = existingPersonnel.IsAssigned;
+                    // Restore the assignment fields (they should NOT change)
+                    existingPersonnel.AssignedStopId = assignedStopId;
+                    existingPersonnel.AssignedTrajectoryId = assignedTrajectoryId;
+                    existingPersonnel.AssignedBusId = assignedBusId;
+                    existingPersonnel.IsAssigned = isAssigned;
+                    existingPersonnel.Personnel_CreatedAt = createdAt;
 
-                    // If motorized, remove from pickup point
+                    // If motorized, remove from pickup point (but keep trajectory and bus assignments)
                     if (isNowMotorized && !wasMotorized)
                     {
-                        personnel.AssignedStopId = null;
-                        personnel.IsAssigned = false;
+                        existingPersonnel.AssignedStopId = null;
+                        existingPersonnel.IsAssigned = false;
                         DashboardController.AddNotification("info", "Personnel motorisé",
-                            $"{personnel.Personnel_FirstName} {personnel.Personnel_LastName} est maintenant motorisé et a été retiré du point de ramassage.");
+                            $"{existingPersonnel.Personnel_FirstName} {existingPersonnel.Personnel_LastName} est maintenant motorisé et a été retiré du point de ramassage.");
                     }
 
-                    _context.Update(personnel);
                     await _context.SaveChangesAsync();
 
                     TempData["Success"] = "Personnel modifié avec succès.";
@@ -198,7 +221,10 @@ namespace TransportManagementSystem.Controllers
             if (personnel == null)
                 return NotFound(new { success = false, message = "Personnel non trouvé" });
 
-            // Update all fields
+            bool wasMotorized = personnel.IsMotorized;
+            bool isNowMotorized = model.IsMotorized;
+
+            // Update basic fields
             personnel.Personnel_FirstName = model.Personnel_FirstName;
             personnel.Personnel_LastName = model.Personnel_LastName;
             personnel.Personnel_Gender = model.Personnel_Gender;
@@ -213,18 +239,31 @@ namespace TransportManagementSystem.Controllers
             personnel.Personnel_Latitude = model.Personnel_Latitude;
             personnel.Personnel_Longitude = model.Personnel_Longitude;
             personnel.HomeAddress = model.HomeAddress;
-            personnel.AssignedStopId = model.AssignedStopId;
-            personnel.AssignedTrajectoryId = model.AssignedTrajectoryId;
-            personnel.AssignedBusId = model.AssignedBusId;
-            personnel.IsAssigned = model.IsAssigned;
             personnel.IsMotorized = model.IsMotorized;
             personnel.Personnel_UpdatedAt = DateTime.Now;
 
+            // CRITICAL FIX: Preserve existing assignment fields (don't overwrite with null from modal)
+            // Only change assignments if the modal explicitly sent different values
+            if (model.AssignedStopId != personnel.AssignedStopId && model.AssignedStopId != null)
+                personnel.AssignedStopId = model.AssignedStopId;
+            if (model.AssignedTrajectoryId != personnel.AssignedTrajectoryId && model.AssignedTrajectoryId != null)
+                personnel.AssignedTrajectoryId = model.AssignedTrajectoryId;
+            if (model.AssignedBusId != personnel.AssignedBusId && model.AssignedBusId != null)
+                personnel.AssignedBusId = model.AssignedBusId;
+
             // If motorized, remove from pickup point
-            if (personnel.IsMotorized)
+            if (isNowMotorized && !wasMotorized)
             {
                 personnel.AssignedStopId = null;
                 personnel.IsAssigned = false;
+            }
+            else if (!isNowMotorized)
+            {
+                // Keep existing IsAssigned value if it was true
+                if (personnel.IsAssigned == false && personnel.AssignedStopId != null)
+                {
+                    personnel.IsAssigned = true;
+                }
             }
 
             try

@@ -1,5 +1,6 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using TransportManagementSystem.Controllers;
 using TransportManagementSystem.Data;
 using TransportManagementSystem.Models;
 
@@ -45,8 +46,8 @@ namespace TransportManagementSystem.Controllers
 
                 driver.Driver_CreatedAt = DateTime.Now;
                 driver.Driver_UpdatedAt = DateTime.Now;
-                driver.Driver_HireDate = DateTime.Now; // Date d'entrée automatique
-                driver.Driver_Rating = "Bon"; // Valeur par défaut
+                driver.Driver_HireDate = DateTime.Now;
+                driver.Driver_Rating = "Bon";
                 driver.Driver_Status = "Available";
 
                 _context.Add(driver);
@@ -125,6 +126,7 @@ namespace TransportManagementSystem.Controllers
             return View(driver);
         }
 
+        // GET: Drivers/Delete/5
         public async Task<IActionResult> Delete(long? id)
         {
             if (id == null) return NotFound();
@@ -137,13 +139,20 @@ namespace TransportManagementSystem.Controllers
             return View(driver);
         }
 
-        [HttpPost, ActionName("Delete")]
+        // POST: Drivers/Delete/5 - AJAX Delete
+        [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> DeleteConfirmed(long id)
+        public async Task<IActionResult> DeleteDriver(long id)
         {
-            var driver = await _context.Drivers.FindAsync(id);
-            if (driver != null)
+            try
             {
+                var driver = await _context.Drivers.FindAsync(id);
+                if (driver == null)
+                {
+                    TempData["Error"] = "Chauffeur non trouvé";
+                    return RedirectToAction(nameof(Index));
+                }
+
                 string driverName = $"{driver.Driver_FirstName} {driver.Driver_LastName}";
 
                 if (driver.Driver_AssignedBusId != null)
@@ -152,18 +161,20 @@ namespace TransportManagementSystem.Controllers
                     if (bus != null)
                     {
                         bus.Bus_CurrentDriverId = null;
-                        DashboardController.AddNotification("warning", "Chauffeur supprimé avec bus", $"Le chauffeur {driverName} a été supprimé. Le bus {bus.Bus_Code} est maintenant sans chauffeur.");
                     }
-                }
-                else
-                {
-                    DashboardController.AddNotification("delete", "Chauffeur supprimé", $"Le chauffeur {driverName} a été supprimé de la base.");
                 }
 
                 _context.Drivers.Remove(driver);
                 await _context.SaveChangesAsync();
+
+                TempData["Success"] = $"Chauffeur {driverName} supprimé avec succès";
+                return RedirectToAction(nameof(Index));
             }
-            return RedirectToAction(nameof(Index));
+            catch (Exception ex)
+            {
+                TempData["Error"] = ex.Message;
+                return RedirectToAction(nameof(Index));
+            }
         }
 
         [HttpGet]
@@ -271,7 +282,7 @@ namespace TransportManagementSystem.Controllers
             var driverId = long.Parse(driverIdStr);
             var driver = await _context.Drivers
                 .Include(d => d.AssignedBus)
-                    .ThenInclude(b => b.CurrentTrajectory)  // ← IMPORTANT: Include trajectory
+                    .ThenInclude(b => b.CurrentTrajectory)
                 .FirstOrDefaultAsync(d => d.Driver_id == driverId);
 
             if (driver?.AssignedBus == null)
@@ -286,7 +297,6 @@ namespace TransportManagementSystem.Controllers
             var bus = driver.AssignedBus;
             var trajectory = bus.CurrentTrajectory;
 
-            // Get stops for the trajectory (if assigned)
             List<object> stops = new List<object>();
             if (trajectory != null)
             {
@@ -423,8 +433,6 @@ namespace TransportManagementSystem.Controllers
             return Ok(new { success = true, message = "Chauffeur mis à jour avec succès." });
         }
 
-        // ========== NOUVELLES MÉTHODES ==========
-
         [HttpGet]
         public async Task<IActionResult> GetNextId()
         {
@@ -446,13 +454,11 @@ namespace TransportManagementSystem.Controllers
             var currentHour = now.Hour;
             var currentDay = now.DayOfWeek;
 
-            // Week-end : Hors service toute la journée
             if (currentDay == DayOfWeek.Saturday || currentDay == DayOfWeek.Sunday)
             {
                 return "Off Duty";
             }
 
-            // Lundi au Vendredi
             if (currentHour >= 7 && currentHour < 8)
             {
                 return "On Route";
