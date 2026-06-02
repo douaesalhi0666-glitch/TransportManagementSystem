@@ -14,6 +14,7 @@ namespace TransportManagementSystem.Controllers
             _context = context;
         }
 
+        [HttpGet]
         public IActionResult Login()
         {
             if (HttpContext.Session.GetString("UserRole") != null)
@@ -24,50 +25,61 @@ namespace TransportManagementSystem.Controllers
         [HttpPost]
         public async Task<IActionResult> Login(string email, int id, string password)
         {
-            // ---------- ADMIN (ID = 1) ----------
-            // On ne vérifie plus l'email en dur ; on va directement chercher l'admin dans la base
+            // Admin
             var admin = await _context.Admin_tbl
                 .FirstOrDefaultAsync(a => a.Admin_Id == 1 && a.Admin_Email == email);
             if (admin != null && admin.Admin_PasswordHash == password)
             {
-                HttpContext.Session.SetString("UserEmail", email);
                 HttpContext.Session.SetString("UserRole", "Admin");
                 HttpContext.Session.SetString("UserName", admin.Admin_Name);
-                return RedirectToAction("Index", "Dashboard");
+                return RedirectToAction("AdminDashboard", "Dashboard");
             }
 
-            // ---------- DRIVER (vérification ID + email) ----------
+            // Driver
             var driver = await _context.Drivers
                 .FirstOrDefaultAsync(d => d.Driver_Email == email && d.Driver_id == id);
             if (driver != null)
             {
-                HttpContext.Session.SetString("UserEmail", email);
                 HttpContext.Session.SetString("UserRole", "Driver");
                 HttpContext.Session.SetString("UserName", $"{driver.Driver_FirstName} {driver.Driver_LastName}");
                 HttpContext.Session.SetString("DriverId", driver.Driver_id.ToString());
-                return RedirectToAction("Index", "Dashboard");
+                return RedirectToAction("DriverDashboard", "Dashboard");
             }
 
-            // ---------- PERSONNEL (vérification ID + email) ----------
+            // Personnel
             var personnel = await _context.Personnel
                 .FirstOrDefaultAsync(p => p.Personnel_Email == email && p.Personnel_Id == id);
             if (personnel != null)
             {
-                HttpContext.Session.SetString("UserEmail", email);
                 HttpContext.Session.SetString("UserRole", "Personnel");
                 HttpContext.Session.SetString("UserName", $"{personnel.Personnel_FirstName} {personnel.Personnel_LastName}");
                 HttpContext.Session.SetString("PersonnelId", personnel.Personnel_Id.ToString());
-                return RedirectToAction("Index", "Dashboard");
+                return RedirectToAction("PersonnelDashboard", "Dashboard");
             }
 
             ViewBag.Error = "Email ou identifiant incorrect";
             return View();
         }
 
+        [HttpGet]
         public IActionResult Logout()
         {
+            // Supprimer la session
             HttpContext.Session.Clear();
+            // Supprimer le cookie de session
+            HttpContext.Response.Cookies.Delete(".AspNetCore.Session");
+            // Forcer les en-têtes anti-cache
+            Response.Headers["Cache-Control"] = "no-cache, no-store, must-revalidate";
+            Response.Headers["Pragma"] = "no-cache";
+            Response.Headers["Expires"] = "0";
             return RedirectToAction("Login");
+        }
+
+        [HttpGet]
+        public IActionResult CheckSession()
+        {
+            bool isAuthenticated = !string.IsNullOrEmpty(HttpContext.Session.GetString("UserRole"));
+            return Json(new { isAuthenticated });
         }
     }
 }

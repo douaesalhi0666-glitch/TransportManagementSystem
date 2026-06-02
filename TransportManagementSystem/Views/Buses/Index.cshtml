@@ -6,81 +6,207 @@
 }
 
 <style>
-    .table th, .table td {
-        vertical-align: middle;
+    :root {
+        --navy: #0f1c2e;
+        --navy-mid: #162436;
+        --amber: #f5a623;
+        --amber-glow: rgba(245, 166, 35, 0.1);
+        --text-muted: #64748b;
     }
-    .badge-service {
-        background-color: #28a745;
-        color: white;
-        padding: 5px 10px;
-        border-radius: 20px;
-        font-size: 12px;
+
+    .page-header {
+        margin-bottom: 1.5rem;
+        padding-bottom: 0.5rem;
+        border-bottom: 2px solid var(--amber-glow);
     }
-    .badge-maintenance {
-        background-color: #ffc107;
-        color: #212529;
-        padding: 5px 10px;
-        border-radius: 20px;
-        font-size: 12px;
+
+        .page-header h1 {
+            font-family: 'Sora', sans-serif;
+            font-size: 1.5rem;
+            font-weight: 700;
+            margin: 0;
+        }
+
+    .btn-primary-custom {
+        background: linear-gradient(135deg, #1d4ed8, #3b82f6);
+        border: none;
+        border-radius: 10px;
+        padding: 8px 18px;
+        font-weight: 600;
+        font-size: 0.85rem;
     }
-    .badge-out {
-        background-color: #dc3545;
-        color: white;
-        padding: 5px 10px;
-        border-radius: 20px;
-        font-size: 12px;
-    }
+
+        .btn-primary-custom:hover {
+            background: linear-gradient(135deg, #1e40af, #2563eb);
+            transform: translateY(-1px);
+        }
+
     .filter-bar {
-        background: #f8f9fa;
-        padding: 15px;
-        border-radius: 8px;
-        margin-bottom: 20px;
+        background: linear-gradient(135deg, #f8fafc, #ffffff);
+        padding: 1.25rem;
+        border-radius: 16px;
+        margin-bottom: 1.5rem;
+        border: 1px solid #e2e8f0;
     }
-    .btn-edit {
-        background-color: #ffc107;
-        color: #212529;
-        margin-right: 5px;
+
+    .table-container {
+        max-height: calc(100vh - 280px);
+        overflow-y: auto;
+        border-radius: 12px;
+        border: 1px solid #e2e8f0;
+        position: relative;
     }
-    .btn-delete {
-        background-color: #dc3545;
+
+    .table-custom {
+        font-size: 0.8rem;
+        width: 100%;
+        border-collapse: collapse;
+        margin-bottom: 0;
+    }
+
+        .table-custom thead {
+            position: sticky;
+            top: 0;
+            background: linear-gradient(135deg, var(--navy), var(--navy-mid));
+            color: white;
+            z-index: 10;
+        }
+
+            .table-custom thead th {
+                font-size: 0.8rem;
+                font-weight: 700;
+                padding: 14px 12px;
+                white-space: nowrap;
+            }
+
+        .table-custom tbody td {
+            padding: 12px;
+            border-bottom: 1px solid #e2e8f0;
+            white-space: nowrap;
+        }
+
+        .table-custom tbody tr:hover {
+            background-color: var(--amber-glow);
+        }
+
+    .badge-service {
+        background: linear-gradient(135deg, #10b981, #059669);
+        color: white;
+        padding: 4px 10px;
+        border-radius: 20px;
+        font-size: 0.7rem;
+        font-weight: 600;
+        display: inline-block;
+    }
+
+    .badge-maintenance {
+        background: linear-gradient(135deg, #f59e0b, #d97706);
         color: white;
     }
-    .details-card {
-        margin-bottom: 10px;
+
+    .badge-out {
+        background: linear-gradient(135deg, #ef4444, #dc2626);
+        color: white;
     }
-    .details-card .card-header {
-        font-weight: bold;
+
+    .btn-sm-custom {
+        padding: 5px 12px;
+        font-size: 0.7rem;
+        border-radius: 8px;
+    }
+
+    .btn-details {
+        background: linear-gradient(135deg, #3b82f6, #2563eb);
+        color: white;
+        border: none;
+    }
+
+    .btn-edit {
+        background: linear-gradient(135deg, #f59e0b, #d97706);
+        color: white;
+        border: none;
+    }
+
+    .btn-delete {
+        background: linear-gradient(135deg, #ef4444, #dc2626);
+        color: white;
+        border: none;
+    }
+
+    .btn-secondary-custom {
+        background: #64748b;
+        border: none;
+        border-radius: 10px;
+        padding: 8px 18px;
+    }
+
+        .btn-secondary-custom:hover {
+            background: #475569;
+        }
+
+    .export-buttons {
+        display: flex;
+        gap: 10px;
+        margin-left: auto;
+    }
+
+    .btn-export-excel {
+        background: linear-gradient(135deg, #1e7e34, #28a745);
+        color: white;
+        border-radius: 10px;
+        padding: 8px 18px;
+    }
+
+    .btn-export-pdf {
+        background: linear-gradient(135deg, #c82333, #dc3545);
+        color: white;
+        border-radius: 10px;
+        padding: 8px 18px;
     }
 </style>
 
-<h1>🚍 Gestion des Bus</h1>
-
-<p>
-    <a href="/Buses/Create" class="btn btn-primary">➕ Ajouter un bus</a>
-</p>
+<div class="page-header d-flex justify-content-between align-items-center flex-wrap gap-3">
+    <div>
+        <h1><i class="fas fa-bus me-2" style="color: var(--amber);"></i>Gestion des Bus</h1>
+        <p>Gérez le parc automobile</p>
+    </div>
+    <div>
+        <a href="/Buses/Create" class="btn btn-primary-custom">
+            <i class="fas fa-plus me-2"></i>Ajouter un bus
+        </a>
+    </div>
+</div>
 
 <div class="filter-bar">
-    <div class="row">
+    <div class="row g-3 align-items-center">
         <div class="col-md-4">
-            <input type="text" id="searchInput" class="form-control" placeholder="🔍 Rechercher par ID ou Code" />
+            <input type="text" id="searchInput" class="form-control" placeholder="Rechercher par ID ou Code" />
         </div>
         <div class="col-md-3">
             <select id="statusFilter" class="form-select">
-                <option value="">📊 Tous les statuts</option>
-                <option value="In Service">✅ En service</option>
-                <option value="Maintenance">⚠️ Maintenance</option>
-                <option value="Out of Service">❌ Hors service</option>
+                <option value="">Tous les statuts</option>
+                <option value="In Service">En service</option>
+                <option value="Maintenance">Maintenance</option>
+                <option value="Out of Service">Hors service</option>
             </select>
         </div>
         <div class="col-md-2">
-            <button id="resetFilter" class="btn btn-secondary w-100">⟳ Réinitialiser</button>
+            <button id="resetFilter" class="btn btn-secondary-custom w-100">
+                <i class="fas fa-undo-alt me-1"></i>Réinitialiser
+            </button>
+        </div>
+        <div class="col-md-3">
+            <div class="export-buttons">
+                <button id="exportExcelBtn" class="btn-export-excel"><i class="fas fa-file-excel me-2"></i>Excel</button>
+                <button id="exportPdfBtn" class="btn-export-pdf"><i class="fas fa-file-pdf me-2"></i>PDF</button>
+            </div>
         </div>
     </div>
 </div>
 
-<div class="table-responsive">
-    <table class="table table-striped table-bordered" id="busesTable">
-        <thead class="table-dark">
+<div class="table-container">
+    <table class="table table-custom" id="busesTable">
+        <thead>
             <tr>
                 <th>ID</th>
                 <th>Code</th>
@@ -97,7 +223,7 @@
             {
                 <tr id="row-@item.Bus_Id" data-status="@item.Bus_Status">
                     <td>@item.Bus_Id</td>
-                    <td><strong>@item.Bus_Code</strong></td>
+                    <td>@item.Bus_Code</td>
                     <td>@item.Bus_PlateNumber</td>
                     <td>@item.Bus_Brand</td>
                     <td>@item.Bus_Capacity</td>
@@ -108,7 +234,7 @@
                         }
                         else
                         {
-                            <span class="text-muted">⚪ Non assigné</span>
+                            <span class="text-muted">Non assigné</span>
                         }
                     </td>
                     <td>
@@ -118,18 +244,20 @@
                         }
                         else if (item.Bus_Status == "Maintenance")
                         {
-                            <span class="badge-maintenance">⚠️ Maintenance</span>
+
+                            <span class="badge-service" style="background: linear-gradient(135deg, #f59e0b, #d97706);">⚠️ Maintenance</span>
                         }
                         else
                         {
-                            <span class="badge-out">❌ Hors service</span>
+
+                            <span class="badge-service" style="background: linear-gradient(135deg, #ef4444, #dc2626);">❌ Hors service</span>
                         }
                     </td>
-                    <td>
-                        <button class="btn btn-sm btn-info details-btn" data-id="@item.Bus_Id" title="Voir détails">🔍 Détails</button>
-                        <button class="btn btn-sm btn-edit edit-btn" data-id="@item.Bus_Id" title="Modifier">✏️ Modifier</button>
+                    <td class="action-buttons">
+                        <button class="btn btn-sm-custom btn-details details-btn" data-id="@item.Bus_Id"><i class="fas fa-eye"></i> Détails</button>
+                        <button class="btn btn-sm-custom btn-edit edit-btn" data-id="@item.Bus_Id"><i class="fas fa-pen"></i> Modifier</button>
                         <form asp-action="Delete" asp-route-id="@item.Bus_Id" method="post" style="display:inline;">
-                            <button type="submit" class="btn btn-sm btn-delete" onclick="return confirm('Êtes-vous sûr de vouloir supprimer ce bus ?');" title="Supprimer">🗑️ Supprimer</button>
+                            <button type="submit" class="btn btn-sm-custom btn-delete" onclick="return confirm('Supprimer ce bus ?');"><i class="fas fa-trash"></i> Supprimer</button>
                         </form>
                     </td>
                 </tr>
@@ -138,108 +266,65 @@
     </table>
 </div>
 
-<div class="mt-3">
-    <a href="/Dashboard/AdminDashboard" class="btn btn-secondary">← Retour au Dashboard</a>
+<div class="mt-4">
+    <a href="/Dashboard/AdminDashboard" class="btn btn-secondary-custom">
+        <i class="fas fa-arrow-left me-2"></i>Retour au Dashboard
+    </a>
 </div>
 
-<!-- Modal d'édition -->
+<!-- Modal d'édition (identique à votre version, mais on garde l'ID et le style) -->
 <div class="modal fade" id="editModal" tabindex="-1" aria-labelledby="editModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-lg">
         <div class="modal-content">
-            <div class="modal-header bg-primary text-white">
-                <h5 class="modal-title" id="editModalLabel">✏️ Modifier le bus</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            <div class="modal-header" style="background: linear-gradient(135deg, #0f1c2e, #162436); color: white;">
+                <h5 class="modal-title" id="editModalLabel">✏️ Modifier le bus - ID <span id="editBusIdDisplay">0</span></h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body">
                 <form id="editForm">
                     <input type="hidden" id="edit_Bus_Id" name="Bus_Id" />
-                    
+                    <div class="alert alert-info mb-3"><i class="fas fa-info-circle me-2"></i>ID du bus : <strong><span id="editBusIdDisplayBody">0</span></strong></div>
                     <div class="row">
-                        <div class="col-md-6 mb-2">
-                            <label>Code du bus</label>
-                            <input type="text" id="edit_Code" name="Bus_Code" class="form-control" required />
-                        </div>
-                        <div class="col-md-6 mb-2">
-                            <label>Plaque d'immatriculation</label>
-                            <input type="text" id="edit_PlateNumber" name="Bus_PlateNumber" class="form-control" required />
-                        </div>
+                        <div class="col-md-6 mb-2"><label>Code</label><input type="text" id="edit_Code" class="form-control" required /></div>
+                        <div class="col-md-6 mb-2"><label>Plaque</label><input type="text" id="edit_PlateNumber" class="form-control" required /></div>
                     </div>
                     <div class="row">
-                        <div class="col-md-6 mb-2">
-                            <label>Marque</label>
-                            <input type="text" id="edit_Brand" name="Bus_Brand" class="form-control" />
-                        </div>
-                        <div class="col-md-6 mb-2">
-                            <label>Modèle</label>
-                            <input type="text" id="edit_Model" name="Bus_Model" class="form-control" />
-                        </div>
+                        <div class="col-md-6 mb-2"><label>Marque</label><input type="text" id="edit_Brand" class="form-control" /></div>
+                        <div class="col-md-6 mb-2"><label>Modèle</label><input type="text" id="edit_Model" class="form-control" /></div>
                     </div>
                     <div class="row">
-                        <div class="col-md-4 mb-2">
-                            <label>Année</label>
-                            <input type="number" id="edit_Year" name="Bus_Year" class="form-control" />
-                        </div>
-                        <div class="col-md-4 mb-2">
-                            <label>Capacité</label>
-                            <input type="number" id="edit_Capacity" name="Bus_Capacity" class="form-control" />
-                        </div>
-                        <div class="col-md-4 mb-2">
-                            <label>Statut</label>
-                            <select id="edit_Status" name="Bus_Status" class="form-select">
-                                <option value="In Service">✅ En service</option>
-                                <option value="Maintenance">⚠️ Maintenance</option>
-                                <option value="Out of Service">❌ Hors service</option>
-                            </select>
-                        </div>
+                        <div class="col-md-4 mb-2"><label>Année</label><input type="number" id="edit_Year" class="form-control" /></div>
+                        <div class="col-md-4 mb-2"><label>Capacité</label><input type="number" id="edit_Capacity" class="form-control" /></div>
+                        <div class="col-md-4 mb-2"><label>Statut</label><select id="edit_Status" class="form-select"><option value="In Service">En service</option><option value="Maintenance">Maintenance</option><option value="Out of Service">Hors service</option></select></div>
                     </div>
                     <div class="row">
-                        <div class="col-md-6 mb-2">
-                            <label>Chauffeur assigné</label>
-                            <select id="edit_DriverId" name="Bus_CurrentDriverId" class="form-select">
-                                <option value="">-- Aucun --</option>
-                                @foreach (var driver in ViewBag.Drivers)
-                                {
-                                    <option value="@driver.Driver_id">👨‍✈️ @driver.Driver_FirstName @driver.Driver_LastName</option>
-                                }
-                            </select>
-                        </div>
-                        <div class="col-md-6 mb-2">
-                            <label>Latitude</label>
-                            <input type="text" id="edit_Latitude" name="Bus_CurrentLatitude" class="form-control" placeholder="Latitude" />
-                        </div>
-                    </div>
-                    <div class="row">
-                        <div class="col-md-6 mb-2">
-                            <label>Longitude</label>
-                            <input type="text" id="edit_Longitude" name="Bus_CurrentLongitude" class="form-control" placeholder="Longitude" />
-                        </div>
-                    </div>
-                </form>
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
-                <button type="button" id="saveEditBtn" class="btn btn-primary">💾 Enregistrer</button>
-            </div>
+                        <div class="col-md-6 mb-2"><label>Chauffeur</label><select id="edit_DriverId" class="form-select"><option value="">-- Aucun --</option>@foreach (var driver in ViewBag.Drivers) {
+                            <option value="@driver.Driver_id">@driver.Driver_FirstName @driver.Driver_LastName</option>
+                        }
+                    </select></div>
+                    <div class="col-md-6 mb-2"><label>Latitude</label><input type="text" id="edit_Latitude" class="form-control" /></div>
+                </div>
+                <div class="row"><div class="col-md-6 mb-2"><label>Longitude</label><input type="text" id="edit_Longitude" class="form-control" /></div></div>
+            </form>
+        </div>
+        <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
+            <button type="button" id="saveEditBtn" class="btn btn-primary-custom">Enregistrer</button>
         </div>
     </div>
 </div>
+</div>
 
 <!-- Modal Détails Bus -->
-<div class="modal fade" id="detailsModal" tabindex="-1" aria-labelledby="detailsModalLabel" aria-hidden="true">
+<div class="modal fade" id="detailsModal" tabindex="-1">
     <div class="modal-dialog modal-lg">
         <div class="modal-content">
-            <div class="modal-header bg-info text-white">
-                <h5 class="modal-title" id="detailsModalLabel">📋 Détails du bus</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            <div class="modal-header" style="background: linear-gradient(135deg, #0f1c2e, #162436); color: white;">
+                <h5 class="modal-title">📋 Détails du bus</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
             </div>
-            <div class="modal-body">
-                <div id="detailsContent" class="row">
-                    <div class="col-12 text-center">Chargement...</div>
-                </div>
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fermer</button>
-            </div>
+            <div class="modal-body"><div id="detailsContent" class="row">Chargement...</div></div>
+            <div class="modal-footer"><button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fermer</button></div>
         </div>
     </div>
 </div>
@@ -247,128 +332,122 @@
 @section Scripts {
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.sheetjs.com/xlsx-0.20.2/package/dist/xlsx.full.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.29/jspdf.plugin.autotable.min.js"></script>
+
     <script>
         $(document).ready(function() {
-            function filterTable() {
-                var searchText = $('#searchInput').val().toLowerCase();
-                var status = $('#statusFilter').val();
+        function filterTable() {
+        var search = $('#searchInput').val().toLowerCase();
+        var status = $('#statusFilter').val();
+        $('#busesTable tbody tr').each(function() {
+        var id = $(this).find('td:first').text();
+        var code = $(this).find('td:nth-child(2)').text();
+        var rowStatus = $(this).data('status');
+        var match = (id.toLowerCase().indexOf(search) !== -1 || code.toLowerCase().indexOf(search) !== -1);
+        var matchStatus = (status === '' || rowStatus === status);
+        $(this).toggle(match && matchStatus);
+        });
+        }
 
-                $('#busesTable tbody tr').each(function() {
-                    var id = $(this).find('td:first').text();
-                    var code = $(this).find('td:nth-child(2)').text();
-                    var rowStatus = $(this).data('status');
-                    var matchSearch = (id.toLowerCase().indexOf(searchText) !== -1) || (code.toLowerCase().indexOf(searchText) !== -1);
-                    var matchStatus = (status === '' || rowStatus === status);
-                    if (matchSearch && matchStatus) {
-                        $(this).show();
-                    } else {
-                        $(this).hide();
-                    }
-                });
-            }
+        $('#searchInput').on('keyup', filterTable);
+        $('#statusFilter').on('change', filterTable);
+        $('#resetFilter').click(function() { $('#searchInput').val(''); $('#statusFilter').val(''); filterTable(); });
 
-            $('#searchInput').on('keyup', filterTable);
-            $('#statusFilter').on('change', filterTable);
-            $('#resetFilter').click(function() {
-                $('#searchInput').val('');
-                $('#statusFilter').val('');
-                filterTable();
-            });
+        // Export Excel
+        $('#exportExcelBtn').click(function() {
+        var data = [], headers = [];
+        $('#busesTable thead th').each(function() { var t = $(this).text().trim(); if (t !== "Actions") headers.push(t); });
+        data.push(headers);
+        $('#busesTable tbody tr:visible').each(function() {
+        var row = [];
+        $(this).find('td').each(function(idx) { if (idx < 7) row.push($(this).text().trim()); });
+        data.push(row);
+        });
+        var ws = XLSX.utils.aoa_to_sheet(data);
+        var wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, "Bus");
+        XLSX.writeFile(wb, "Bus_Export.xlsx");
+        });
 
-            // Détails button click
-            $('.details-btn').click(function() {
-                var id = $(this).data('id');
-                $.get('/Buses/GetBusData/' + id, function(data) {
-                    var html = `
-                        <div class="col-md-6">
-                            <div class="card details-card">
-                                <div class="card-header bg-primary text-white">Informations générales</div>
-                                <div class="card-body">
-                                    <p><strong>ID:</strong> ${data.bus_Id}</p>
-                                    <p><strong>Code:</strong> ${data.bus_Code}</p>
-                                    <p><strong>Plaque:</strong> ${data.bus_PlateNumber}</p>
-                                    <p><strong>Marque:</strong> ${data.bus_Brand || '-'}</p>
-                                    <p><strong>Modèle:</strong> ${data.bus_Model || '-'}</p>
-                                    <p><strong>Année:</strong> ${data.bus_Year || '-'}</p>
-                                    <p><strong>Capacité:</strong> ${data.bus_Capacity || '-'} places</p>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="col-md-6">
-                            <div class="card details-card">
-                                <div class="card-header bg-success text-white">Statut et localisation</div>
-                                <div class="card-body">
-                                    <p><strong>Statut:</strong> 
-                                        ${data.bus_Status === 'In Service' ? '✅ En service' : (data.bus_Status === 'Maintenance' ? '⚠️ Maintenance' : '❌ Hors service')}
-                                    </p>
-                                    <p><strong>Chauffeur:</strong> ${data.bus_CurrentDriverId || 'Non assigné'}</p>
-                                    <p><strong>Latitude:</strong> ${data.bus_CurrentLatitude || '-'}</p>
-                                    <p><strong>Longitude:</strong> ${data.bus_CurrentLongitude || '-'}</p>
-                                </div>
-                            </div>
-                        </div>
-                    `;
-                    $('#detailsContent').html(html);
-                    $('#detailsModal').modal('show');
-                }).fail(function() {
-                    $('#detailsContent').html('<div class="col-12 text-center text-danger">❌ Erreur lors du chargement des données.</div>');
-                    $('#detailsModal').modal('show');
-                });
-            });
+        // Export PDF
+        $('#exportPdfBtn').click(function() {
+        const { jsPDF } = window.jspdf;
+        var doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
+        var columns = [];
+        $('#busesTable thead th').each(function() { var t = $(this).text().trim(); if (t !== "Actions") columns.push(t); });
+        var rows = [];
+        $('#busesTable tbody tr:visible').each(function() {
+        var row = [];
+        $(this).find('td').each(function(idx) { if (idx < 7) row.push($(this).text().trim()); });
+        rows.push(row);
+        });
+        doc.autoTable({ head: [columns], body: rows, theme: 'striped', headStyles: { fillColor: [15, 28, 46], textColor: 255 }, margin: { top: 20 }, didDrawPage: (data) => { doc.setFontSize(12); doc.text("Liste des Bus", data.settings.margin.left, 10); } });
+        doc.save("Bus_Export.pdf");
+        });
 
-            $('.edit-btn').click(function() {
-                var id = $(this).data('id');
-                $.get('/Buses/GetBusData/' + id, function(data) {
-                    $('#edit_Bus_Id').val(data.bus_Id);
-                    $('#edit_Code').val(data.bus_Code);
-                    $('#edit_PlateNumber').val(data.bus_PlateNumber);
-                    $('#edit_Brand').val(data.bus_Brand);
-                    $('#edit_Model').val(data.bus_Model);
-                    $('#edit_Year').val(data.bus_Year);
-                    $('#edit_Capacity').val(data.bus_Capacity);
-                    $('#edit_Status').val(data.bus_Status);
-                    $('#edit_DriverId').val(data.bus_CurrentDriverId);
-                    $('#edit_Latitude').val(data.bus_CurrentLatitude);
-                    $('#edit_Longitude').val(data.bus_CurrentLongitude);
-                    $('#editModal').modal('show');
-                }).fail(function() {
-                    alert('❌ Erreur lors du chargement des données.');
-                });
-            });
+        // Details
+        $('.details-btn').click(function() {
+        var id = $(this).data('id');
+        $.get('/Buses/GetBusData/' + id, function(data) {
+        var html = `<div class="col-md-6"><div class="card"><div class="card-header">Informations</div><div class="card-body">
+        <p><strong>ID:</strong> ${data.bus_Id}</p>
+        <p><strong>Code:</strong> ${data.bus_Code}</p>
+        <p><strong>Plaque:</strong> ${data.bus_PlateNumber}</p>
+        <p><strong>Marque:</strong> ${data.bus_Brand || '-'}</p>
+        <p><strong>Modèle:</strong> ${data.bus_Model || '-'}</p>
+        <p><strong>Année:</strong> ${data.bus_Year || '-'}</p>
+        <p><strong>Capacité:</strong> ${data.bus_Capacity || '-'}</p>
+        </div></div></div>
+        <div class="col-md-6"><div class="card"><div class="card-header">Statut et localisation</div><div class="card-body">
+        <p><strong>Statut:</strong> ${data.bus_Status === 'In Service' ? '✅ En service' : (data.bus_Status === 'Maintenance' ? '⚠️ Maintenance' : '❌ Hors service')}</p>
+        <p><strong>Chauffeur:</strong> ${data.bus_CurrentDriverId || 'Non assigné'}</p>
+        <p><strong>Latitude:</strong> ${data.bus_CurrentLatitude || '-'}</p>
+        <p><strong>Longitude:</strong> ${data.bus_CurrentLongitude || '-'}</p>
+        </div></div></div>`;
+        $('#detailsContent').html(html);
+        $('#detailsModal').modal('show');
+        }).fail(function() { $('#detailsContent').html('<div class="alert alert-danger">Erreur</div>'); $('#detailsModal').modal('show'); });
+        });
 
-            $('#saveEditBtn').click(function() {
-                var formData = {
-                    Bus_Id: $('#edit_Bus_Id').val(),
-                    Bus_Code: $('#edit_Code').val(),
-                    Bus_PlateNumber: $('#edit_PlateNumber').val(),
-                    Bus_Brand: $('#edit_Brand').val(),
-                    Bus_Model: $('#edit_Model').val(),
-                    Bus_Year: $('#edit_Year').val() === '' ? null : parseInt($('#edit_Year').val()),
-                    Bus_Capacity: $('#edit_Capacity').val() === '' ? null : parseInt($('#edit_Capacity').val()),
-                    Bus_Status: $('#edit_Status').val(),
-                    Bus_CurrentDriverId: $('#edit_DriverId').val() === '' ? null : parseInt($('#edit_DriverId').val()),
-                    Bus_CurrentLatitude: $('#edit_Latitude').val() === '' ? null : parseFloat($('#edit_Latitude').val()),
-                    Bus_CurrentLongitude: $('#edit_Longitude').val() === '' ? null : parseFloat($('#edit_Longitude').val())
-                };
+        // Edit
+        $('.edit-btn').click(function() {
+        var id = $(this).data('id');
+        $.get('/Buses/GetBusData/' + id, function(data) {
+        $('#editBusIdDisplay').text(data.bus_Id);
+        $('#editBusIdDisplayBody').text(data.bus_Id);
+        $('#edit_Bus_Id').val(data.bus_Id);
+        $('#edit_Code').val(data.bus_Code);
+        $('#edit_PlateNumber').val(data.bus_PlateNumber);
+        $('#edit_Brand').val(data.bus_Brand);
+        $('#edit_Model').val(data.bus_Model);
+        $('#edit_Year').val(data.bus_Year);
+        $('#edit_Capacity').val(data.bus_Capacity);
+        $('#edit_Status').val(data.bus_Status);
+        $('#edit_DriverId').val(data.bus_CurrentDriverId);
+        $('#edit_Latitude').val(data.bus_CurrentLatitude);
+        $('#edit_Longitude').val(data.bus_CurrentLongitude);
+        $('#editModal').modal('show');
+        }).fail(function() { alert('Erreur'); });
+        });
 
-                $.ajax({
-                    url: '/Buses/UpdateBus',
-                    type: 'POST',
-                    contentType: 'application/json',
-                    data: JSON.stringify(formData),
-                    success: function(response) {
-                        if (response.success) {
-                            alert('✅ ' + response.message);
-                            location.reload();
-                        } else {
-                            alert('❌ Erreur : ' + (response.message || 'Vérifiez les données'));
-                        }
-                    },
-                    error: function() {
-                        alert('❌ Erreur lors de l\'envoi.');
-                    }
-                });
-            });
+        $('#saveEditBtn').click(function() {
+        var formData = {
+        Bus_Id: $('#edit_Bus_Id').val(),
+        Bus_Code: $('#edit_Code').val(),
+        Bus_PlateNumber: $('#edit_PlateNumber').val(),
+        Bus_Brand: $('#edit_Brand').val(),
+        Bus_Model: $('#edit_Model').val(),
+        Bus_Year: $('#edit_Year').val() === '' ? null : parseInt($('#edit_Year').val()),
+        Bus_Capacity: $('#edit_Capacity').val() === '' ? null : parseInt($('#edit_Capacity').val()),
+        Bus_Status: $('#edit_Status').val(),
+        Bus_CurrentDriverId: $('#edit_DriverId').val() === '' ? null : parseInt($('#edit_DriverId').val()),
+        Bus_CurrentLatitude: $('#edit_Latitude').val() === '' ? null : parseFloat($('#edit_Latitude').val()),
+        Bus_CurrentLongitude: $('#edit_Longitude').val() === '' ? null : parseFloat($('#edit_Longitude').val())
+        };
+        $.ajax({ url: '/Buses/UpdateBus', type: 'POST', contentType: 'application/json', data: JSON.stringify(formData), success: function(r) { if (r.success) { alert('✅ ' + r.message); location.reload(); } else alert('❌ ' + r.message); }, error: function() { alert('Erreur'); } });
+        });
         });
     </script>
 }

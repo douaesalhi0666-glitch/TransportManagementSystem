@@ -60,16 +60,27 @@
         box-shadow: 0 2px 8px rgba(0, 0, 0, 0.03);
     }
 
+    .table-container {
+        max-height: calc(100vh - 280px);
+        overflow-y: auto;
+        border-radius: 12px;
+        border: 1px solid #e2e8f0;
+        position: relative;
+    }
+
     .table-custom {
         font-size: 0.8rem;
-        border-radius: 12px;
-        overflow: hidden;
-        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+        width: 100%;
+        border-collapse: collapse;
+        margin-bottom: 0;
     }
 
         .table-custom thead {
+            position: sticky;
+            top: 0;
             background: linear-gradient(135deg, var(--navy), var(--navy-mid));
             color: white;
+            z-index: 10;
         }
 
             .table-custom thead th {
@@ -80,12 +91,14 @@
                 letter-spacing: 0.05em;
                 padding: 14px 12px;
                 border: none;
+                white-space: nowrap;
             }
 
         .table-custom tbody td {
             padding: 12px;
             vertical-align: middle;
             border-bottom: 1px solid #e2e8f0;
+            white-space: nowrap;
         }
 
         .table-custom tbody tr:hover {
@@ -185,6 +198,42 @@
             background: #475569;
         }
 
+    .export-buttons {
+        display: flex;
+        gap: 10px;
+        margin-left: auto;
+    }
+
+    .btn-export-excel {
+        background: linear-gradient(135deg, #1e7e34, #28a745);
+        color: white;
+        border: none;
+        border-radius: 10px;
+        padding: 8px 18px;
+        font-weight: 600;
+        font-size: 0.85rem;
+    }
+
+        .btn-export-excel:hover {
+            background: linear-gradient(135deg, #155d27, #1e7e34);
+            transform: translateY(-1px);
+        }
+
+    .btn-export-pdf {
+        background: linear-gradient(135deg, #c82333, #dc3545);
+        color: white;
+        border: none;
+        border-radius: 10px;
+        padding: 8px 18px;
+        font-weight: 600;
+        font-size: 0.85rem;
+    }
+
+        .btn-export-pdf:hover {
+            background: linear-gradient(135deg, #a71d2a, #c82333);
+            transform: translateY(-1px);
+        }
+
     .search-input:focus, .form-select:focus {
         border-color: var(--amber);
         box-shadow: 0 0 0 3px rgba(245, 166, 35, 0.15);
@@ -204,11 +253,11 @@
 </div>
 
 <div class="filter-bar">
-    <div class="row g-3">
+    <div class="row g-3 align-items-center">
         <div class="col-md-4">
             <input type="text" id="searchInput" class="form-control search-input" placeholder="Rechercher par ID, prénom ou nom" />
         </div>
-        <div class="col-md-4">
+        <div class="col-md-3">
             <select id="ratingFilter" class="form-select">
                 <option value="">Toutes les notes</option>
                 <option value="Excellent">Excellent</option>
@@ -217,15 +266,25 @@
                 <option value="Médiocre">Médiocre</option>
             </select>
         </div>
-        <div class="col-md-4">
+        <div class="col-md-2">
             <button id="resetFilter" class="btn btn-secondary-custom w-100">
                 <i class="fas fa-undo-alt me-1"></i>Réinitialiser
             </button>
         </div>
+        <div class="col-md-3">
+            <div class="export-buttons">
+                <button id="exportExcelBtn" class="btn-export-excel">
+                    <i class="fas fa-file-excel me-2"></i>Excel
+                </button>
+                <button id="exportPdfBtn" class="btn-export-pdf">
+                    <i class="fas fa-file-pdf me-2"></i>PDF
+                </button>
+            </div>
+        </div>
     </div>
 </div>
 
-<div class="table-responsive">
+<div class="table-container">
     <table class="table table-custom" id="driversTable">
         <thead>
             <tr>
@@ -301,6 +360,10 @@
 
 @section Scripts {
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://cdn.sheetjs.com/xlsx-0.20.2/package/dist/xlsx.full.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.29/jspdf.plugin.autotable.min.js"></script>
+
     <script>
         $(document).ready(function() {
         function filterTable() {
@@ -312,17 +375,12 @@
         var firstName = $(this).find('td:nth-child(2)').text();
         var lastName = $(this).find('td:nth-child(3)').text();
         var rowRating = $(this).data('rating');
-
         var matchSearch = (id.toLowerCase().indexOf(searchText) !== -1) ||
         (firstName.toLowerCase().indexOf(searchText) !== -1) ||
         (lastName.toLowerCase().indexOf(searchText) !== -1);
         var matchRating = (rating === '' || rowRating === rating);
-
-        if (matchSearch && matchRating) {
-        $(this).show();
-        } else {
-        $(this).hide();
-        }
+        if (matchSearch && matchRating) $(this).show();
+        else $(this).hide();
         });
         }
 
@@ -332,6 +390,62 @@
         $('#searchInput').val('');
         $('#ratingFilter').val('');
         filterTable();
+        });
+
+        // Export Excel
+        $('#exportExcelBtn').click(function() {
+        var data = [];
+        var headers = [];
+        $('#driversTable thead th').each(function() {
+        var text = $(this).text().trim();
+        if (text !== "Actions") headers.push(text);
+        });
+        data.push(headers);
+
+        $('#driversTable tbody tr:visible').each(function() {
+        var row = [];
+        $(this).find('td').each(function(index) {
+        if (index < 8) row.push($(this).text().trim());
+        });
+        data.push(row);
+        });
+
+        var ws = XLSX.utils.aoa_to_sheet(data);
+        var wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, "Chauffeurs");
+        XLSX.writeFile(wb, "Chauffeurs_Export.xlsx");
+        });
+
+        // Export PDF
+        $('#exportPdfBtn').click(function() {
+        const { jsPDF } = window.jspdf;
+        var doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
+        var columns = [];
+        $('#driversTable thead th').each(function() {
+        var text = $(this).text().trim();
+        if (text !== "Actions") columns.push(text);
+        });
+        var rows = [];
+        $('#driversTable tbody tr:visible').each(function() {
+        var row = [];
+        $(this).find('td').each(function(index) {
+        if (index < 8) row.push($(this).text().trim());
+        });
+        rows.push(row);
+        });
+        doc.autoTable({
+        head: [columns],
+        body: rows,
+        theme: 'striped',
+        headStyles: { fillColor: [15, 28, 46], textColor: 255, fontStyle: 'bold' },
+        margin: { top: 20 },
+        didDrawPage: function(data) {
+        doc.setFontSize(12);
+        doc.setTextColor(100);
+        doc.text("Liste des Chauffeurs", data.settings.margin.left, 10);
+        }
+        });
+        doc.save("Chauffeurs_Export.pdf");
         });
         });
     </script>
