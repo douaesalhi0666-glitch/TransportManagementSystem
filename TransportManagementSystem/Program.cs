@@ -38,6 +38,16 @@ app.UseHttpsRedirection();
 app.UseStaticFiles();
 app.UseRouting();
 app.UseSession();
+
+// Middleware anti-cache pour empêcher la navigation arrière après déconnexion
+app.Use(async (context, next) =>
+{
+    context.Response.Headers["Cache-Control"] = "no-cache, no-store, must-revalidate";
+    context.Response.Headers["Pragma"] = "no-cache";
+    context.Response.Headers["Expires"] = "0";
+    await next();
+});
+
 app.UseAuthorization();
 
 app.MapControllerRoute(
@@ -49,7 +59,7 @@ app.MapControllerRoute(
     name: "default",
     pattern: "{controller=Account}/{action=Login}/{id?}");
 
-// ⚠️ Entraînement des modèles APRÈS la construction de l'application
+// Entraînement des modèles
 using (var scope = app.Services.CreateScope())
 {
     var isolationForestService = scope.ServiceProvider.GetRequiredService<IsolationForestService>();
