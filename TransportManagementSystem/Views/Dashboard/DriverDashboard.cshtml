@@ -4,67 +4,276 @@
 }
 
 <style>
-    .bus-marker { background-color: #dc3545; color: white; border-radius: 50%; text-align: center; font-size: 20px; padding: 6px; width: 40px; height: 40px; display: flex; align-items: center; justify-content: center; border: 2px solid white; box-shadow: 0 2px 6px rgba(0,0,0,0.3); }
-    .stop-marker { background-color: #28a745; color: white; border-radius: 50%; text-align: center; font-size: 12px; padding: 4px; width: 24px; height: 24px; display: flex; align-items: center; justify-content: center; border: 1px solid white; box-shadow: 0 1px 3px rgba(0,0,0,0.2); }
+    :root {
+        --navy: #0f1c2e;
+        --navy-mid: #162436;
+        --amber: #f5a623;
+        --amber-glow: rgba(245, 166, 35, 0.1);
+        --text-muted: #64748b;
+    }
+
+    .dash-bg {
+        background: linear-gradient(135deg, #0f1c2e 0%, #1e3250 100%);
+        border-radius: 16px;
+        padding: 28px 32px;
+        margin-bottom: 28px;
+        position: relative;
+        overflow: hidden;
+    }
+
+        .dash-bg h2 {
+            font-size: 1.45rem;
+            font-weight: 700;
+            color: #fff;
+            margin: 0 0 6px;
+        }
+
+        .dash-bg p {
+            font-size: 0.85rem;
+            color: #8da0b8;
+            margin: 0;
+        }
+
+    .dash-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        background: rgba(245,166,35,0.15);
+        border: 1px solid rgba(245,166,35,0.3);
+        color: #f5a623;
+        font-size: 0.72rem;
+        font-weight: 600;
+        padding: 4px 12px;
+        border-radius: 20px;
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
+        margin-bottom: 14px;
+    }
+
+    .info-card {
+        transition: transform 0.2s, box-shadow 0.2s;
+        border: none;
+        border-radius: 16px;
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+        overflow: hidden;
+        height: 100%;
+    }
+
+        .info-card:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 8px 30px rgba(0, 0, 0, 0.12);
+        }
+
+    .card-header-custom {
+        padding: 1rem 1.25rem;
+        border: none;
+        font-family: 'Sora', sans-serif;
+        font-weight: 600;
+        font-size: 0.9rem;
+    }
+
+    .card-body-custom {
+        padding: 1.25rem;
+    }
+
+    .badge-status {
+        font-size: 1rem;
+        padding: 8px 16px;
+        border-radius: 30px;
+        font-weight: 600;
+    }
+
+    .badge-disponible {
+        background: linear-gradient(135deg, #10b981, #059669);
+        color: white;
+    }
+
+    .badge-en-route {
+        background: linear-gradient(135deg, #f59e0b, #d97706);
+        color: white;
+    }
+
+    .badge-indisponible {
+        background: linear-gradient(135deg, #ef4444, #dc2626);
+        color: white;
+    }
+
+    .btn-primary-custom {
+        background: linear-gradient(135deg, #1d4ed8, #3b82f6);
+        border: none;
+        border-radius: 12px;
+        padding: 12px 24px;
+        font-weight: 600;
+        font-size: 0.9rem;
+        transition: transform 0.15s, box-shadow 0.15s;
+        color: white;
+        cursor: pointer;
+    }
+
+        .btn-primary-custom:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(37, 99, 235, 0.3);
+        }
+
+    .btn-success-custom {
+        background: linear-gradient(135deg, #10b981, #059669);
+        border: none;
+        border-radius: 12px;
+        padding: 12px 24px;
+        font-weight: 600;
+        font-size: 0.9rem;
+        transition: transform 0.15s, box-shadow 0.15s;
+        color: white;
+        cursor: pointer;
+    }
+
+        .btn-success-custom:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(16, 185, 129, 0.3);
+        }
+
+    .btn-danger-custom {
+        background: linear-gradient(135deg, #ef4444, #dc2626);
+        border: none;
+        border-radius: 10px;
+        padding: 8px 18px;
+        font-weight: 600;
+        font-size: 0.85rem;
+        transition: transform 0.15s, box-shadow 0.15s;
+        color: white;
+        cursor: pointer;
+        text-decoration: none;
+        display: inline-block;
+    }
+
+        .btn-danger-custom:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(239, 68, 68, 0.3);
+            color: white;
+            text-decoration: none;
+        }
+
+    .card-map {
+        border: none;
+        border-radius: 16px;
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+        overflow: hidden;
+    }
+
+    .bus-marker {
+        background-color: #dc3545;
+        color: white;
+        border-radius: 50%;
+        text-align: center;
+        font-size: 20px;
+        width: 40px;
+        height: 40px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border: 2px solid white;
+        box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+    }
+
+    .stop-marker {
+        background: linear-gradient(135deg, #10b981, #059669);
+        color: white;
+        border-radius: 50%;
+        text-align: center;
+        font-size: 11px;
+        font-weight: bold;
+        width: 24px;
+        height: 24px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border: 2px solid white;
+        box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+    }
+
     .legend {
         background: white;
-        padding: 10px;
-        border-radius: 5px;
-        box-shadow: 0 0 10px rgba(0,0,0,0.2);
+        padding: 10px 14px;
+        border-radius: 12px;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.15);
         font-size: 12px;
+        font-family: 'DM Sans', sans-serif;
         line-height: 1.5;
     }
-    .legend i {
-        display: inline-block;
-        width: 20px;
-        height: 20px;
-        margin-right: 5px;
-        vertical-align: middle;
+
+        .legend i {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            margin-right: 8px;
+            vertical-align: middle;
+            border-radius: 50%;
+        }
+
+        .legend .line-legend {
+            width: 30px;
+            height: 4px;
+            background: #3388ff;
+            border-radius: 2px;
+            display: inline-block;
+            vertical-align: middle;
+            margin-right: 8px;
+        }
+
+    .info-text {
+        color: var(--text-muted);
+        font-size: 0.75rem;
+        margin-top: 8px;
     }
 </style>
 
-<h2>Bonjour, @ViewBag.UserName</h2>
-<p>Bienvenue sur votre tableau de bord chauffeur.</p>
+<div class="dash-bg">
+    <div class="position-relative" style="z-index:1;">
+        <div class="dash-badge"><i class="fas fa-tachometer-alt"></i> Tableau de bord chauffeur</div>
+        <h2>Bonjour, @ViewBag.UserName</h2>
+        <p>Bienvenue sur votre tableau de bord chauffeur</p>
+    </div>
+</div>
 
 <div class="row mb-4">
     <div class="col-md-4">
-        <div class="card">
-            <div class="card-header bg-primary text-white">
-                <h5>🚍 Mon statut</h5>
+        <div class="info-card">
+            <div class="card-header-custom" style="background: linear-gradient(135deg, var(--navy), var(--navy-mid)); color: white;">
+                <i class="fas fa-truck me-2"></i>Mon statut
             </div>
-            <div class="card-body text-center">
-                <h3><span id="driverStatus" class="badge bg-secondary">Chargement...</span></h3>
-                <p class="mt-2 text-muted">
-                    <small>7h-8h: En route | 8h-17h: Disponible | 17h+: En route</small>
+            <div class="card-body-custom text-center">
+                <h3><span id="driverStatus" class="badge-status">Chargement...</span></h3>
+                <p class="info-text mt-2">
+                    <i class="fas fa-clock me-1"></i>7h-8h: En route | 8h-17h: Disponible | 17h+: En route
                 </p>
             </div>
         </div>
     </div>
     <div class="col-md-4">
-        <div class="card">
-            <div class="card-header bg-success text-white">
-                <h5>🚌 Mon bus</h5>
+        <div class="info-card">
+            <div class="card-header-custom" style="background: linear-gradient(135deg, #10b981, #059669); color: white;">
+                <i class="fas fa-bus me-2"></i>Mon bus
             </div>
-            <div class="card-body">
-                <p><strong>Code :</strong> <span id="busCode">-</span></p>
-                <p><strong>Plaque :</strong> <span id="busPlate">-</span></p>
-                <p><strong>Modèle :</strong> <span id="busModel">-</span></p>
-                <p><strong>Statut bus :</strong> <span id="busStatus">-</span></p>
+            <div class="card-body-custom">
+                <p><strong><i class="fas fa-barcode me-1" style="color: var(--amber);"></i>Code :</strong> <span id="busCode">-</span></p>
+                <p><strong><i class="fas fa-id-card me-1" style="color: var(--amber);"></i>Plaque :</strong> <span id="busPlate">-</span></p>
+                <p><strong><i class="fas fa-car me-1" style="color: var(--amber);"></i>Modèle :</strong> <span id="busModel">-</span></p>
+                <p><strong><i class="fas fa-info-circle me-1" style="color: var(--amber);"></i>Statut bus :</strong> <span id="busStatus">-</span></p>
             </div>
         </div>
     </div>
     <div class="col-md-4">
-        <div class="card border-success">
-            <div class="card-header bg-success text-white">
-                <h5>🏁 Terminer ma journée</h5>
+        <div class="info-card">
+            <div class="card-header-custom" style="background: linear-gradient(135deg, #10b981, #059669); color: white;">
+                <i class="fas fa-flag-checkered me-2"></i>Terminer ma journée
             </div>
-            <div class="card-body text-center">
-                <button id="completeMissionBtn" class="btn btn-success btn-lg">
-                    ✅ Terminer ma mission
+            <div class="card-body-custom text-center">
+                <button id="completeMissionBtn" class="btn-success-custom w-100">
+                    <i class="fas fa-check-circle me-2"></i>Terminer ma mission
                 </button>
                 <div id="missionStatus" class="mt-3"></div>
-                <small class="text-muted d-block mt-2">
-                    À cliquer APRÈS avoir déposé le dernier personnel.
+                <small class="info-text d-block mt-2">
+                    <i class="fas fa-info-circle me-1"></i>À cliquer APRÈS avoir déposé le dernier personnel.
                 </small>
             </div>
         </div>
@@ -73,14 +282,22 @@
 
 <div class="row mb-4">
     <div class="col-md-12">
-        <div class="card">
-            <div class="card-header bg-info text-white">
-                <h5>📍 Mon trajet</h5>
+        <div class="info-card">
+            <div class="card-header-custom" style="background: linear-gradient(135deg, #06b6d4, #0891b2); color: white;">
+                <i class="fas fa-route me-2"></i>Mon trajet
             </div>
-            <div class="card-body">
-                <p><strong>Nom :</strong> <span id="trajName">-</span></p>
-                <p><strong>Code :</strong> <span id="trajCode">-</span></p>
-                <p><strong>Arrêts à desservir :</strong> <span id="stopCount">-</span></p>
+            <div class="card-body-custom">
+                <div class="row">
+                    <div class="col-md-4">
+                        <p><strong><i class="fas fa-tag me-1" style="color: var(--amber);"></i>Nom :</strong> <span id="trajName">-</span></p>
+                    </div>
+                    <div class="col-md-4">
+                        <p><strong><i class="fas fa-code me-1" style="color: var(--amber);"></i>Code :</strong> <span id="trajCode">-</span></p>
+                    </div>
+                    <div class="col-md-4">
+                        <p><strong><i class="fas fa-map-pin me-1" style="color: var(--amber);"></i>Arrêts à desservir :</strong> <span id="stopCount">-</span></p>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
@@ -88,15 +305,15 @@
 
 <div class="row">
     <div class="col-12">
-        <div class="card">
-            <div class="card-header bg-info text-white">
-                <h5>🗺️ Carte de navigation - Points de ramassage</h5>
+        <div class="card-map">
+            <div class="card-header-custom" style="background: linear-gradient(135deg, var(--navy), var(--navy-mid)); color: white;">
+                <i class="fas fa-map me-2"></i>Carte de navigation - Points de ramassage
             </div>
-            <div class="card-body">
-                <div id="map" style="height: 500px; width: 100%; border-radius: 10px;"></div>
-                <div class="mt-3 text-center">
-                    <button id="updateLocationBtn" class="btn btn-primary btn-lg">
-                        📍 Mettre à jour ma position
+            <div class="card-body-custom">
+                <div id="map" style="height: 500px; width: 100%; border-radius: 12px;"></div>
+                <div class="text-center mt-3">
+                    <button id="updateLocationBtn" class="btn-primary-custom">
+                        <i class="fas fa-location-dot me-2"></i>Mettre à jour ma position
                     </button>
                 </div>
             </div>
@@ -106,7 +323,9 @@
 
 <div class="row mt-4">
     <div class="col-12">
-        <a href="/Account/Logout" class="btn btn-danger">🔓 Se déconnecter</a>
+        <a href="/Account/Logout" class="btn-danger-custom">
+            <i class="fas fa-sign-out-alt me-2"></i>Se déconnecter
+        </a>
     </div>
 </div>
 
@@ -119,154 +338,154 @@
         const SPEED_KMH = 30;
 
         function haversine(lat1, lon1, lat2, lon2) {
-            const R = 6371e3;
-            const φ1 = lat1 * Math.PI / 180;
-            const φ2 = lat2 * Math.PI / 180;
-            const Δφ = (lat2 - lat1) * Math.PI / 180;
-            const Δλ = (lon2 - lon1) * Math.PI / 180;
-            const a = Math.sin(Δφ/2) * Math.sin(Δφ/2) +
-                      Math.cos(φ1) * Math.cos(φ2) *
-                      Math.sin(Δλ/2) * Math.sin(Δλ/2);
-            const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-            return R * c;
+        const R = 6371e3;
+        const φ1 = lat1 * Math.PI / 180;
+        const φ2 = lat2 * Math.PI / 180;
+        const Δφ = (lat2 - lat1) * Math.PI / 180;
+        const Δλ = (lon2 - lon1) * Math.PI / 180;
+        const a = Math.sin(Δφ/2) * Math.sin(Δφ/2) +
+        Math.cos(φ1) * Math.cos(φ2) *
+        Math.sin(Δλ/2) * Math.sin(Δλ/2);
+        const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+        return R * c;
         }
 
         async function updateDriverStatus() {
-            try {
-                const response = await fetch('/Drivers/GetCurrentStatus');
-                const data = await response.json();
-                const statusSpan = document.getElementById('driverStatus');
-                statusSpan.innerHTML = data.statusText;
-                statusSpan.className = 'badge ' + data.statusClass;
-            } catch (error) {
-                console.error('Erreur statut:', error);
-            }
+        try {
+        const response = await fetch('/Drivers/GetCurrentStatus');
+        const data = await response.json();
+        const statusSpan = document.getElementById('driverStatus');
+        statusSpan.innerHTML = data.statusText;
+        statusSpan.className = 'badge-status ' + data.statusClass;
+        } catch (error) {
+        console.error('Erreur statut:', error);
+        }
         }
 
         async function loadDriverData() {
-            try {
-                const response = await fetch('/Drivers/GetDashboardData');
-                if (!response.ok) throw new Error('Erreur API');
-                const data = await response.json();
-                
-                if (data.hasBus) {
-                    document.getElementById('busCode').innerText = data.bus.bus_Code || '-';
-                    document.getElementById('busPlate').innerText = data.bus.bus_PlateNumber || '-';
-                    document.getElementById('busModel').innerText = `${data.bus.bus_Brand || ''} ${data.bus.bus_Model || ''}`.trim() || '-';
-                    document.getElementById('busStatus').innerText = data.bus.bus_Status || '-';
-                    
-                    if (data.trajectory) {
-                        document.getElementById('trajName').innerHTML = data.trajectory.trajectory_Name || '-';
-                        document.getElementById('trajCode').innerHTML = data.trajectory.trajectory_Code || '-';
-                        document.getElementById('stopCount').innerHTML = (data.stops?.length || 0).toString();
-                    } else {
-                        document.getElementById('trajName').innerHTML = '<span class="text-muted">Aucun trajet assigné</span>';
-                        document.getElementById('trajCode').innerHTML = '-';
-                        document.getElementById('stopCount').innerHTML = '0';
-                    }
-                    
-                    const busLat = parseFloat(data.bus.currentLatitude);
-                    const busLng = parseFloat(data.bus.currentLongitude);
-                    const hasValidBusPos = !isNaN(busLat) && !isNaN(busLng);
-                    
-                    if (!map) {
-                        map = L.map('map').setView([34.0, -6.8], 10);
-                        L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
-                            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a> & CartoDB'
-                        }).addTo(map);
-                        L.control.scale({ metric: true, imperial: false }).addTo(map);
-                        let legend = L.control({ position: 'bottomright' });
-                        legend.onAdd = function() {
-                            let div = L.DomUtil.create('div', 'legend');
-                            div.innerHTML = `
-                                <div><i style="background:#dc3545; border-radius:50%;"></i> Ma position (bus)</div>
-                                <div><i style="background:#28a745; border-radius:50%;"></i> Points de ramassage</div>
-                                <div><i style="background:#3388ff; width:20px; height:4px;"></i> Trajet</div>
-                            `;
-                            return div;
-                        };
-                        legend.addTo(map);
-                    }
-                    
-                    if (busMarker) map.removeLayer(busMarker);
-                    if (hasValidBusPos) {
-                        const busIcon = L.divIcon({ html: '<div>🚌</div>', iconSize: [40, 40], className: 'bus-marker' });
-                        busMarker = L.marker([busLat, busLng], { icon: busIcon }).bindPopup('Ma position actuelle').addTo(map);
-                    }
-                    
-                    if (trajectoryLine) map.removeLayer(trajectoryLine);
-                    if (data.stops && data.stops.length > 0) {
-                        const validStops = data.stops.filter(s => !isNaN(parseFloat(s.tS_Latitude)) && !isNaN(parseFloat(s.tS_Longitude)));
-                        if (validStops.length > 0) {
-                            const points = validStops.map(s => [parseFloat(s.tS_Latitude), parseFloat(s.tS_Longitude)]);
-                            trajectoryLine = L.polyline(points, { color: '#3388ff', weight: 5, opacity: 0.8 }).addTo(map);
-                            map.fitBounds(points);
-                            
-                            validStops.forEach(stop => {
-                                let etaText = "";
-                                if (hasValidBusPos) {
-                                    const distanceToStop = haversine(busLat, busLng, stop.tS_Latitude, stop.tS_Longitude);
-                                    const etaMin = Math.round(distanceToStop / 1000 / SPEED_KMH * 60);
-                                    etaText = `<br/><small>🚏 ETA: ${etaMin} min</small><br/><small>👥 ${stop.workers_At_Stop || 0} personnels</small>`;
-                                }
-                                const stopIcon = L.divIcon({ html: stop.tS_OrderIndex.toString(), iconSize: [24, 24], className: 'stop-marker' });
-                                L.marker([stop.tS_Latitude, stop.tS_Longitude], { icon: stopIcon })
-                                    .bindPopup(`<strong>${stop.tS_Name}</strong>${etaText}`)
-                                    .addTo(map);
-                            });
-                        }
-                    } else if (hasValidBusPos) {
-                        map.setView([busLat, busLng], 13);
-                    }
-                } else {
-                    document.getElementById('busCode').innerHTML = '<span class="text-muted">Aucun bus assigné</span>';
-                }
-            } catch (error) {
-                console.error('Erreur chargement:', error);
-            }
+        try {
+        const response = await fetch('/Drivers/GetDashboardData');
+        if (!response.ok) throw new Error('Erreur API');
+        const data = await response.json();
+
+        if (data.hasBus) {
+        document.getElementById('busCode').innerText = data.bus.bus_Code || '-';
+        document.getElementById('busPlate').innerText = data.bus.bus_PlateNumber || '-';
+        document.getElementById('busModel').innerText = `${data.bus.bus_Brand || ''} ${data.bus.bus_Model || ''}`.trim() || '-';
+        document.getElementById('busStatus').innerText = data.bus.bus_Status || '-';
+
+        if (data.trajectory) {
+        document.getElementById('trajName').innerHTML = data.trajectory.trajectory_Name || '-';
+        document.getElementById('trajCode').innerHTML = data.trajectory.trajectory_Code || '-';
+        document.getElementById('stopCount').innerHTML = (data.stops?.length || 0).toString();
+        } else {
+        document.getElementById('trajName').innerHTML = '<span class="text-muted">Aucun trajet assigné</span>';
+        document.getElementById('trajCode').innerHTML = '-';
+        document.getElementById('stopCount').innerHTML = '0';
+        }
+
+        const busLat = parseFloat(data.bus.currentLatitude);
+        const busLng = parseFloat(data.bus.currentLongitude);
+        const hasValidBusPos = !isNaN(busLat) && !isNaN(busLng);
+
+        if (!map) {
+        map = L.map('map').setView([34.0, -6.8], 10);
+        L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
+        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a> & CartoDB'
+        }).addTo(map);
+        L.control.scale({ metric: true, imperial: false }).addTo(map);
+        let legend = L.control({ position: 'bottomright' });
+        legend.onAdd = function() {
+        let div = L.DomUtil.create('div', 'legend');
+        div.innerHTML = `
+        <div><i style="background:#dc3545;"></i> Ma position (bus)</div>
+        <div><i style="background:#10b981;"></i> Points de ramassage</div>
+        <div><span class="line-legend"></span> Trajet</div>
+        `;
+        return div;
+        };
+        legend.addTo(map);
+        }
+
+        if (busMarker) map.removeLayer(busMarker);
+        if (hasValidBusPos) {
+        const busIcon = L.divIcon({ html: '<div>🚌</div>', iconSize: [40, 40], className: 'bus-marker' });
+        busMarker = L.marker([busLat, busLng], { icon: busIcon }).bindPopup('Ma position actuelle').addTo(map);
+        }
+
+        if (trajectoryLine) map.removeLayer(trajectoryLine);
+        if (data.stops && data.stops.length > 0) {
+        const validStops = data.stops.filter(s => !isNaN(parseFloat(s.tS_Latitude)) && !isNaN(parseFloat(s.tS_Longitude)));
+        if (validStops.length > 0) {
+        const points = validStops.map(s => [parseFloat(s.tS_Latitude), parseFloat(s.tS_Longitude)]);
+        trajectoryLine = L.polyline(points, { color: '#3388ff', weight: 5, opacity: 0.8 }).addTo(map);
+        map.fitBounds(points);
+
+        validStops.forEach(stop => {
+        let etaText = "";
+        if (hasValidBusPos) {
+        const distanceToStop = haversine(busLat, busLng, stop.tS_Latitude, stop.tS_Longitude);
+        const etaMin = Math.round(distanceToStop / 1000 / SPEED_KMH * 60);
+        etaText = `<br/><small>ETA: ${etaMin} min</small><br/><small>Personnels: ${stop.workers_At_Stop || 0}</small>`;
+        }
+        const stopIcon = L.divIcon({ html: stop.tS_OrderIndex.toString(), iconSize: [24, 24], className: 'stop-marker' });
+        L.marker([stop.tS_Latitude, stop.tS_Longitude], { icon: stopIcon })
+        .bindPopup(`<strong>${stop.tS_Name}</strong>${etaText}`)
+        .addTo(map);
+        });
+        }
+        } else if (hasValidBusPos) {
+        map.setView([busLat, busLng], 13);
+        }
+        } else {
+        document.getElementById('busCode').innerHTML = '<span class="text-muted">Aucun bus assigné</span>';
+        }
+        } catch (error) {
+        console.error('Erreur chargement:', error);
+        }
         }
 
         document.getElementById('completeMissionBtn').addEventListener('click', async () => {
-            if (confirm('Avez-vous déposé TOUS les personnels ?')) {
-                try {
-                    const response = await fetch('/Drivers/CompleteMission', { method: 'POST' });
-                    const result = await response.json();
-                    const missionDiv = document.getElementById('missionStatus');
-                    if (result.success) {
-                        missionDiv.innerHTML = '<div class="alert alert-success">✅ ' + result.message + '</div>';
-                        updateDriverStatus();
-                        setTimeout(() => missionDiv.innerHTML = '', 5000);
-                    } else {
-                        missionDiv.innerHTML = '<div class="alert alert-danger">❌ ' + result.message + '</div>';
-                    }
-                } catch (err) {
-                    missionDiv.innerHTML = '<div class="alert alert-danger">❌ Erreur réseau</div>';
-                }
-            }
+        if (confirm('Avez-vous déposé TOUS les personnels ?')) {
+        try {
+        const response = await fetch('/Drivers/CompleteMission', { method: 'POST' });
+        const result = await response.json();
+        const missionDiv = document.getElementById('missionStatus');
+        if (result.success) {
+        missionDiv.innerHTML = '<div class="alert alert-success">' + result.message + '</div>';
+        updateDriverStatus();
+        setTimeout(() => missionDiv.innerHTML = '', 5000);
+        } else {
+        missionDiv.innerHTML = '<div class="alert alert-danger">' + result.message + '</div>';
+        }
+        } catch (err) {
+        missionDiv.innerHTML = '<div class="alert alert-danger">Erreur réseau</div>';
+        }
+        }
         });
 
         document.getElementById('updateLocationBtn').addEventListener('click', () => {
-            if (!navigator.geolocation) {
-                alert("Géolocalisation non supportée.");
-                return;
-            }
-            navigator.geolocation.getCurrentPosition(async (position) => {
-                try {
-                    const response = await fetch('/Drivers/UpdateBusLocation', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ latitude: position.coords.latitude, longitude: position.coords.longitude })
-                    });
-                    if (response.ok) {
-                        alert("Position mise à jour !");
-                        loadDriverData();
-                    } else {
-                        alert("Erreur lors de la mise à jour.");
-                    }
-                } catch (err) {
-                    alert("Erreur réseau.");
-                }
-            }, () => alert("Impossible d'obtenir la position."));
+        if (!navigator.geolocation) {
+        alert("Géolocalisation non supportée.");
+        return;
+        }
+        navigator.geolocation.getCurrentPosition(async (position) => {
+        try {
+        const response = await fetch('/Drivers/UpdateBusLocation', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ latitude: position.coords.latitude, longitude: position.coords.longitude })
+        });
+        if (response.ok) {
+        alert("Position mise à jour !");
+        loadDriverData();
+        } else {
+        alert("Erreur lors de la mise à jour.");
+        }
+        } catch (err) {
+        alert("Erreur réseau.");
+        }
+        }, () => alert("Impossible d'obtenir la position."));
         });
 
         updateDriverStatus();

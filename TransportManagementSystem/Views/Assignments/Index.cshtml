@@ -3,30 +3,266 @@
     Layout = "~/Views/Shared/_Layout.cshtml";
 }
 
-<h1>🔗 Gestion des Assignations</h1>
-<hr />
+<style>
+    :root {
+        --navy: #0f1c2e;
+        --navy-mid: #162436;
+        --amber: #f5a623;
+        --amber-glow: rgba(245, 166, 35, 0.1);
+        --text-muted: #64748b;
+    }
+
+    .page-header {
+        margin-bottom: 1.5rem;
+        padding-bottom: 0.5rem;
+        border-bottom: 2px solid var(--amber-glow);
+    }
+
+        .page-header h1 {
+            font-family: 'Sora', sans-serif;
+            font-size: 1.5rem;
+            font-weight: 700;
+            margin: 0;
+        }
+
+        .page-header p {
+            color: var(--text-muted);
+            font-size: 0.85rem;
+            margin: 4px 0 0 0;
+        }
+
+    .card-custom {
+        border: none;
+        border-radius: 16px;
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+        overflow: hidden;
+        transition: transform 0.2s, box-shadow 0.2s;
+    }
+
+        .card-custom:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 30px rgba(0, 0, 0, 0.12);
+        }
+
+    .card-header-custom {
+        background: linear-gradient(135deg, var(--navy), var(--navy-mid));
+        color: white;
+        padding: 1rem 1.25rem;
+        border: none;
+    }
+
+        .card-header-custom h4 {
+            margin: 0;
+            font-family: 'Sora', sans-serif;
+            font-size: 1rem;
+            font-weight: 600;
+        }
+
+    .card-body-custom {
+        padding: 1.5rem;
+    }
+
+    .form-label-custom {
+        font-size: 0.75rem;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        color: #475569;
+        margin-bottom: 0.5rem;
+        display: block;
+    }
+
+    .form-control-custom, .form-select-custom {
+        border: 1.5px solid #e2e8f0;
+        border-radius: 10px;
+        padding: 0.6rem 0.75rem;
+        font-size: 0.9rem;
+        transition: all 0.15s;
+        width: 100%;
+    }
+
+        .form-control-custom:focus, .form-select-custom:focus {
+            border-color: var(--amber);
+            box-shadow: 0 0 0 3px rgba(245, 166, 35, 0.15);
+            outline: none;
+        }
+
+    .btn-assign {
+        background: linear-gradient(135deg, #1d4ed8, #3b82f6);
+        border: none;
+        border-radius: 10px;
+        padding: 10px 24px;
+        font-weight: 600;
+        font-size: 0.85rem;
+        transition: transform 0.15s, box-shadow 0.15s;
+        color: white;
+        cursor: pointer;
+        width: 100%;
+    }
+
+        .btn-assign:hover {
+            background: linear-gradient(135deg, #1e40af, #2563eb);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(37, 99, 235, 0.3);
+        }
+
+    .btn-unassign {
+        background: linear-gradient(135deg, #ef4444, #dc2626);
+        border: none;
+        border-radius: 8px;
+        padding: 5px 12px;
+        font-size: 0.7rem;
+        font-weight: 600;
+        transition: transform 0.15s, box-shadow 0.15s;
+        color: white;
+        cursor: pointer;
+    }
+
+        .btn-unassign:hover {
+            background: linear-gradient(135deg, #dc2626, #b91c1c);
+            transform: translateY(-1px);
+            box-shadow: 0 2px 6px rgba(239, 68, 68, 0.4);
+        }
+
+    .btn-secondary-custom {
+        background: #64748b;
+        border: none;
+        border-radius: 10px;
+        padding: 8px 18px;
+        font-weight: 600;
+        font-size: 0.85rem;
+        transition: transform 0.15s, background 0.15s;
+        color: white;
+        text-decoration: none;
+        display: inline-block;
+    }
+
+        .btn-secondary-custom:hover {
+            background: #475569;
+            transform: translateY(-1px);
+            color: white;
+            text-decoration: none;
+        }
+
+    .section-title {
+        font-family: 'Sora', sans-serif;
+        font-size: 1.1rem;
+        font-weight: 700;
+        color: var(--navy);
+        margin: 1.5rem 0 1rem 0;
+        padding-bottom: 0.5rem;
+        border-bottom: 2px solid var(--amber-glow);
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+
+    .table-custom {
+        font-size: 0.8rem;
+        border-radius: 12px;
+        overflow: hidden;
+        border: 1px solid #e2e8f0;
+        width: 100%;
+        border-collapse: collapse;
+    }
+
+        .table-custom thead {
+            background: #f8fafc;
+            color: var(--navy);
+            border-bottom: 2px solid #e2e8f0;
+        }
+
+            .table-custom thead th {
+                padding: 14px 12px;
+                font-weight: 700;
+                font-size: 0.75rem;
+                text-transform: uppercase;
+                letter-spacing: 0.05em;
+            }
+
+        .table-custom tbody td {
+            padding: 12px;
+            border-bottom: 1px solid #e2e8f0;
+        }
+
+        .table-custom tbody tr:hover {
+            background-color: var(--amber-glow);
+        }
+
+    .badge-assigned {
+        background: linear-gradient(135deg, #10b981, #059669);
+        color: white;
+        padding: 4px 10px;
+        border-radius: 20px;
+        font-size: 0.7rem;
+        font-weight: 600;
+        display: inline-block;
+    }
+
+    .badge-unassigned {
+        background: #94a3b8;
+        color: white;
+        padding: 4px 10px;
+        border-radius: 20px;
+        font-size: 0.7rem;
+        font-weight: 600;
+        display: inline-block;
+    }
+
+    .alert-success-custom {
+        background: linear-gradient(135deg, #d1fae5, #a7f3d0);
+        border-left: 4px solid #10b981;
+        color: #065f46;
+        padding: 0.75rem 1rem;
+        border-radius: 10px;
+        margin-bottom: 1rem;
+    }
+
+    .alert-danger-custom {
+        background: linear-gradient(135deg, #fee2e2, #fecaca);
+        border-left: 4px solid #ef4444;
+        color: #991b1b;
+        padding: 0.75rem 1rem;
+        border-radius: 10px;
+        margin-bottom: 1rem;
+    }
+
+    hr {
+        border-color: #e2e8f0;
+        margin: 1.5rem 0;
+    }
+</style>
+
+<div class="page-header">
+    <h1><i class="fas fa-link me-2" style="color: var(--amber);"></i>Gestion des Assignations</h1>
+    <p>Assignez les chauffeurs aux bus ou libérez-les</p>
+</div>
 
 @if (TempData["Success"] != null)
 {
-    <div class="alert alert-success">✅ @TempData["Success"]</div>
+    <div class="alert-success-custom">
+        <i class="fas fa-check-circle me-2"></i>@TempData["Success"]
+    </div>
 }
 
 @if (TempData["Error"] != null)
 {
-    <div class="alert alert-danger">❌ @TempData["Error"]</div>
+    <div class="alert-danger-custom">
+        <i class="fas fa-exclamation-circle me-2"></i>@TempData["Error"]
+    </div>
 }
 
 <div class="row mt-4">
     <div class="col-md-6">
-        <div class="card">
-            <div class="card-header bg-primary text-white">
-                <h4>🚛 Assigner un chauffeur à un bus</h4>
+        <div class="card-custom">
+            <div class="card-header-custom">
+                <h4><i class="fas fa-exchange-alt me-2"></i>Assigner un chauffeur à un bus</h4>
             </div>
-            <div class="card-body">
+            <div class="card-body-custom">
                 <form method="post" action="/Assignments/AssignDriverToBus">
                     <div class="mb-3">
-                        <label>Chauffeur</label>
-                        <select name="driverId" class="form-control" required>
+                        <label class="form-label-custom"><i class="fas fa-id-card me-1"></i>Chauffeur</label>
+                        <select name="driverId" class="form-select-custom" required>
                             <option value="">-- Sélectionner un chauffeur --</option>
                             @foreach (var driver in ViewBag.Drivers)
                             {
@@ -38,8 +274,8 @@
                         </select>
                     </div>
                     <div class="mb-3">
-                        <label>Bus</label>
-                        <select name="busId" class="form-control" required>
+                        <label class="form-label-custom"><i class="fas fa-bus me-1"></i>Bus</label>
+                        <select name="busId" class="form-select-custom" required>
                             <option value="">-- Sélectionner un bus --</option>
                             @foreach (var bus in ViewBag.Buses)
                             {
@@ -50,57 +286,73 @@
                             }
                         </select>
                     </div>
-                    <button type="submit" class="btn btn-primary w-100">Assigner</button>
+                    <button type="submit" class="btn-assign">
+                        <i class="fas fa-link me-2"></i>Assigner
+                    </button>
                 </form>
             </div>
         </div>
     </div>
 </div>
 
-<hr />
-<h3>📋 Assignations actuelles (Chauffeur ↔ Bus)</h3>
+<div class="section-title">
+    <i class="fas fa-list-check" style="color: var(--amber);"></i>
+    Assignations actuelles (Chauffeur ↔ Bus)
+</div>
 
-<table class="table table-striped">
-    <thead>
-        <tr>
-            <th>Bus</th>
-            <th>Plaque</th>
-            <th>Chauffeur</th>
-            <th>Actions</th>
-        </tr>
-    </thead>
-    <tbody>
-        @foreach (var bus in ViewBag.Buses)
-        {
+<div class="table-responsive">
+    <table class="table-custom">
+        <thead>
             <tr>
-                <td>@bus.Bus_Code</td>
-                <td>@bus.Bus_PlateNumber</td>
-                <td>
-                    @if (bus.CurrentDriver != null)
-                    {
-                        @bus.CurrentDriver.Driver_FirstName @bus.CurrentDriver.Driver_LastName
-                    }
-                    else
-                    {
-                        <span class="text-muted">Non assigné</span>
-                    }
-                </td>
-                <td>
-                    @if (bus.CurrentDriver != null)
-                    {
-                        <form method="post" action="/Assignments/UnassignDriver" style="display:inline;">
-                            <input type="hidden" name="driverId" value="@bus.CurrentDriver.Driver_id" />
-                            <button type="submit" class="btn btn-sm btn-danger">Libérer chauffeur</button>
-                        </form>
-                    }
-                    else
-                    {
-                        <span class="text-muted">-</span>
-                    }
-                </td>
+                <th><i class="fas fa-bus me-1"></i>Bus</th>
+                <th><i class="fas fa-plate me-1"></i>Plaque</th>
+                <th><i class="fas fa-user me-1"></i>Chauffeur</th>
+                <th><i class="fas fa-cog me-1"></i>Actions</th>
             </tr>
-        }
-    </tbody>
-</table>
+        </thead>
+        <tbody>
+            @foreach (var bus in ViewBag.Buses)
+            {
+                <tr>
+                    <td><strong>@bus.Bus_Code</strong></td>
+                    <td>@bus.Bus_PlateNumber</td>
+                    <td>
+                        @if (bus.CurrentDriver != null)
+                        {
+                            <span class="badge-assigned">
+                                <i class="fas fa-user-check me-1"></i>@bus.CurrentDriver.Driver_FirstName @bus.CurrentDriver.Driver_LastName
+                            </span>
+                        }
+                        else
+                        {
+                            <span class="badge-unassigned">
+                                <i class="fas fa-user-slash me-1"></i>Non assigné
+                            </span>
+                        }
+                    </td>
+                    <td>
+                        @if (bus.CurrentDriver != null)
+                        {
+                            <form method="post" action="/Assignments/UnassignDriver" style="display:inline;">
+                                <input type="hidden" name="driverId" value="@bus.CurrentDriver.Driver_id" />
+                                <button type="submit" class="btn-unassign">
+                                    <i class="fas fa-unlink me-1"></i>Libérer chauffeur
+                                </button>
+                            </form>
+                        }
+                        else
+                        {
+                            <span class="text-muted">-</span>
+                        }
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+</div>
 
-<a href="/Dashboard/AdminDashboard" class="btn btn-secondary">Retour au Dashboard</a>
+<div class="mt-4">
+    <a href="/Dashboard/AdminDashboard" class="btn btn-secondary-custom">
+        <i class="fas fa-arrow-left me-2"></i>Retour au Dashboard
+    </a>
+</div>

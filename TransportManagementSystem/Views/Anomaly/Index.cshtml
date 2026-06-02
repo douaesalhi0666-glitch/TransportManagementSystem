@@ -1,21 +1,279 @@
 ﻿@model IEnumerable<TransportManagementSystem.Models.AnomalyLog>
-<h2>📋 Anomalies détectées</h2>
-<table class="table table-striped">
-    <thead>
-        <tr><th>Date</th><th>Type</th><th>Description</th><th>Bus</th><th>Personnel</th><th>Sévérité</th><th>Résolu</th></tr>
-    </thead>
-    <tbody>
-        @foreach (var a in Model)
-        {
-            <tr>
-                <td>@a.Timestamp</td>
-                <td>@a.AnomalyType</td>
-                <td>@a.Description</td>
-                <td>@a.BusId</td>
-                <td>@a.PersonnelId</td>
-                <td>@a.SeverityScore.ToString("P0")</td>
-                <td>@(a.IsResolved ? "✅" : "❌")</td>
-            </tr>
+
+@{
+    ViewData["Title"] = "Anomalies";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+<style>
+    :root {
+        --navy: #0f1c2e;
+        --navy-mid: #162436;
+        --amber: #f5a623;
+        --amber-glow: rgba(245, 166, 35, 0.1);
+        --text-muted: #64748b;
+    }
+
+    .page-header {
+        margin-bottom: 1.5rem;
+        padding-bottom: 0.5rem;
+        border-bottom: 2px solid var(--amber-glow);
+    }
+
+        .page-header h1 {
+            font-family: 'Sora', sans-serif;
+            font-size: 1.5rem;
+            font-weight: 700;
+            margin: 0;
         }
-    </tbody>
-</table>
+
+        .page-header p {
+            color: var(--text-muted);
+            font-size: 0.85rem;
+            margin: 4px 0 0 0;
+        }
+
+    .filter-bar {
+        background: linear-gradient(135deg, #f8fafc, #ffffff);
+        padding: 1.25rem;
+        border-radius: 16px;
+        margin-bottom: 1.5rem;
+        border: 1px solid #e2e8f0;
+    }
+
+    .table-container {
+        border-radius: 12px;
+        border: 1px solid #e2e8f0;
+        overflow: hidden;
+    }
+
+    .table-custom {
+        font-size: 0.8rem;
+        width: 100%;
+        border-collapse: collapse;
+        margin-bottom: 0;
+    }
+
+        .table-custom thead {
+            background: #f8fafc;
+            color: var(--navy);
+            border-bottom: 2px solid #e2e8f0;
+        }
+
+            .table-custom thead th {
+                font-family: 'Sora', sans-serif;
+                font-size: 0.75rem;
+                font-weight: 700;
+                text-transform: uppercase;
+                letter-spacing: 0.05em;
+                padding: 14px 12px;
+                border: none;
+            }
+
+        .table-custom tbody td {
+            padding: 12px;
+            border-bottom: 1px solid #e2e8f0;
+            vertical-align: middle;
+        }
+
+        .table-custom tbody tr:hover {
+            background-color: var(--amber-glow);
+        }
+
+    .badge-severity {
+        padding: 4px 10px;
+        border-radius: 20px;
+        font-size: 0.7rem;
+        font-weight: 600;
+        display: inline-block;
+    }
+
+    .severity-high {
+        background: linear-gradient(135deg, #ef4444, #dc2626);
+        color: white;
+    }
+
+    .severity-medium {
+        background: linear-gradient(135deg, #f59e0b, #d97706);
+        color: white;
+    }
+
+    .severity-low {
+        background: linear-gradient(135deg, #10b981, #059669);
+        color: white;
+    }
+
+    .badge-resolved {
+        background: linear-gradient(135deg, #10b981, #059669);
+        color: white;
+        padding: 4px 10px;
+        border-radius: 20px;
+        font-size: 0.7rem;
+        font-weight: 600;
+        display: inline-block;
+    }
+
+    .badge-unresolved {
+        background: linear-gradient(135deg, #ef4444, #dc2626);
+        color: white;
+        padding: 4px 10px;
+        border-radius: 20px;
+        font-size: 0.7rem;
+        font-weight: 600;
+        display: inline-block;
+    }
+
+    .btn-secondary-custom {
+        background: #64748b;
+        border: none;
+        border-radius: 10px;
+        padding: 8px 18px;
+        font-weight: 600;
+        font-size: 0.85rem;
+        transition: transform 0.15s, background 0.15s;
+        color: white;
+        text-decoration: none;
+        display: inline-block;
+    }
+
+        .btn-secondary-custom:hover {
+            background: #475569;
+            transform: translateY(-1px);
+            color: white;
+            text-decoration: none;
+        }
+
+    .search-input:focus, .form-select:focus {
+        border-color: var(--amber);
+        box-shadow: 0 0 0 3px rgba(245, 166, 35, 0.15);
+        outline: none;
+    }
+</style>
+
+<div class="page-header d-flex justify-content-between align-items-center flex-wrap gap-3">
+    <div>
+        <h1><i class="fas fa-exclamation-triangle me-2" style="color: var(--amber);"></i>Anomalies détectées</h1>
+        <p>Consultez et suivez les anomalies identifiées par le système</p>
+    </div>
+    <div>
+        <a href="/Dashboard/AdminDashboard" class="btn btn-secondary-custom">
+            <i class="fas fa-arrow-left me-2"></i>Retour au Dashboard
+        </a>
+    </div>
+</div>
+
+<div class="filter-bar">
+    <div class="row g-3">
+        <div class="col-md-3">
+            <input type="text" id="searchInput" class="form-control search-input" placeholder="Rechercher..." />
+        </div>
+        <div class="col-md-3">
+            <select id="typeFilter" class="form-select">
+                <option value="">Tous les types</option>
+                <option value="Speed">Speed</option>
+                <option value="Route Deviation">Route Deviation</option>
+                <option value="Maintenance">Maintenance</option>
+                <option value="Overload">Overload</option>
+                <option value="Other">Other</option>
+            </select>
+        </div>
+        <div class="col-md-3">
+            <select id="severityFilter" class="form-select">
+                <option value="">Toutes les sévérités</option>
+                <option value="High">Haute</option>
+                <option value="Medium">Moyenne</option>
+                <option value="Low">Basse</option>
+            </select>
+        </div>
+        <div class="col-md-3">
+            <select id="resolvedFilter" class="form-select">
+                <option value="">Tous</option>
+                <option value="true">Résolu</option>
+                <option value="false">Non résolu</option>
+            </select>
+        </div>
+    </div>
+</div>
+
+<div class="table-container">
+    <table class="table-custom" id="anomaliesTable">
+        <thead>
+            <tr>
+                <th>Date</th>
+                <th>Type</th>
+                <th>Description</th>
+                <th>Bus</th>
+                <th>Personnel</th>
+                <th>Sévérité</th>
+                <th>Résolu</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var a in Model)
+            {
+                var severityClass = a.SeverityScore > 0.7 ? "severity-high" : (a.SeverityScore > 0.3 ? "severity-medium" : "severity-low");
+                var severityText = a.SeverityScore > 0.7 ? "Haute" : (a.SeverityScore > 0.3 ? "Moyenne" : "Basse");
+                <tr data-type="@a.AnomalyType" data-severity="@severityText" data-resolved="@a.IsResolved">
+                    <td>@a.Timestamp.ToString("dd/MM/yyyy HH:mm")</td>
+                    <td><span class="badge-severity @severityClass" style="background: linear-gradient(135deg, #06b6d4, #0891b2);">@a.AnomalyType</span></td>
+                    <td>@a.Description</td>
+                    <td>@(a.BusId.HasValue ? a.BusId.ToString() : "-")</td>
+                    <td>@(a.PersonnelId.HasValue ? a.PersonnelId.ToString() : "-")</td>
+                    <td><span class="badge-severity @severityClass">@severityText (@((a.SeverityScore * 100).ToString("F0"))%)</span></td>
+                    <td>
+                        @if (a.IsResolved)
+                        {
+                            <span class="badge-resolved"><i class="fas fa-check-circle me-1"></i>Résolu</span>
+                        }
+                        else
+                        {
+                            <span class="badge-unresolved"><i class="fas fa-times-circle me-1"></i>Non résolu</span>
+                        }
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+</div>
+
+<div class="mt-4">
+    <a href="/Dashboard/AdminDashboard" class="btn btn-secondary-custom">
+        <i class="fas fa-arrow-left me-2"></i>Retour au Dashboard
+    </a>
+</div>
+
+@section Scripts {
+    <script>
+        $(document).ready(function() {
+            function filterTable() {
+                var search = $('#searchInput').val().toLowerCase();
+                var type = $('#typeFilter').val();
+                var severity = $('#severityFilter').val();
+                var resolved = $('#resolvedFilter').val();
+
+                $('#anomaliesTable tbody tr').each(function() {
+                    var text = $(this).text().toLowerCase();
+                    var rowType = $(this).data('type');
+                    var rowSeverity = $(this).data('severity');
+                    var rowResolved = $(this).data('resolved');
+
+                    var matchSearch = (search === '' || text.indexOf(search) !== -1);
+                    var matchType = (type === '' || rowType === type);
+                    var matchSeverity = (severity === '' || rowSeverity === severity);
+                    var matchResolved = (resolved === '' || rowResolved.toString() === resolved);
+
+                    if (matchSearch && matchType && matchSeverity && matchResolved) {
+                        $(this).show();
+                    } else {
+                        $(this).hide();
+                    }
+                });
+            }
+
+            $('#searchInput').on('keyup', filterTable);
+            $('#typeFilter').on('change', filterTable);
+            $('#severityFilter').on('change', filterTable);
+            $('#resolvedFilter').on('change', filterTable);
+        });
+    </script>
+}

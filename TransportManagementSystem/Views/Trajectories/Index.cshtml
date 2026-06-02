@@ -24,6 +24,13 @@
             font-family: 'Sora', sans-serif;
             font-size: 1.5rem;
             font-weight: 700;
+            margin: 0;
+        }
+
+        .page-header p {
+            color: var(--text-muted);
+            font-size: 0.85rem;
+            margin: 4px 0 0 0;
         }
 
     .btn-primary-custom {
@@ -31,7 +38,21 @@
         border: none;
         border-radius: 10px;
         padding: 8px 18px;
+        font-weight: 600;
+        font-size: 0.85rem;
+        transition: transform 0.2s, box-shadow 0.2s;
+        color: white;
+        text-decoration: none;
+        display: inline-block;
     }
+
+        .btn-primary-custom:hover {
+            background: linear-gradient(135deg, #1e40af, #2563eb);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(37, 99, 235, 0.3);
+            color: white;
+            text-decoration: none;
+        }
 
     .filter-bar {
         background: linear-gradient(135deg, #f8fafc, #ffffff);
@@ -59,15 +80,20 @@
         .trajectories-table thead {
             position: sticky;
             top: 0;
-            background: linear-gradient(135deg, var(--navy), var(--navy-mid));
-            color: white;
+            background: #f8fafc;
+            color: var(--navy);
             z-index: 10;
+            border-bottom: 2px solid #e2e8f0;
         }
 
             .trajectories-table thead th {
                 padding: 14px 12px;
                 font-weight: 700;
+                font-size: 0.8rem;
+                text-transform: uppercase;
+                letter-spacing: 0.05em;
                 white-space: nowrap;
+                color: var(--navy);
             }
 
         .trajectories-table tbody td {
@@ -86,44 +112,79 @@
         padding: 4px 10px;
         border-radius: 20px;
         font-size: 0.7rem;
+        font-weight: 600;
         display: inline-block;
     }
 
     .badge-inactive {
         background: linear-gradient(135deg, #ef4444, #dc2626);
         color: white;
+        padding: 4px 10px;
+        border-radius: 20px;
+        font-size: 0.7rem;
+        font-weight: 600;
+        display: inline-block;
     }
 
     .btn-sm-custom {
         padding: 5px 12px;
         font-size: 0.7rem;
         border-radius: 8px;
+        transition: transform 0.15s, box-shadow 0.15s;
+        border: none;
+        cursor: pointer;
     }
+
+        .btn-sm-custom:hover {
+            transform: translateY(-1px);
+        }
 
     .btn-info-custom {
         background: linear-gradient(135deg, #3b82f6, #2563eb);
         color: white;
-        border: none;
     }
+
+        .btn-info-custom:hover {
+            box-shadow: 0 2px 6px rgba(59, 130, 246, 0.4);
+        }
 
     .btn-warning-custom {
         background: linear-gradient(135deg, #f59e0b, #d97706);
         color: white;
-        border: none;
     }
+
+        .btn-warning-custom:hover {
+            box-shadow: 0 2px 6px rgba(245, 158, 11, 0.4);
+        }
 
     .btn-danger-custom {
         background: linear-gradient(135deg, #ef4444, #dc2626);
         color: white;
-        border: none;
     }
+
+        .btn-danger-custom:hover {
+            box-shadow: 0 2px 6px rgba(239, 68, 68, 0.4);
+        }
 
     .btn-secondary-custom {
         background: #64748b;
         border: none;
         border-radius: 10px;
         padding: 8px 18px;
+        font-weight: 600;
+        font-size: 0.85rem;
+        transition: transform 0.15s, background 0.15s;
+        color: white;
+        text-decoration: none;
+        display: inline-block;
     }
+
+        .btn-secondary-custom:hover {
+            background: #475569;
+            transform: translateY(-1px);
+            color: white;
+            text-decoration: none;
+        }
 
     .export-buttons {
         display: flex;
@@ -134,15 +195,55 @@
     .btn-export-excel {
         background: linear-gradient(135deg, #1e7e34, #28a745);
         color: white;
+        border: none;
         border-radius: 10px;
         padding: 8px 18px;
+        font-weight: 600;
+        font-size: 0.85rem;
+        transition: transform 0.2s, box-shadow 0.2s;
+        cursor: pointer;
     }
+
+        .btn-export-excel:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 6px 14px rgba(30, 126, 52, 0.35);
+        }
+
+        .btn-export-excel:active {
+            transform: translateY(0px);
+        }
 
     .btn-export-pdf {
         background: linear-gradient(135deg, #c82333, #dc3545);
         color: white;
+        border: none;
         border-radius: 10px;
         padding: 8px 18px;
+        font-weight: 600;
+        font-size: 0.85rem;
+        transition: transform 0.2s, box-shadow 0.2s;
+        cursor: pointer;
+    }
+
+        .btn-export-pdf:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 6px 14px rgba(200, 35, 51, 0.35);
+        }
+
+        .btn-export-pdf:active {
+            transform: translateY(0px);
+        }
+
+    .action-buttons {
+        display: flex;
+        gap: 6px;
+        flex-wrap: wrap;
+    }
+
+    .search-input:focus, .form-select:focus {
+        border-color: var(--amber);
+        box-shadow: 0 0 0 3px rgba(245, 166, 35, 0.15);
+        outline: none;
     }
 </style>
 
@@ -161,7 +262,7 @@
 <div class="filter-bar">
     <div class="row g-3 align-items-center">
         <div class="col-md-4">
-            <input type="text" id="searchInput" class="form-control" placeholder="Rechercher par ID, nom ou code" />
+            <input type="text" id="searchInput" class="form-control search-input" placeholder="Rechercher par ID, nom ou code" />
         </div>
         <div class="col-md-3">
             <select id="statusFilter" class="form-select">
@@ -209,26 +310,49 @@
                     <td>@(item.Trajectory_Description ?? "-")</td>
                     <td>@(item.Trajectory_DistanceKm?.ToString("F2") ?? "-")</td>
                     <td>@(item.Trajectory_EstimatedDurationMinutes ?? 0)</td>
-                    <td>@if (item.Trajectory_Status == "Active") {
-                        <span class="badge-active">✓ Actif</span>
-                    } else
-                    {
-
-                        <span class="badge-active" style="background: linear-gradient(135deg, #ef4444, #dc2626);">✗ Inactif</span>
-                    }
-                </td>
-                <td><button type="button" class="btn-sm-custom btn-info-custom" onclick="showPersonnel(@item.Trajectory_Id, '@item.Trajectory_Name')"><i class="fas fa-users"></i> Voir</button></td>
-                <td class="action-buttons">
-                    <button type="button" class="btn-sm-custom btn-info-custom details-btn" data-id="@item.Trajectory_Id" data-name="@item.Trajectory_Name" data-code="@item.Trajectory_Code" data-description="@item.Trajectory_Description" data-distance="@item.Trajectory_DistanceKm" data-duration="@item.Trajectory_EstimatedDurationMinutes" data-status="@item.Trajectory_Status" data-startlat="@item.Trajectory_StartLatitude" data-startlng="@item.Trajectory_StartLongitude" data-endlat="@item.Trajectory_EndLatitude" data-endlng="@item.Trajectory_EndLongitude"><i class="fas fa-eye"></i> Détails</button>
-                    <button type="button" class="btn-sm-custom btn-warning-custom edit-btn" data-id="@item.Trajectory_Id"><i class="fas fa-pen"></i> Modifier</button>
-                    <form asp-action="Delete" asp-route-id="@item.Trajectory_Id" method="post" style="display:inline;" onsubmit="return confirm('Supprimer ce trajet ?');">
-                        <button type="submit" class="btn-sm-custom btn-danger-custom"><i class="fas fa-trash"></i> Supprimer</button>
-                    </form>
-                </td>
-            </tr>
-        }
-    </tbody>
-</table>
+                    <td>
+                        @if (item.Trajectory_Status == "Active")
+                        {
+                            <span class="badge-active"><i class="fas fa-check-circle me-1"></i>Actif</span>
+                        }
+                        else
+                        {
+                            <span class="badge-inactive"><i class="fas fa-times-circle me-1"></i>Inactif</span>
+                        }
+                    </td>
+                    <td>
+                        <button type="button" class="btn-sm-custom btn-info-custom" onclick="showPersonnel(@item.Trajectory_Id, '@item.Trajectory_Name')">
+                            <i class="fas fa-users"></i> Voir
+                        </button>
+                    </td>
+                    <td class="action-buttons">
+                        <button type="button" class="btn-sm-custom btn-info-custom details-btn"
+                                data-id="@item.Trajectory_Id"
+                                data-name="@item.Trajectory_Name"
+                                data-code="@item.Trajectory_Code"
+                                data-description="@item.Trajectory_Description"
+                                data-distance="@item.Trajectory_DistanceKm"
+                                data-duration="@item.Trajectory_EstimatedDurationMinutes"
+                                data-status="@item.Trajectory_Status"
+                                data-startlat="@item.Trajectory_StartLatitude"
+                                data-startlng="@item.Trajectory_StartLongitude"
+                                data-endlat="@item.Trajectory_EndLatitude"
+                                data-endlng="@item.Trajectory_EndLongitude">
+                            <i class="fas fa-eye"></i> Détails
+                        </button>
+                        <button type="button" class="btn-sm-custom btn-warning-custom edit-btn" data-id="@item.Trajectory_Id">
+                            <i class="fas fa-pen"></i> Modifier
+                        </button>
+                        <form asp-action="Delete" asp-route-id="@item.Trajectory_Id" method="post" style="display:inline;" onsubmit="return confirm('Supprimer ce trajet ?');">
+                            <button type="submit" class="btn-sm-custom btn-danger-custom">
+                                <i class="fas fa-trash"></i> Supprimer
+                            </button>
+                        </form>
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
 </div>
 
 <div class="mt-4">
@@ -237,12 +361,117 @@
     </a>
 </div>
 
-<!-- Modals (inchangés) -->
-<div class="modal fade" id="personnelModal" tabindex="-1"><div class="modal-dialog modal-xl"><div class="modal-content"><div class="modal-header" style="background: linear-gradient(135deg, #0f1c2e, #162436); color: white;"><h5 class="modal-title">👥 Personnels du trajet</h5><button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button></div><div class="modal-body"><div id="personnelModalContent">Chargement...</div></div><div class="modal-footer"><button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fermer</button></div></div></div></div>
+<!-- Personnel Modal -->
+<div class="modal fade" id="personnelModal" tabindex="-1">
+    <div class="modal-dialog modal-xl">
+        <div class="modal-content">
+            <div class="modal-header" style="background: linear-gradient(135deg, #0f1c2e, #162436); color: white;">
+                <h5 class="modal-title"><i class="fas fa-users me-2"></i>Personnels du trajet</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div id="personnelModalContent">Chargement...</div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fermer</button>
+            </div>
+        </div>
+    </div>
+</div>
 
-<div class="modal fade" id="editModal" tabindex="-1"><div class="modal-dialog modal-lg"><div class="modal-content"><div class="modal-header" style="background: linear-gradient(135deg, #0f1c2e, #162436); color: white;"><h5 class="modal-title">✏️ Modifier le trajet</h5><button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button></div><div class="modal-body"><form id="editForm"><input type="hidden" id="edit_Trajectory_Id" /><div class="row"><div class="col-md-6 mb-2"><label>Nom</label><input type="text" id="edit_Name" class="form-control" required /></div><div class="col-md-6 mb-2"><label>Code</label><input type="text" id="edit_Code" class="form-control" required /></div></div><div class="mb-2"><label>Description</label><textarea id="edit_Description" class="form-control" rows="2"></textarea></div><div class="row"><div class="col-md-6 mb-2"><label>Distance (km)</label><input type="number" step="0.01" id="edit_Distance" class="form-control" /></div><div class="col-md-6 mb-2"><label>Durée (min)</label><input type="number" id="edit_Duration" class="form-control" /></div></div><h5 class="mt-3">📍 Départ</h5><div class="row"><div class="col-md-6 mb-2"><label>Latitude départ</label><input type="number" step="any" id="edit_StartLat" class="form-control" /></div><div class="col-md-6 mb-2"><label>Longitude départ</label><input type="number" step="any" id="edit_StartLng" class="form-control" /></div></div><h5 class="mt-3">🏁 Arrivée</h5><div class="row"><div class="col-md-6 mb-2"><label>Latitude arrivée</label><input type="number" step="any" id="edit_EndLat" class="form-control" /></div><div class="col-md-6 mb-2"><label>Longitude arrivée</label><input type="number" step="any" id="edit_EndLng" class="form-control" /></div></div><div class="row"><div class="col-md-6 mb-2"><label>Statut</label><select id="edit_Status" class="form-select"><option value="Active">Actif</option><option value="Inactive">Inactif</option></select></div></div></form></div><div class="modal-footer"><button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button><button type="button" id="saveEditBtn" class="btn btn-primary-custom">Enregistrer</button></div></div></div></div>
+<!-- Edit Modal -->
+<div class="modal fade" id="editModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header" style="background: linear-gradient(135deg, #0f1c2e, #162436); color: white;">
+                <h5 class="modal-title"><i class="fas fa-pen me-2"></i>Modifier le trajet</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="editForm">
+                    <input type="hidden" id="edit_Trajectory_Id" />
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label class="form-label-custom">Nom</label>
+                            <input type="text" id="edit_Name" class="form-control" required />
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label-custom">Code</label>
+                            <input type="text" id="edit_Code" class="form-control" required />
+                        </div>
+                    </div>
+                    <div class="mt-2">
+                        <label class="form-label-custom">Description</label>
+                        <textarea id="edit_Description" class="form-control" rows="2"></textarea>
+                    </div>
+                    <div class="row g-3 mt-2">
+                        <div class="col-md-6">
+                            <label class="form-label-custom">Distance (km)</label>
+                            <input type="number" step="0.01" id="edit_Distance" class="form-control" />
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label-custom">Durée (min)</label>
+                            <input type="number" id="edit_Duration" class="form-control" />
+                        </div>
+                    </div>
+                    <h5 class="mt-3" style="color: var(--amber);"><i class="fas fa-map-marker-alt me-2"></i>Départ</h5>
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label class="form-label-custom">Latitude départ</label>
+                            <input type="number" step="any" id="edit_StartLat" class="form-control" />
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label-custom">Longitude départ</label>
+                            <input type="number" step="any" id="edit_StartLng" class="form-control" />
+                        </div>
+                    </div>
+                    <h5 class="mt-3" style="color: var(--amber);"><i class="fas fa-flag-checkered me-2"></i>Arrivée</h5>
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label class="form-label-custom">Latitude arrivée</label>
+                            <input type="number" step="any" id="edit_EndLat" class="form-control" />
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label-custom">Longitude arrivée</label>
+                            <input type="number" step="any" id="edit_EndLng" class="form-control" />
+                        </div>
+                    </div>
+                    <div class="row g-3 mt-2">
+                        <div class="col-md-6">
+                            <label class="form-label-custom">Statut</label>
+                            <select id="edit_Status" class="form-select">
+                                <option value="Active">Actif</option>
+                                <option value="Inactive">Inactif</option>
+                            </select>
+                        </div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
+                <button type="button" id="saveEditBtn" class="btn btn-primary-custom">Enregistrer</button>
+            </div>
+        </div>
+    </div>
+</div>
 
-<div class="modal fade" id="detailsModal" tabindex="-1"><div class="modal-dialog modal-lg"><div class="modal-content"><div class="modal-header" style="background: linear-gradient(135deg, #0f1c2e, #162436); color: white;"><h5 class="modal-title">📋 Détails du trajet</h5><button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button></div><div class="modal-body"><div id="detailsContent" class="row">Chargement...</div></div><div class="modal-footer"><button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fermer</button></div></div></div></div>
+<!-- Details Modal -->
+<div class="modal fade" id="detailsModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header" style="background: linear-gradient(135deg, #0f1c2e, #162436); color: white;">
+                <h5 class="modal-title"><i class="fas fa-info-circle me-2"></i>Détails du trajet</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div id="detailsContent" class="row">Chargement...</div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fermer</button>
+            </div>
+        </div>
+    </div>
+</div>
 
 @section Scripts {
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
@@ -275,11 +504,11 @@
         // Export Excel
         $('#exportExcelBtn').click(function() {
         var data = [], headers = [];
-        $('#trajectoriesTable thead th').each(function() { var t = $(this).text().trim(); if (t !== "Actions") headers.push(t); });
+        $('#trajectoriesTable thead th').each(function() { var t = $(this).text().trim(); if (t !== "Actions" && t !== "Personnels") headers.push(t); });
         data.push(headers);
         $('#trajectoriesTable tbody tr:visible').each(function() {
         var row = [];
-        $(this).find('td').each(function(idx) { if (idx < 8) row.push($(this).text().trim()); });
+        $(this).find('td').each(function(idx) { if (idx < 7) row.push($(this).text().trim()); });
         data.push(row);
         });
         var ws = XLSX.utils.aoa_to_sheet(data);
@@ -293,18 +522,18 @@
         const { jsPDF } = window.jspdf;
         var doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
         var columns = [];
-        $('#trajectoriesTable thead th').each(function() { var t = $(this).text().trim(); if (t !== "Actions") columns.push(t); });
+        $('#trajectoriesTable thead th').each(function() { var t = $(this).text().trim(); if (t !== "Actions" && t !== "Personnels") columns.push(t); });
         var rows = [];
         $('#trajectoriesTable tbody tr:visible').each(function() {
         var row = [];
-        $(this).find('td').each(function(idx) { if (idx < 8) row.push($(this).text().trim()); });
+        $(this).find('td').each(function(idx) { if (idx < 7) row.push($(this).text().trim()); });
         rows.push(row);
         });
         doc.autoTable({ head: [columns], body: rows, theme: 'striped', headStyles: { fillColor: [15, 28, 46], textColor: 255 }, margin: { top: 20 }, didDrawPage: (data) => { doc.setFontSize(12); doc.text("Liste des Trajets", data.settings.margin.left, 10); } });
         doc.save("Trajets_Export.pdf");
         });
 
-        // Détails
+        // Details
         $('.details-btn').click(function() {
         var id = $(this).data('id');
         var name = $(this).data('name');
@@ -317,7 +546,33 @@
         var startLng = $(this).data('startlng');
         var endLat = $(this).data('endlat');
         var endLng = $(this).data('endlng');
-        var html = `<div class="col-md-6"><div class="card"><div class="card-header">Informations générales</div><div class="card-body"><p><strong>ID:</strong> ${id}</p><p><strong>Nom:</strong> ${name}</p><p><strong>Code:</strong> ${code}</p><p><strong>Description:</strong> ${description || '-'}</p><p><strong>Distance:</strong> ${distance || '-'} km</p><p><strong>Durée:</strong> ${duration || '-'} min</p><p><strong>Statut:</strong> ${status === 'Active' ? '✅ Actif' : '❌ Inactif'}</p></div></div></div><div class="col-md-6"><div class="card"><div class="card-header">Points GPS</div><div class="card-body"><p><strong>📍 Départ:</strong><br/>Lat: ${startLat || '-'}<br/>Lng: ${startLng || '-'}</p><p><strong>🏁 Arrivée:</strong><br/>Lat: ${endLat || '-'}<br/>Lng: ${endLng || '-'}</p></div></div></div>`;
+        var html = `<div class="col-md-6">
+        <div class="card" style="border-radius: 12px; border: 1px solid #e2e8f0;">
+        <div class="card-header" style="background: linear-gradient(135deg, #1d4ed8, #3b82f6); color: white; border-radius: 12px 12px 0 0;">
+        <i class="fas fa-info-circle me-2"></i>Informations générales
+        </div>
+        <div class="card-body">
+        <p><strong>ID:</strong> ${id}</p>
+        <p><strong>Nom:</strong> ${name}</p>
+        <p><strong>Code:</strong> ${code}</p>
+        <p><strong>Description:</strong> ${description || '-'}</p>
+        <p><strong>Distance:</strong> ${distance || '-'} km</p>
+        <p><strong>Durée:</strong> ${duration || '-'} min</p>
+        <p><strong>Statut:</strong> ${status === 'Active' ? '<span class="badge-active">Actif</span>' : '<span class="badge-inactive">Inactif</span>'}</p>
+        </div>
+        </div>
+        </div>
+        <div class="col-md-6">
+        <div class="card" style="border-radius: 12px; border: 1px solid #e2e8f0;">
+        <div class="card-header" style="background: linear-gradient(135deg, #059669, #10b981); color: white; border-radius: 12px 12px 0 0;">
+        <i class="fas fa-map-marker-alt me-2"></i>Points GPS
+        </div>
+        <div class="card-body">
+        <p><strong><i class="fas fa-play-circle me-1" style="color: #10b981;"></i> Départ:</strong><br/>Lat: ${startLat || '-'}<br/>Lng: ${startLng || '-'}</p>
+        <p><strong><i class="fas fa-flag-checkered me-1" style="color: #ef4444;"></i> Arrivée:</strong><br/>Lat: ${endLat || '-'}<br/>Lng: ${endLng || '-'}</p>
+        </div>
+        </div>
+        </div>`;
         $('#detailsContent').html(html);
         $('#detailsModal').modal('show');
         });
@@ -366,13 +621,37 @@
         .then(r => r.json())
         .then(data => {
         if (data.personnel && data.personnel.length) {
-        let html = `<div class="alert alert-info"><strong>📌 Trajet:</strong> ${data.trajectoryName} (${data.trajectoryCode})<br><strong>👥 Nombre:</strong> ${data.personnelCount}</div><div class="table-responsive"><table class="table table-striped"><thead><tr><th>ID</th><th>Prénom</th><th>Nom</th><th>Genre</th><th>Téléphone</th><th>Email</th><th>Code</th><th>Département</th><th>Adresse</th><th>Bus</th><th>Statut</th></tr></thead><tbody>`;
+        let html = `<div class="alert alert-info" style="background: var(--amber-glow); border-left: 4px solid var(--amber);">
+        <i class="fas fa-info-circle me-2"></i>
+        <strong>Trajet:</strong> ${data.trajectoryName} (${data.trajectoryCode})<br>
+        <strong>Nombre:</strong> ${data.personnelCount}
+        </div>
+        <div class="table-responsive">
+        <table class="table table-striped">
+        <thead style="background: linear-gradient(135deg, #0f1c2e, #162436); color: white;">
+        <tr><th>ID</th><th>Prénom</th><th>Nom</th><th>Genre</th><th>Téléphone</th><th>Email</th><th>Code</th><th>Département</th><th>Adresse</th><th>Bus</th><th>Statut</th></tr>
+        </thead>
+        <tbody>`;
         data.personnel.forEach(p => {
-        html += `<tr><td>${p.personnel_Id}</td><td>${p.personnel_FirstName}</td><td>${p.personnel_LastName}</td><td>${p.personnel_Gender === 'Male' ? 'Homme' : 'Femme'}</td><td>${p.personnel_PhoneNumber || '-'}</td><td>${p.personnel_Email || '-'}</td><td>${p.personnel_EmployeeCode}</td><td>${p.personnel_Department || '-'}</td><td>${p.homeAddress || '-'}</td><td>${p.assignedBusCode}</td><td>${p.personnel_Status === 'Active' ? '<span class="badge-active">Actif</span>' : '<span class="badge-inactive">Inactif</span>'}</td></tr>`;
+        html += `<tr>
+        <td>${p.personnel_Id}</td>
+        <td>${p.personnel_FirstName}</td>
+        <td>${p.personnel_LastName}</td>
+        <td>${p.personnel_Gender === 'Male' ? 'Homme' : 'Femme'}</td>
+        <td>${p.personnel_PhoneNumber || '-'}</td>
+        <td>${p.personnel_Email || '-'}</td>
+        <td>${p.personnel_EmployeeCode}</td>
+        <td>${p.personnel_Department || '-'}</td>
+        <td>${p.homeAddress || '-'}</td>
+        <td>${p.assignedBusCode}</td>
+        <td>${p.personnel_Status === 'Active' ? '<span class="badge-active">Actif</span>' : '<span class="badge-inactive">Inactif</span>'}</td>
+        </tr>`;
         });
         html += `</tbody></table></div>`;
         modalContent.innerHTML = html;
-        } else { modalContent.innerHTML = '<div class="alert alert-warning">Aucun personnel assigné.</div>'; }
+        } else {
+        modalContent.innerHTML = '<div class="alert alert-warning">Aucun personnel assigné à ce trajet.</div>';
+        }
         new bootstrap.Modal(document.getElementById('personnelModal')).show();
         })
         .catch(e => { modalContent.innerHTML = '<div class="alert alert-danger">Erreur de chargement.</div>'; new bootstrap.Modal(document.getElementById('personnelModal')).show(); });

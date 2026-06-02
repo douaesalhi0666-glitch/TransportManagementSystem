@@ -34,11 +34,13 @@
         padding: 8px 18px;
         font-weight: 600;
         font-size: 0.85rem;
+        transition: transform 0.2s, box-shadow 0.2s;
     }
 
         .btn-primary-custom:hover {
             background: linear-gradient(135deg, #1e40af, #2563eb);
-            transform: translateY(-1px);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(37, 99, 235, 0.3);
         }
 
     .filter-bar {
@@ -113,6 +115,7 @@
         padding: 5px 12px;
         font-size: 0.7rem;
         border-radius: 8px;
+        transition: transform 0.15s;
     }
 
     .btn-details {
@@ -121,11 +124,21 @@
         border: none;
     }
 
+        .btn-details:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 2px 6px rgba(59, 130, 246, 0.4);
+        }
+
     .btn-edit {
         background: linear-gradient(135deg, #f59e0b, #d97706);
         color: white;
         border: none;
     }
+
+        .btn-edit:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 2px 6px rgba(245, 158, 11, 0.4);
+        }
 
     .btn-delete {
         background: linear-gradient(135deg, #ef4444, #dc2626);
@@ -133,15 +146,22 @@
         border: none;
     }
 
+        .btn-delete:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 2px 6px rgba(239, 68, 68, 0.4);
+        }
+
     .btn-secondary-custom {
         background: #64748b;
         border: none;
         border-radius: 10px;
         padding: 8px 18px;
+        transition: background 0.15s, transform 0.15s;
     }
 
         .btn-secondary-custom:hover {
             background: #475569;
+            transform: translateY(-1px);
         }
 
     .export-buttons {
@@ -153,15 +173,49 @@
     .btn-export-excel {
         background: linear-gradient(135deg, #1e7e34, #28a745);
         color: white;
+        border: none;
         border-radius: 10px;
         padding: 8px 18px;
+        font-weight: 600;
+        font-size: 0.85rem;
+        transition: transform 0.2s, box-shadow 0.2s;
+        cursor: pointer;
     }
+
+        .btn-export-excel:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 6px 14px rgba(30, 126, 52, 0.35);
+        }
+
+        .btn-export-excel:active {
+            transform: translateY(0px);
+        }
 
     .btn-export-pdf {
         background: linear-gradient(135deg, #c82333, #dc3545);
         color: white;
+        border: none;
         border-radius: 10px;
         padding: 8px 18px;
+        font-weight: 600;
+        font-size: 0.85rem;
+        transition: transform 0.2s, box-shadow 0.2s;
+        cursor: pointer;
+    }
+
+        .btn-export-pdf:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 6px 14px rgba(200, 35, 51, 0.35);
+        }
+
+        .btn-export-pdf:active {
+            transform: translateY(0px);
+        }
+
+    .action-buttons {
+        display: flex;
+        gap: 6px;
+        flex-wrap: wrap;
     }
 </style>
 
@@ -244,12 +298,10 @@
                         }
                         else if (item.Bus_Status == "Maintenance")
                         {
-
                             <span class="badge-service" style="background: linear-gradient(135deg, #f59e0b, #d97706);">⚠️ Maintenance</span>
                         }
                         else
                         {
-
                             <span class="badge-service" style="background: linear-gradient(135deg, #ef4444, #dc2626);">❌ Hors service</span>
                         }
                     </td>
@@ -272,7 +324,7 @@
     </a>
 </div>
 
-<!-- Modal d'édition (identique à votre version, mais on garde l'ID et le style) -->
+<!-- Modal d'édition -->
 <div class="modal fade" id="editModal" tabindex="-1" aria-labelledby="editModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-lg">
         <div class="modal-content">
@@ -298,20 +350,23 @@
                         <div class="col-md-4 mb-2"><label>Statut</label><select id="edit_Status" class="form-select"><option value="In Service">En service</option><option value="Maintenance">Maintenance</option><option value="Out of Service">Hors service</option></select></div>
                     </div>
                     <div class="row">
-                        <div class="col-md-6 mb-2"><label>Chauffeur</label><select id="edit_DriverId" class="form-select"><option value="">-- Aucun --</option>@foreach (var driver in ViewBag.Drivers) {
+                        <div class="col-md-6 mb-2">
+                            <label>Chauffeur</label><select id="edit_DriverId" class="form-select">
+                            <option value="">-- Aucun --</option>@foreach (var driver in ViewBag.Drivers) {
                             <option value="@driver.Driver_id">@driver.Driver_FirstName @driver.Driver_LastName</option>
                         }
-                    </select></div>
-                    <div class="col-md-6 mb-2"><label>Latitude</label><input type="text" id="edit_Latitude" class="form-control" /></div>
+                    </select>
                 </div>
-                <div class="row"><div class="col-md-6 mb-2"><label>Longitude</label><input type="text" id="edit_Longitude" class="form-control" /></div></div>
-            </form>
-        </div>
-        <div class="modal-footer">
-            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
-            <button type="button" id="saveEditBtn" class="btn btn-primary-custom">Enregistrer</button>
-        </div>
+                <div class="col-md-6 mb-2"><label>Latitude</label><input type="text" id="edit_Latitude" class="form-control" /></div>
+            </div>
+            <div class="row"><div class="col-md-6 mb-2"><label>Longitude</label><input type="text" id="edit_Longitude" class="form-control" /></div></div>
+        </form>
     </div>
+    <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
+        <button type="button" id="saveEditBtn" class="btn btn-primary-custom">Enregistrer</button>
+    </div>
+</div>
 </div>
 </div>
 

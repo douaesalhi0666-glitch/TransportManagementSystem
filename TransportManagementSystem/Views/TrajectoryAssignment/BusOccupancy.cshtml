@@ -5,32 +5,282 @@
     Layout = "~/Views/Shared/_Layout.cshtml";
 }
 
-<h1>🚌 Gestion des bus</h1>
-<hr />
+<style>
+    :root {
+        --navy: #0f1c2e;
+        --navy-mid: #162436;
+        --amber: #f5a623;
+        --amber-glow: rgba(245, 166, 35, 0.1);
+        --text-muted: #64748b;
+    }
+
+    .page-header {
+        margin-bottom: 1.5rem;
+        padding-bottom: 0.5rem;
+        border-bottom: 2px solid var(--amber-glow);
+    }
+
+        .page-header h1 {
+            font-family: 'Sora', sans-serif;
+            font-size: 1.5rem;
+            font-weight: 700;
+            margin: 0;
+        }
+
+        .page-header p {
+            color: var(--text-muted);
+            font-size: 0.85rem;
+            margin: 4px 0 0 0;
+        }
+
+    .btn-custom {
+        border: none;
+        border-radius: 10px;
+        padding: 8px 18px;
+        font-weight: 600;
+        font-size: 0.85rem;
+        transition: transform 0.15s, box-shadow 0.15s;
+        cursor: pointer;
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+        .btn-custom:hover {
+            transform: translateY(-2px);
+        }
+
+    .btn-warning-custom {
+        background: linear-gradient(135deg, #f59e0b, #d97706);
+        color: white;
+    }
+
+        .btn-warning-custom:hover {
+            box-shadow: 0 4px 12px rgba(245, 158, 11, 0.3);
+        }
+
+    .btn-success-custom {
+        background: linear-gradient(135deg, #10b981, #059669);
+        color: white;
+    }
+
+        .btn-success-custom:hover {
+            box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
+        }
+
+    .btn-primary-custom {
+        background: linear-gradient(135deg, #1d4ed8, #3b82f6);
+        color: white;
+    }
+
+        .btn-primary-custom:hover {
+            box-shadow: 0 4px 12px rgba(37, 99, 235, 0.3);
+        }
+
+    .btn-danger-custom {
+        background: linear-gradient(135deg, #ef4444, #dc2626);
+        color: white;
+    }
+
+        .btn-danger-custom:hover {
+            box-shadow: 0 4px 12px rgba(239, 68, 68, 0.3);
+        }
+
+    .btn-info-custom {
+        background: linear-gradient(135deg, #06b6d4, #0891b2);
+        color: white;
+    }
+
+        .btn-info-custom:hover {
+            box-shadow: 0 4px 12px rgba(6, 182, 212, 0.3);
+        }
+
+    .btn-secondary-custom {
+        background: #64748b;
+        color: white;
+    }
+
+        .btn-secondary-custom:hover {
+            background: #475569;
+            transform: translateY(-1px);
+        }
+
+    .card-custom {
+        border: none;
+        border-radius: 16px;
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+        overflow: hidden;
+        margin-bottom: 1.5rem;
+    }
+
+    .card-header-custom {
+        background: linear-gradient(135deg, var(--navy), var(--navy-mid));
+        color: white;
+        padding: 1rem 1.25rem;
+        border: none;
+    }
+
+        .card-header-custom h4 {
+            margin: 0;
+            font-family: 'Sora', sans-serif;
+            font-size: 1rem;
+            font-weight: 600;
+        }
+
+    .card-body-custom {
+        padding: 1.25rem;
+    }
+
+    .progress {
+        height: 10px;
+        border-radius: 10px;
+        background-color: #e2e8f0;
+        overflow: hidden;
+    }
+
+    .progress-bar {
+        border-radius: 10px;
+    }
+
+    .bg-success-gradient {
+        background: linear-gradient(135deg, #10b981, #059669);
+    }
+
+    .bg-warning-gradient {
+        background: linear-gradient(135deg, #f59e0b, #d97706);
+    }
+
+    .bg-danger-gradient {
+        background: linear-gradient(135deg, #ef4444, #dc2626);
+    }
+
+    .table-custom {
+        font-size: 0.8rem;
+        border-radius: 12px;
+        overflow: hidden;
+        border: 1px solid #e2e8f0;
+        width: 100%;
+        border-collapse: collapse;
+    }
+
+        .table-custom thead {
+            background: #f8fafc;
+            color: var(--navy);
+            border-bottom: 2px solid #e2e8f0;
+        }
+
+            .table-custom thead th {
+                padding: 12px;
+                font-weight: 700;
+                font-size: 0.75rem;
+                text-transform: uppercase;
+                letter-spacing: 0.05em;
+            }
+
+        .table-custom tbody td {
+            padding: 10px 12px;
+            border-bottom: 1px solid #e2e8f0;
+        }
+
+        .table-custom tbody tr:hover {
+            background-color: var(--amber-glow);
+        }
+
+    .alert-success-custom {
+        background: linear-gradient(135deg, #d1fae5, #a7f3d0);
+        border-left: 4px solid #10b981;
+        color: #065f46;
+        padding: 0.75rem 1rem;
+        border-radius: 10px;
+        margin-bottom: 1rem;
+    }
+
+    .alert-danger-custom {
+        background: linear-gradient(135deg, #fee2e2, #fecaca);
+        border-left: 4px solid #ef4444;
+        color: #991b1b;
+        padding: 0.75rem 1rem;
+        border-radius: 10px;
+        margin-bottom: 1rem;
+    }
+
+    .alert-info-custom {
+        background: #eff6ff;
+        border-left: 4px solid #3b82f6;
+        padding: 0.75rem 1rem;
+        border-radius: 10px;
+        margin-bottom: 1rem;
+    }
+
+    .badge-count {
+        background: linear-gradient(135deg, var(--amber), #e69500);
+        color: var(--navy);
+        padding: 2px 8px;
+        border-radius: 20px;
+        font-size: 0.7rem;
+        font-weight: 600;
+    }
+
+    .modal-header-custom {
+        background: linear-gradient(135deg, var(--navy), var(--navy-mid));
+        color: white;
+        border: none;
+    }
+
+    .form-label-custom {
+        font-size: 0.75rem;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        color: #475569;
+        margin-bottom: 0.5rem;
+        display: block;
+    }
+
+    .action-buttons {
+        display: flex;
+        gap: 8px;
+        flex-wrap: wrap;
+    }
+
+    .personnel-scroll-container {
+        max-height: 300px;
+        overflow-y: auto;
+    }
+</style>
+
+<div class="page-header d-flex justify-content-between align-items-center flex-wrap gap-3">
+    <div>
+        <h1><i class="fas fa-chart-bar me-2" style="color: var(--amber);"></i>Occupation des bus</h1>
+        <p>Visualisez et gérez l'assignation des bus aux trajectoires et des personnels aux bus</p>
+    </div>
+</div>
 
 @if (TempData["Success"] != null)
 {
-    <div class="alert alert-success">
-        ✅ @TempData["Success"]
+    <div class="alert-success-custom">
+        <i class="fas fa-check-circle me-2"></i>@TempData["Success"]
     </div>
 }
 
 @if (TempData["Error"] != null)
 {
-    <div class="alert alert-danger">
-        ❌ @TempData["Error"]
+    <div class="alert-danger-custom">
+        <i class="fas fa-exclamation-circle me-2"></i>@TempData["Error"]
     </div>
 }
 
-<div class="row mb-3">
+<div class="row mb-4">
     <div class="col-md-6">
         <form method="post" asp-action="SyncPersonnelBusAssignments" asp-controller="TrajectoryAssignment" class="d-inline">
-            <button type="submit" class="btn btn-warning">🔄 Synchroniser les assignations (Stop → Bus)</button>
+            <button type="submit" class="btn-custom btn-warning-custom">
+                <i class="fas fa-sync-alt me-2"></i>Synchroniser les assignations (Stop → Bus)
+            </button>
         </form>
     </div>
     <div class="col-md-6 text-end">
-        <button type="button" class="btn btn-success" data-bs-toggle="modal" data-bs-target="#assignBusModal">
-            ➕ Assigner un bus à une trajectoire
+        <button type="button" class="btn-custom btn-success-custom" data-bs-toggle="modal" data-bs-target="#assignBusModal">
+            <i class="fas fa-plus-circle me-2"></i>Assigner un bus à une trajectoire
         </button>
     </div>
 </div>
@@ -43,77 +293,91 @@
 
         var capacity = item.Capacity > 0 ? item.Capacity : 1;
         var percentage = (item.Occupancy * 100) / capacity;
-        <div class="card mb-4">
-            <div class="card-header bg-primary text-white">
-                <div class="d-flex justify-content-between align-items-center">
-                    <h4 class="mb-0">🚌 Bus @item.Bus.Bus_Code - @item.Bus.Bus_PlateNumber</h4>
+        var progressBarClass = percentage > 90 ? "bg-danger-gradient" : (percentage > 70 ? "bg-warning-gradient" : "bg-success-gradient");
+
+        <div class="card-custom">
+            <div class="card-header-custom">
+                <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
+                    <h4 class="mb-0">
+                        <i class="fas fa-bus me-2"></i>Bus @item.Bus.Bus_Code - @item.Bus.Bus_PlateNumber
+                    </h4>
                     <div>
-                        <button class="btn btn-sm btn-danger" onclick="unassignBus(@item.Bus.Bus_Id, '@item.Bus.Bus_Code')">
-                            🔓 Désassigner du trajet
+                        <button class="btn-custom btn-danger-custom" style="padding: 5px 12px; font-size: 0.75rem;" onclick="unassignBus(@item.Bus.Bus_Id, '@item.Bus.Bus_Code')">
+                            <i class="fas fa-unlink me-1"></i>Désassigner du trajet
                         </button>
                     </div>
                 </div>
             </div>
-            <div class="card-body">
+            <div class="card-body-custom">
                 <div class="row">
                     <div class="col-md-6">
-                        <p><strong>Chauffeur:</strong> @(item.Bus.CurrentDriver?.Driver_FirstName ?? "Non assigné") @(item.Bus.CurrentDriver?.Driver_LastName ?? "")</p>
-                        <p><strong>Trajectoire:</strong> @(item.Bus.CurrentTrajectory?.Trajectory_Name ?? "Non définie")</p>
-                        <p><strong>Capacité:</strong> @capacity places</p>
-                        <p><strong>Occupation actuelle:</strong> @item.Occupancy / @capacity</p>
-                        <div class="progress mb-3">
-                            <div class="progress-bar @(percentage > 90 ? "bg-danger" : percentage > 70 ? "bg-warning" : "bg-success")" role="progressbar" style="width: @percentage%">
-                                @percentage%
+                        <p><strong><i class="fas fa-user me-2" style="color: var(--amber);"></i>Chauffeur:</strong> @(item.Bus.CurrentDriver?.Driver_FirstName ?? "Non assigné") @(item.Bus.CurrentDriver?.Driver_LastName ?? "")</p>
+                        <p><strong><i class="fas fa-route me-2" style="color: var(--amber);"></i>Trajectoire:</strong> @(item.Bus.CurrentTrajectory?.Trajectory_Name ?? "Non définie")</p>
+                        <p><strong><i class="fas fa-chair me-2" style="color: var(--amber);"></i>Capacité:</strong> @capacity places</p>
+                        <p><strong><i class="fas fa-users me-2" style="color: var(--amber);"></i>Occupation actuelle:</strong> <span class="badge-count">@item.Occupancy / @capacity</span></p>
+                        <div class="progress mt-2 mb-3">
+                            <div class="progress-bar @progressBarClass" role="progressbar" style="width: @percentage%;">
                             </div>
+                        </div>
+                        <div class="text-end">
+                            <small class="text-muted">Taux de remplissage: @percentage%</small>
                         </div>
                     </div>
                     <div class="col-md-6">
-                        <button class="btn btn-info" type="button" data-bs-toggle="collapse" data-bs-target="#collapse-@item.Bus.Bus_Id">
-                            📋 Voir les personnels assignés
-                        </button>
-                        <button type="button" class="btn btn-sm btn-success ms-2" onclick="showUnassignedPersonnel(@item.Bus.Bus_Id, '@item.Bus.Bus_Code')">
-                            👥 Assigner des personnels
-                        </button>
+                        <div class="action-buttons">
+                            <button class="btn-custom btn-info-custom" type="button" data-bs-toggle="collapse" data-bs-target="#collapse-@item.Bus.Bus_Id" style="padding: 6px 14px; font-size: 0.75rem;">
+                                <i class="fas fa-list me-1"></i>Voir les personnels assignés
+                            </button>
+                            <button type="button" class="btn-custom btn-success-custom" onclick="showUnassignedPersonnel(@item.Bus.Bus_Id, '@item.Bus.Bus_Code')" style="padding: 6px 14px; font-size: 0.75rem;">
+                                <i class="fas fa-user-plus me-1"></i>Assigner des personnels
+                            </button>
+                        </div>
                     </div>
                 </div>
 
                 <div class="collapse mt-3" id="collapse-@item.Bus.Bus_Id">
-                    <div class="card card-body">
-                        <h5>👥 Personnels assignés à ce bus</h5>
-                        @if (item.Personnel != null && item.Personnel.Count > 0)
-                        {
-                            <table class="table table-striped">
-                                <thead>
-                                    <tr>
-                                        <th>ID</th>
-                                        <th>Nom</th>
-                                        <th>Prénom</th>
-                                        <th>Adresse</th>
-                                        <th>Action</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    @foreach (var p in item.Personnel)
-                                    {
-                                        <tr>
-                                            <td>@p.Personnel_Id</td>
-                                            <td>@p.Personnel_LastName</td>
-                                            <td>@p.Personnel_FirstName</td>
-                                            <td>@p.HomeAddress ?? "-"</td>
-                                            <td>
-                                                <button class="btn btn-sm btn-danger" onclick="removePersonnelFromBus(@p.Personnel_Id, @item.Bus.Bus_Id, '@p.Personnel_FirstName @p.Personnel_LastName')">
-                                                    ❌ Désassigner
-                                                </button>
-                                            </td>
-                                        </tr>
-                                    }
-                                </tbody>
-                            </table>
-                        }
-                        else
-                        {
-                            <p class="text-muted">Aucun personnel assigné à ce bus.</p>
-                        }
+                    <div class="card" style="border-radius: 12px; border: 1px solid #e2e8f0;">
+                        <div class="card-header" style="background: #f8fafc; border-bottom: 1px solid #e2e8f0;">
+                            <h5 class="mb-0"><i class="fas fa-users me-2" style="color: var(--amber);"></i>Personnels assignés à ce bus</h5>
+                        </div>
+                        <div class="card-body">
+                            @if (item.Personnel != null && item.Personnel.Count > 0)
+                            {
+                                <div class="personnel-scroll-container">
+                                    <table class="table-custom">
+                                        <thead>
+                                            <tr>
+                                                <th>ID</th>
+                                                <th>Nom</th>
+                                                <th>Prénom</th>
+                                                <th>Adresse</th>
+                                                <th>Action</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            @foreach (var p in item.Personnel)
+                                            {
+                                                <tr>
+                                                    <td>@p.Personnel_Id</td>
+                                                    <td>@p.Personnel_LastName</td>
+                                                    <td>@p.Personnel_FirstName</td>
+                                                    <td>@(p.HomeAddress ?? "-")</td>
+                                                    <td>
+                                                        <button class="btn-custom btn-danger-custom" style="padding: 4px 10px; font-size: 0.65rem;" onclick="removePersonnelFromBus(@p.Personnel_Id, @item.Bus.Bus_Id, '@p.Personnel_FirstName @p.Personnel_LastName')">
+                                                            <i class="fas fa-user-slash me-1"></i>Désassigner
+                                                        </button>
+                                                    </td>
+                                                </tr>
+                                            }
+                                        </tbody>
+                                    </table>
+                                </div>
+                            }
+                            else
+                            {
+                                <p class="text-muted text-center py-3">Aucun personnel assigné à ce bus.</p>
+                            }
+                        </div>
                     </div>
                 </div>
             </div>
@@ -122,8 +386,8 @@
 }
 else
 {
-    <div class="alert alert-info">
-        ℹ️ Aucun bus disponible ou aucune assignation.
+    <div class="alert-info-custom">
+        <i class="fas fa-info-circle me-2"></i>Aucun bus disponible ou aucune assignation.
     </div>
 }
 
@@ -131,27 +395,27 @@ else
 <div class="modal fade" id="assignBusModal" tabindex="-1">
     <div class="modal-dialog">
         <div class="modal-content">
-            <div class="modal-header bg-success text-white">
-                <h5 class="modal-title">🚌 Assigner un bus à une trajectoire</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            <div class="modal-header modal-header-custom">
+                <h5 class="modal-title"><i class="fas fa-link me-2"></i>Assigner un bus à une trajectoire</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body">
                 <div class="mb-3">
-                    <label>Sélectionner un bus</label>
-                    <select id="busSelect" class="form-control" required>
+                    <label class="form-label-custom">Sélectionner un bus</label>
+                    <select id="busSelect" class="form-select" style="border-radius: 10px; border: 1.5px solid #e2e8f0;" required>
                         <option value="">-- Chargement des bus --</option>
                     </select>
                 </div>
                 <div class="mb-3">
-                    <label>Sélectionner une trajectoire</label>
-                    <select id="trajectorySelect" class="form-control" required>
+                    <label class="form-label-custom">Sélectionner une trajectoire</label>
+                    <select id="trajectorySelect" class="form-select" style="border-radius: 10px; border: 1.5px solid #e2e8f0;" required>
                         <option value="">-- Chargement des trajectoires --</option>
                     </select>
                 </div>
             </div>
             <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
-                <button type="button" class="btn btn-primary" id="confirmAssignBusBtn">Assigner</button>
+                <button type="button" class="btn-custom btn-secondary-custom" data-bs-dismiss="modal">Annuler</button>
+                <button type="button" class="btn-custom btn-primary-custom" id="confirmAssignBusBtn">Assigner</button>
             </div>
         </div>
     </div>
@@ -161,28 +425,34 @@ else
 <div class="modal fade" id="assignPersonnelModal" tabindex="-1">
     <div class="modal-dialog modal-lg">
         <div class="modal-content">
-            <div class="modal-header bg-success text-white">
-                <h5 class="modal-title">👥 Personnels non assignés</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            <div class="modal-header modal-header-custom">
+                <h5 class="modal-title"><i class="fas fa-user-plus me-2"></i>Personnels non assignés</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body">
                 <input type="hidden" id="modalBusId" />
                 <div id="unassignedPersonnelList">
-                    <p class="text-center">Chargement...</p>
+                    <div class="text-center py-4">
+                        <div class="spinner-border text-primary" role="status"></div><br>
+                        Chargement...
+                    </div>
                 </div>
             </div>
             <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fermer</button>
+                <button type="button" class="btn-custom btn-secondary-custom" data-bs-dismiss="modal">Fermer</button>
             </div>
         </div>
     </div>
 </div>
 
-<a href="/Dashboard/AdminDashboard" class="btn btn-secondary">Retour au Dashboard</a>
+<div class="mt-4">
+    <a href="/Dashboard/AdminDashboard" class="btn-custom btn-secondary-custom">
+        <i class="fas fa-arrow-left me-2"></i>Retour au Dashboard
+    </a>
+</div>
 
 @section Scripts {
     <script>
-        // Helper function to escape HTML
         function escapeHtml(text) {
             if (!text) return '';
             return text.replace(/&/g, '&amp;')
@@ -191,7 +461,6 @@ else
                        .replace(/"/g, '&quot;');
         }
 
-        // Charger les bus disponibles (sans trajectoire)
         async function loadAvailableBuses() {
             const response = await fetch('/TrajectoryAssignment/GetAvailableBuses');
             const buses = await response.json();
@@ -202,7 +471,6 @@ else
             });
         }
 
-        // Charger les trajectoires actives (sans bus)
         async function loadAvailableTrajectories() {
             const response = await fetch('/TrajectoryAssignment/GetAvailableTrajectories');
             const trajectories = await response.json();
@@ -213,7 +481,6 @@ else
             });
         }
 
-        // Assigner bus à trajectoire
         async function assignBusToTrajectory() {
             const busId = document.getElementById('busSelect').value;
             const trajectoryId = document.getElementById('trajectorySelect').value;
@@ -236,7 +503,6 @@ else
             }
         }
 
-        // Désassigner bus de sa trajectoire
         window.unassignBus = async (busId, busCode) => {
             if (confirm(`Désassigner le bus ${busCode} de sa trajectoire ?`)) {
                 const response = await fetch(`/TrajectoryAssignment/UnassignBus?busId=${busId}`, {
@@ -252,7 +518,6 @@ else
             }
         };
 
-        // Retirer un personnel d'un bus
         window.removePersonnelFromBus = async (personnelId, busId, personnelName) => {
             if (confirm(`Retirer ${personnelName} de ce bus ?`)) {
                 try {
@@ -278,11 +543,10 @@ else
             }
         };
 
-        // Ouvrir le modal et charger les personnels non assignés
         window.showUnassignedPersonnel = async (busId, busCode) => {
             document.getElementById('modalBusId').value = busId;
             const listDiv = document.getElementById('unassignedPersonnelList');
-            listDiv.innerHTML = '<div class="text-center"><div class="spinner-border text-primary" role="status"></div><br>Chargement...</div>';
+            listDiv.innerHTML = '<div class="text-center py-4"><div class="spinner-border text-primary" role="status"></div><br>Chargement...</div>';
 
             try {
                 const response = await fetch(`/TrajectoryAssignment/GetUnassignedPersonnelForBus?busId=${busId}`);
@@ -293,15 +557,15 @@ else
                     personnel.forEach(p => {
                         const address = p.homeAddress || p.HomeAddress || 'Non renseignée';
                         html += `
-                            <div class="list-group-item">
+                            <div class="list-group-item" style="border-radius: 10px; margin-bottom: 8px; border: 1px solid #e2e8f0;">
                                 <div class="d-flex justify-content-between align-items-start">
                                     <div>
                                         <strong>${escapeHtml(p.personnel_FirstName)} ${escapeHtml(p.personnel_LastName)}</strong><br>
-                                        <small class="text-muted">📍 Arrêt: ${escapeHtml(p.stopName)}</small><br>
-                                        <small class="text-muted">🏠 Adresse: ${escapeHtml(address)}</small>
+                                        <small class="text-muted"><i class="fas fa-map-pin me-1"></i>Arrêt: ${escapeHtml(p.stopName)}</small><br>
+                                        <small class="text-muted"><i class="fas fa-home me-1"></i>Adresse: ${escapeHtml(address)}</small>
                                     </div>
-                                    <button class="btn btn-sm btn-success" onclick="assignSpecificPersonnel(${busId}, ${p.personnel_Id})">
-                                        ➕ Assigner
+                                    <button class="btn-custom btn-success-custom" style="padding: 5px 12px; font-size: 0.7rem;" onclick="assignSpecificPersonnel(${busId}, ${p.personnel_Id})">
+                                        <i class="fas fa-plus me-1"></i>Assigner
                                     </button>
                                 </div>
                             </div>
@@ -310,17 +574,16 @@ else
                     html += '</div>';
                     listDiv.innerHTML = html;
                 } else {
-                    listDiv.innerHTML = '<div class="alert alert-info">Aucun personnel non assigné disponible pour ce bus.</div>';
+                    listDiv.innerHTML = '<div class="alert-info-custom text-center"><i class="fas fa-info-circle me-2"></i>Aucun personnel non assigné disponible pour ce bus.</div>';
                 }
             } catch (error) {
                 console.error('Error:', error);
-                listDiv.innerHTML = '<div class="alert alert-danger">Erreur lors du chargement des personnels.</div>';
+                listDiv.innerHTML = '<div class="alert-danger-custom text-center"><i class="fas fa-exclamation-circle me-2"></i>Erreur lors du chargement des personnels.</div>';
             }
 
             new bootstrap.Modal(document.getElementById('assignPersonnelModal')).show();
         };
 
-        // Assigner un personnel spécifique à un bus
         window.assignSpecificPersonnel = async (busId, personnelId) => {
             console.log("Assigning personnel:", personnelId, "to bus:", busId);
 
@@ -347,10 +610,8 @@ else
             }
         };
 
-        // Événements
         document.getElementById('confirmAssignBusBtn').onclick = assignBusToTrajectory;
 
-        // Charger les données quand le modal s'ouvre
         document.getElementById('assignBusModal').addEventListener('show.bs.modal', function() {
             loadAvailableBuses();
             loadAvailableTrajectories();

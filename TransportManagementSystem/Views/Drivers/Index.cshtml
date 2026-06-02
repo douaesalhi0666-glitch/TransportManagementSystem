@@ -43,12 +43,17 @@
         font-weight: 600;
         font-size: 0.85rem;
         transition: transform 0.15s, box-shadow 0.15s;
+        color: white;
+        text-decoration: none;
+        display: inline-block;
     }
 
         .btn-primary-custom:hover {
             background: linear-gradient(135deg, #1e40af, #2563eb);
             transform: translateY(-1px);
             box-shadow: 0 4px 12px rgba(37, 99, 235, 0.3);
+            color: white;
+            text-decoration: none;
         }
 
     .filter-bar {
@@ -78,9 +83,10 @@
         .table-custom thead {
             position: sticky;
             top: 0;
-            background: linear-gradient(135deg, var(--navy), var(--navy-mid));
-            color: white;
+            background: #f8fafc;
+            color: var(--navy);
             z-index: 10;
+            border-bottom: 2px solid #e2e8f0;
         }
 
             .table-custom thead th {
@@ -92,6 +98,7 @@
                 padding: 14px 12px;
                 border: none;
                 white-space: nowrap;
+                color: var(--navy);
             }
 
         .table-custom tbody td {
@@ -146,12 +153,13 @@
         font-weight: 500;
         border-radius: 8px;
         transition: all 0.15s;
+        border: none;
+        cursor: pointer;
     }
 
     .btn-details {
         background: linear-gradient(135deg, #3b82f6, #2563eb);
         color: white;
-        border: none;
     }
 
         .btn-details:hover {
@@ -163,7 +171,6 @@
     .btn-edit {
         background: linear-gradient(135deg, #f59e0b, #d97706);
         color: white;
-        border: none;
     }
 
         .btn-edit:hover {
@@ -175,7 +182,6 @@
     .btn-delete {
         background: linear-gradient(135deg, #ef4444, #dc2626);
         color: white;
-        border: none;
     }
 
         .btn-delete:hover {
@@ -192,10 +198,15 @@
         font-weight: 500;
         font-size: 0.85rem;
         transition: background 0.15s;
+        color: white;
+        text-decoration: none;
+        display: inline-block;
     }
 
         .btn-secondary-custom:hover {
             background: #475569;
+            color: white;
+            text-decoration: none;
         }
 
     .export-buttons {
@@ -212,11 +223,13 @@
         padding: 8px 18px;
         font-weight: 600;
         font-size: 0.85rem;
+        transition: transform 0.15s, box-shadow 0.15s;
+        cursor: pointer;
     }
 
         .btn-export-excel:hover {
-            background: linear-gradient(135deg, #155d27, #1e7e34);
-            transform: translateY(-1px);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(30, 126, 52, 0.3);
         }
 
     .btn-export-pdf {
@@ -227,16 +240,19 @@
         padding: 8px 18px;
         font-weight: 600;
         font-size: 0.85rem;
+        transition: transform 0.15s, box-shadow 0.15s;
+        cursor: pointer;
     }
 
         .btn-export-pdf:hover {
-            background: linear-gradient(135deg, #a71d2a, #c82333);
-            transform: translateY(-1px);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(200, 35, 51, 0.3);
         }
 
     .search-input:focus, .form-select:focus {
         border-color: var(--amber);
         box-shadow: 0 0 0 3px rgba(245, 166, 35, 0.15);
+        outline: none;
     }
 </style>
 
@@ -285,7 +301,7 @@
 </div>
 
 <div class="table-container">
-    <table class="table table-custom" id="driversTable">
+    <table class="table-custom" id="driversTable">
         <thead>
             <tr>
                 <th>ID</th>
@@ -339,10 +355,13 @@
                         </span>
                     </td>
                     <td class="action-buttons">
-                        <a href="/Drivers/Edit/@item.Driver_id" class="btn btn-sm-custom btn-edit" title="Modifier">
+                        <button class="btn-sm-custom btn-details details-btn" data-id="@item.Driver_id" data-name="@item.Driver_FirstName @item.Driver_LastName">
+                            <i class="fas fa-eye"></i> Détails
+                        </button>
+                        <button class="btn-sm-custom btn-edit edit-btn" data-id="@item.Driver_id">
                             <i class="fas fa-pen"></i> Modifier
-                        </a>
-                        <a href="/Drivers/Delete/@item.Driver_id" class="btn btn-sm-custom btn-delete" title="Supprimer">
+                        </button>
+                        <a href="/Drivers/Delete/@item.Driver_id" class="btn-sm-custom btn-delete" onclick="return confirm('Supprimer ce chauffeur ?');">
                             <i class="fas fa-trash"></i> Supprimer
                         </a>
                     </td>
@@ -358,8 +377,101 @@
     </a>
 </div>
 
+<!-- Modal Détails -->
+<div class="modal fade" id="detailsModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header" style="background: linear-gradient(135deg, #0f1c2e, #162436); color: white;">
+                <h5 class="modal-title"><i class="fas fa-id-card me-2"></i>Détails du chauffeur</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div id="detailsContent">Chargement...</div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fermer</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Modifier -->
+<div class="modal fade" id="editModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header" style="background: linear-gradient(135deg, #0f1c2e, #162436); color: white;">
+                <h5 class="modal-title"><i class="fas fa-edit me-2"></i>Modifier le chauffeur</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="editForm">
+                    <input type="hidden" id="edit_Driver_Id" />
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label class="form-label-custom">Prénom</label>
+                            <input type="text" id="edit_FirstName" class="form-control" required />
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label-custom">Nom</label>
+                            <input type="text" id="edit_LastName" class="form-control" required />
+                        </div>
+                    </div>
+                    <div class="row g-3 mt-2">
+                        <div class="col-md-6">
+                            <label class="form-label-custom">Email</label>
+                            <input type="email" id="edit_Email" class="form-control" />
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label-custom">Téléphone</label>
+                            <input type="text" id="edit_PhoneNumber" class="form-control" />
+                        </div>
+                    </div>
+                    <div class="row g-3 mt-2">
+                        <div class="col-md-6">
+                            <label class="form-label-custom">Numéro de permis</label>
+                            <input type="text" id="edit_LicenseNumber" class="form-control" />
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label-custom">Date d'expiration</label>
+                            <input type="date" id="edit_LicenseExpiryDate" class="form-control" />
+                        </div>
+                    </div>
+                    <div class="row g-3 mt-2">
+                        <div class="col-md-6">
+                            <label class="form-label-custom">Note</label>
+                            <select id="edit_Rating" class="form-select">
+                                <option value="Excellent">Excellent</option>
+                                <option value="Bon">Bon</option>
+                                <option value="Moyen">Moyen</option>
+                                <option value="Médiocre">Médiocre</option>
+                            </select>
+                        </div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
+                <button type="button" id="saveEditBtn" class="btn btn-primary-custom">Enregistrer</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    .form-label-custom {
+        font-size: 0.7rem;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        color: #475569;
+        margin-bottom: 0.5rem;
+        display: block;
+    }
+</style>
+
 @section Scripts {
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script src="https://cdn.sheetjs.com/xlsx-0.20.2/package/dist/xlsx.full.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.29/jspdf.plugin.autotable.min.js"></script>
@@ -446,6 +558,110 @@
         }
         });
         doc.save("Chauffeurs_Export.pdf");
+        });
+
+        // Details button
+        $('.details-btn').click(function() {
+        var id = $(this).data('id');
+        var name = $(this).data('name');
+        $.ajax({
+        url: '/Drivers/GetDriverData/' + id,
+        type: 'GET',
+        success: function(data) {
+        var html = `
+        <div class="row">
+        <div class="col-md-6">
+        <div class="card" style="border-radius: 12px; border: 1px solid #e2e8f0;">
+        <div class="card-header" style="background: linear-gradient(135deg, #1d4ed8, #3b82f6); color: white; border-radius: 12px 12px 0 0;">
+        <i class="fas fa-user me-2"></i>Informations personnelles
+        </div>
+        <div class="card-body">
+        <p><strong>ID:</strong> ${data.driver_id}</p>
+        <p><strong>Prénom:</strong> ${data.driver_FirstName}</p>
+        <p><strong>Nom:</strong> ${data.driver_LastName}</p>
+        <p><strong>Email:</strong> ${data.driver_Email || '-'}</p>
+        <p><strong>Téléphone:</strong> ${data.driver_PhoneNumber || '-'}</p>
+        </div>
+        </div>
+        </div>
+        <div class="col-md-6">
+        <div class="card" style="border-radius: 12px; border: 1px solid #e2e8f0;">
+        <div class="card-header" style="background: linear-gradient(135deg, #059669, #10b981); color: white; border-radius: 12px 12px 0 0;">
+        <i class="fas fa-id-card me-2"></i>Informations permis
+        </div>
+        <div class="card-body">
+        <p><strong>Numéro permis:</strong> ${data.driver_LicenseNumber || '-'}</p>
+        <p><strong>Date d'expiration:</strong> ${data.driver_LicenseExpiryDate ? new Date(data.driver_LicenseExpiryDate).toLocaleDateString() : '-'}</p>
+        <p><strong>Note:</strong> ${data.driver_Rating || '-'}</p>
+        </div>
+        </div>
+        </div>
+        </div>
+        `;
+        $('#detailsContent').html(html);
+        $('#detailsModal').modal('show');
+        },
+        error: function() {
+        $('#detailsContent').html('<div class="alert alert-danger">Erreur lors du chargement des données.</div>');
+        $('#detailsModal').modal('show');
+        }
+        });
+        });
+
+        // Edit button
+        $('.edit-btn').click(function() {
+        var id = $(this).data('id');
+        $.ajax({
+        url: '/Drivers/GetDriverData/' + id,
+        type: 'GET',
+        success: function(data) {
+        $('#edit_Driver_Id').val(data.driver_id);
+        $('#edit_FirstName').val(data.driver_FirstName);
+        $('#edit_LastName').val(data.driver_LastName);
+        $('#edit_Email').val(data.driver_Email);
+        $('#edit_PhoneNumber').val(data.driver_PhoneNumber);
+        $('#edit_LicenseNumber').val(data.driver_LicenseNumber);
+        var expiryDate = data.driver_LicenseExpiryDate ? data.driver_LicenseExpiryDate.split('T')[0] : '';
+        $('#edit_LicenseExpiryDate').val(expiryDate);
+        $('#edit_Rating').val(data.driver_Rating);
+        $('#editModal').modal('show');
+        },
+        error: function() {
+        alert('Erreur lors du chargement des données.');
+        }
+        });
+        });
+
+        // Save edit
+        $('#saveEditBtn').click(function() {
+        var formData = {
+        Driver_id: $('#edit_Driver_Id').val(),
+        Driver_FirstName: $('#edit_FirstName').val(),
+        Driver_LastName: $('#edit_LastName').val(),
+        Driver_Email: $('#edit_Email').val(),
+        Driver_PhoneNumber: $('#edit_PhoneNumber').val(),
+        Driver_LicenseNumber: $('#edit_LicenseNumber').val(),
+        Driver_LicenseExpiryDate: $('#edit_LicenseExpiryDate').val() || null,
+        Driver_Rating: $('#edit_Rating').val()
+        };
+
+        $.ajax({
+        url: '/Drivers/UpdateDriver',
+        type: 'POST',
+        contentType: 'application/json',
+        data: JSON.stringify(formData),
+        success: function(response) {
+        if (response.success) {
+        alert('Chauffeur mis à jour avec succès !');
+        location.reload();
+        } else {
+        alert('Erreur: ' + (response.message || 'Vérifiez les données'));
+        }
+        },
+        error: function() {
+        alert('Erreur lors de l\'envoi.');
+        }
+        });
         });
         });
     </script>

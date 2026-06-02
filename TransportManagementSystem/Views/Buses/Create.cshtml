@@ -5,80 +5,235 @@
     Layout = "~/Views/Shared/_Layout.cshtml";
 }
 
-<h1>➕ Ajouter un bus</h1>
+<style>
+    :root {
+        --navy: #0f1c2e;
+        --navy-mid: #162436;
+        --amber: #f5a623;
+        --amber-light: #fbbf24;
+        --amber-glow: rgba(245, 166, 35, 0.1);
+        --text-muted: #64748b;
+    }
 
-<form asp-action="Create" id="createForm">
-    <div asp-validation-summary="ModelOnly" class="text-danger"></div>
+    .form-container {
+        background: white;
+        border-radius: 20px;
+        padding: 2rem;
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+        border: 1px solid #e2e8f0;
+    }
 
-    <div class="row">
-        <div class="col-md-6">
-            <div class="form-group">
-                <label>Code du bus</label>
-                <input asp-for="Bus_Code" class="form-control" id="Bus_Code" placeholder="Ex: BUS-001" />
-                <small class="text-muted">Code automatiquement suggéré (modifiable). Doit être unique.</small>
-                <span asp-validation-for="Bus_Code" class="text-danger"></span>
-                <div id="codeError" class="text-danger" style="display:none;">❌ Ce code existe déjà. Veuillez en choisir un autre.</div>
-            </div>
-        </div>
-        <div class="col-md-6">
-            <div class="form-group">
-                <label>Plaque d'immatriculation</label>
-                <input asp-for="Bus_PlateNumber" class="form-control" placeholder="Ex: ABC-123" />
-                <span asp-validation-for="Bus_PlateNumber" class="text-danger"></span>
-            </div>
-        </div>
-    </div>
+    .page-header {
+        margin-bottom: 1.5rem;
+    }
 
-    <div class="row">
-        <div class="col-md-6">
-            <div class="form-group">
-                <label>Marque</label>
-                <input asp-for="Bus_Brand" class="form-control" placeholder="Ex: Mercedes" />
-                <span asp-validation-for="Bus_Brand" class="text-danger"></span>
-            </div>
-        </div>
-        <div class="col-md-6">
-            <div class="form-group">
-                <label>Modèle</label>
-                <input asp-for="Bus_Model" class="form-control" placeholder="Ex: Tourismo" />
-                <span asp-validation-for="Bus_Model" class="text-danger"></span>
-            </div>
-        </div>
-    </div>
+        .page-header h1 {
+            font-family: 'Sora', sans-serif;
+            font-size: 1.6rem;
+            font-weight: 700;
+            margin: 0;
+            background: linear-gradient(135deg, #0f1c2e, #1e3250);
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+        }
 
-    <div class="row">
-        <div class="col-md-4">
-            <div class="form-group">
-                <label>Année</label>
-                <input asp-for="Bus_Year" type="number" class="form-control" placeholder="Ex: 2020" />
-                <span asp-validation-for="Bus_Year" class="text-danger"></span>
-            </div>
-        </div>
-        <div class="col-md-4">
-            <div class="form-group">
-                <label>Capacité (places)</label>
-                <input asp-for="Bus_Capacity" type="number" class="form-control" placeholder="Ex: 50" />
-                <span asp-validation-for="Bus_Capacity" class="text-danger"></span>
-            </div>
-        </div>
-        <div class="col-md-4">
-            <div class="form-group">
-                <label>Statut</label>
-                <select asp-for="Bus_Status" class="form-control">
-                    <option value="In Service">En service</option>
-                    <option value="Maintenance">Maintenance</option>
-                    <option value="Out of Service">Hors service</option>
-                </select>
-                <span asp-validation-for="Bus_Status" class="text-danger"></span>
-            </div>
-        </div>
-    </div>
+        .page-header p {
+            color: var(--text-muted);
+            font-size: 0.85rem;
+            margin: 5px 0 0 0;
+        }
 
-    <div class="form-group mt-3">
-        <input type="submit" value="Créer" class="btn btn-primary" id="submitBtn" />
-        <a href="/Buses/Index" class="btn btn-secondary">Retour</a>
-    </div>
-</form>
+    .form-group {
+        margin-bottom: 1.25rem;
+    }
+
+        .form-group label {
+            font-size: 0.75rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: #475569;
+            margin-bottom: 0.5rem;
+            display: block;
+        }
+
+            .form-group label .text-danger {
+                color: #ef4444;
+            }
+
+    .form-control, .form-select {
+        border: 1.5px solid #e2e8f0;
+        border-radius: 10px;
+        padding: 0.6rem 0.75rem;
+        font-size: 0.9rem;
+        transition: all 0.15s;
+    }
+
+        .form-control:focus, .form-select:focus {
+            border-color: var(--amber);
+            box-shadow: 0 0 0 3px rgba(245, 166, 35, 0.15);
+            outline: none;
+        }
+
+    .text-muted {
+        font-size: 0.7rem;
+        color: #94a3b8 !important;
+        margin-top: 0.25rem;
+        display: block;
+    }
+
+    .btn-primary-custom {
+        background: linear-gradient(135deg, #1d4ed8, #3b82f6);
+        border: none;
+        border-radius: 10px;
+        padding: 10px 24px;
+        font-weight: 600;
+        font-size: 0.85rem;
+        transition: transform 0.15s, box-shadow 0.15s;
+        color: white;
+        cursor: pointer;
+    }
+
+        .btn-primary-custom:hover {
+            background: linear-gradient(135deg, #1e40af, #2563eb);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(37, 99, 235, 0.3);
+        }
+
+    .btn-secondary-custom {
+        background: #64748b;
+        border: none;
+        border-radius: 10px;
+        padding: 10px 24px;
+        font-weight: 600;
+        font-size: 0.85rem;
+        transition: background 0.15s, transform 0.15s;
+        color: white;
+        cursor: pointer;
+        text-decoration: none;
+        display: inline-block;
+    }
+
+        .btn-secondary-custom:hover {
+            background: #475569;
+            transform: translateY(-2px);
+        }
+
+    .text-danger {
+        font-size: 0.75rem;
+        margin-top: 0.25rem;
+        display: block;
+    }
+
+    .alert-info-custom {
+        background: #eff6ff;
+        border-left: 4px solid #3b82f6;
+        padding: 0.75rem 1rem;
+        border-radius: 10px;
+        margin-bottom: 1.25rem;
+        font-size: 0.8rem;
+    }
+
+    hr {
+        margin: 1.5rem 0;
+        border-color: #e2e8f0;
+    }
+
+    .required-star {
+        color: #ef4444;
+        margin-left: 2px;
+    }
+</style>
+
+<div class="page-header">
+    <h1><i class="fas fa-bus me-2" style="color: var(--amber);"></i>Ajouter un bus</h1>
+    <p>Ajoutez un nouveau véhicule au parc automobile</p>
+</div>
+
+<div class="form-container">
+    <form asp-action="Create" id="createForm">
+        <div asp-validation-summary="ModelOnly" class="text-danger"></div>
+
+        <div class="alert-info-custom">
+            <i class="fas fa-info-circle me-2" style="color: #3b82f6;"></i>
+            Les champs marqués d'un <span class="required-star">*</span> sont obligatoires.
+        </div>
+
+        <div class="row g-3">
+            <div class="col-md-6">
+                <div class="form-group">
+                    <label>Code du bus <span class="text-danger">*</span></label>
+                    <input asp-for="Bus_Code" class="form-control" id="Bus_Code" placeholder="Ex: BUS-001" />
+                    <small class="text-muted"><i class="fas fa-lightbulb me-1"></i>Code automatiquement suggéré (modifiable). Doit être unique.</small>
+                    <span asp-validation-for="Bus_Code" class="text-danger"></span>
+                    <div id="codeError" class="text-danger" style="display:none;">
+                        <i class="fas fa-times-circle me-1"></i>Ce code existe déjà. Veuillez en choisir un autre.
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="form-group">
+                    <label>Plaque d'immatriculation <span class="text-danger">*</span></label>
+                    <input asp-for="Bus_PlateNumber" class="form-control" placeholder="Ex: ABC-123" />
+                    <span asp-validation-for="Bus_PlateNumber" class="text-danger"></span>
+                </div>
+            </div>
+        </div>
+
+        <div class="row g-3">
+            <div class="col-md-6">
+                <div class="form-group">
+                    <label>Marque</label>
+                    <input asp-for="Bus_Brand" class="form-control" placeholder="Ex: Mercedes" />
+                    <span asp-validation-for="Bus_Brand" class="text-danger"></span>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="form-group">
+                    <label>Modèle</label>
+                    <input asp-for="Bus_Model" class="form-control" placeholder="Ex: Tourismo" />
+                    <span asp-validation-for="Bus_Model" class="text-danger"></span>
+                </div>
+            </div>
+        </div>
+
+        <div class="row g-3">
+            <div class="col-md-4">
+                <div class="form-group">
+                    <label>Année</label>
+                    <input asp-for="Bus_Year" type="number" class="form-control" placeholder="Ex: 2020" />
+                    <span asp-validation-for="Bus_Year" class="text-danger"></span>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="form-group">
+                    <label>Capacité (places) <span class="text-danger">*</span></label>
+                    <input asp-for="Bus_Capacity" type="number" class="form-control" placeholder="Ex: 50" />
+                    <span asp-validation-for="Bus_Capacity" class="text-danger"></span>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="form-group">
+                    <label>Statut</label>
+                    <select asp-for="Bus_Status" class="form-select">
+                        <option value="In Service">En service</option>
+                        <option value="Maintenance">Maintenance</option>
+                        <option value="Out of Service">Hors service</option>
+                    </select>
+                    <span asp-validation-for="Bus_Status" class="text-danger"></span>
+                </div>
+            </div>
+        </div>
+
+        <hr />
+
+        <div class="form-group d-flex gap-3 mt-3">
+            <input type="submit" value="Créer" class="btn btn-primary-custom" id="submitBtn" />
+            <a href="/Buses/Index" class="btn-secondary-custom">Annuler</a>
+        </div>
+    </form>
+</div>
 
 @section Scripts {
     @{

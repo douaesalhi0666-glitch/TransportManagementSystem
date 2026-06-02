@@ -5,109 +5,274 @@
     Layout = "~/Views/Shared/_Layout.cshtml";
 }
 
-<h1>Ajouter un trajet</h1>
+<style>
+    :root {
+        --navy: #0f1c2e;
+        --navy-mid: #162436;
+        --amber: #f5a623;
+        --amber-light: #fbbf24;
+        --amber-glow: rgba(245, 166, 35, 0.1);
+        --text-muted: #64748b;
+    }
 
-<form asp-action="Create">
-    <div asp-validation-summary="ModelOnly" class="text-danger"></div>
+    .form-container {
+        background: white;
+        border-radius: 20px;
+        padding: 2rem;
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+        border: 1px solid #e2e8f0;
+    }
 
-    <!-- ID Field (Auto-generated) -->
-    <div class="form-group mb-3">
-        <label>ID Trajet</label>
-        <input class="form-control" value="Auto-généré" disabled />
-        <small class="text-muted">L'ID est généré automatiquement</small>
-    </div>
+    .page-header {
+        margin-bottom: 1.5rem;
+    }
 
-    <div class="row">
-        <div class="col-md-6">
-            <div class="form-group">
-                <label>Nom du trajet</label>
-                <input asp-for="Trajectory_Name" class="form-control" placeholder="Ex: Ligne 1 - Centre Ville" />
-                <span asp-validation-for="Trajectory_Name" class="text-danger"></span>
+        .page-header h1 {
+            font-family: 'Sora', sans-serif;
+            font-size: 1.6rem;
+            font-weight: 700;
+            margin: 0;
+            background: linear-gradient(135deg, #0f1c2e, #1e3250);
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+        }
+
+        .page-header p {
+            color: var(--text-muted);
+            font-size: 0.85rem;
+            margin: 5px 0 0 0;
+        }
+
+    .form-group {
+        margin-bottom: 1.25rem;
+    }
+
+        .form-group label {
+            font-size: 0.75rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: #475569;
+            margin-bottom: 0.5rem;
+            display: block;
+        }
+
+    .form-control, .form-select {
+        border: 1.5px solid #e2e8f0;
+        border-radius: 10px;
+        padding: 0.6rem 0.75rem;
+        font-size: 0.9rem;
+        transition: all 0.15s;
+    }
+
+        .form-control:focus, .form-select:focus {
+            border-color: var(--amber);
+            box-shadow: 0 0 0 3px rgba(245, 166, 35, 0.15);
+            outline: none;
+        }
+
+    .text-muted {
+        font-size: 0.7rem;
+        color: #94a3b8 !important;
+        margin-top: 0.25rem;
+        display: block;
+    }
+
+    .alert-info-custom {
+        background: #eff6ff;
+        border-left: 4px solid #3b82f6;
+        padding: 0.75rem 1rem;
+        border-radius: 10px;
+        margin-bottom: 1.25rem;
+        font-size: 0.8rem;
+    }
+
+    hr {
+        margin: 1.5rem 0;
+        border-color: #e2e8f0;
+    }
+
+    .required-star {
+        color: #ef4444;
+        margin-left: 2px;
+    }
+
+    .btn-primary-custom {
+        background: linear-gradient(135deg, #1d4ed8, #3b82f6);
+        border: none;
+        border-radius: 10px;
+        padding: 10px 24px;
+        font-weight: 600;
+        font-size: 0.85rem;
+        transition: transform 0.15s, box-shadow 0.15s;
+        color: white;
+        cursor: pointer;
+    }
+
+        .btn-primary-custom:hover {
+            background: linear-gradient(135deg, #1e40af, #2563eb);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(37, 99, 235, 0.3);
+        }
+
+    .btn-secondary-custom {
+        background: #64748b;
+        border: none;
+        border-radius: 10px;
+        padding: 10px 24px;
+        font-weight: 600;
+        font-size: 0.85rem;
+        transition: background 0.15s, transform 0.15s;
+        color: white;
+        cursor: pointer;
+        text-decoration: none;
+        display: inline-block;
+    }
+
+        .btn-secondary-custom:hover {
+            background: #475569;
+            transform: translateY(-2px);
+            color: white;
+            text-decoration: none;
+        }
+
+    .text-danger {
+        font-size: 0.75rem;
+        margin-top: 0.25rem;
+        display: block;
+    }
+
+    h4 {
+        font-size: 1rem;
+        font-weight: 700;
+        color: var(--navy);
+        margin: 1.5rem 0 1rem 0;
+        padding-bottom: 0.5rem;
+        border-bottom: 2px solid var(--amber-glow);
+    }
+</style>
+
+<div class="page-header">
+    <h1><i class="fas fa-plus-circle me-2" style="color: var(--amber);"></i>Ajouter un trajet</h1>
+    <p>Créez un nouvel itinéraire dans le système</p>
+</div>
+
+<div class="form-container">
+    <form asp-action="Create">
+        <div asp-validation-summary="ModelOnly" class="text-danger"></div>
+
+        <div class="alert-info-custom">
+            <i class="fas fa-info-circle me-2" style="color: #3b82f6;"></i>
+            Les champs marqués d'un <span class="required-star">*</span> sont obligatoires.
+        </div>
+
+        <div class="form-group mb-3">
+            <label>ID Trajet</label>
+            <input class="form-control" value="Auto-généré" disabled style="background: #f8fafc;" />
+            <small class="text-muted"><i class="fas fa-lightbulb me-1"></i>L'ID est généré automatiquement</small>
+        </div>
+
+        <div class="row g-3">
+            <div class="col-md-6">
+                <div class="form-group">
+                    <label>Nom du trajet <span class="text-danger">*</span></label>
+                    <input asp-for="Trajectory_Name" class="form-control" placeholder="Ex: Ligne 1 - Centre Ville" />
+                    <span asp-validation-for="Trajectory_Name" class="text-danger"></span>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="form-group">
+                    <label>Code du trajet <span class="text-danger">*</span></label>
+                    <input asp-for="Trajectory_Code" class="form-control" placeholder="Ex: TRJ-001" />
+                    <span asp-validation-for="Trajectory_Code" class="text-danger"></span>
+                </div>
             </div>
         </div>
-        <div class="col-md-6">
-            <div class="form-group">
-                <label>Code du trajet</label>
-                <input asp-for="Trajectory_Code" class="form-control" placeholder="Ex: TRJ-001" />
-                <span asp-validation-for="Trajectory_Code" class="text-danger"></span>
-            </div>
-        </div>
-    </div>
 
-    <div class="form-group">
-        <label>Description</label>
-        <textarea asp-for="Trajectory_Description" class="form-control" rows="3" placeholder="Description du trajet..."></textarea>
-        <span asp-validation-for="Trajectory_Description" class="text-danger"></span>
-    </div>
+        <div class="form-group">
+            <label>Description</label>
+            <textarea asp-for="Trajectory_Description" class="form-control" rows="3" placeholder="Description du trajet..."></textarea>
+            <span asp-validation-for="Trajectory_Description" class="text-danger"></span>
+        </div>
 
-    <div class="row">
-        <div class="col-md-6">
-            <div class="form-group">
-                <label>Distance (km)</label>
-                <input asp-for="Trajectory_DistanceKm" type="number" step="0.01" class="form-control" placeholder="Ex: 15.5" />
-                <span asp-validation-for="Trajectory_DistanceKm" class="text-danger"></span>
+        <div class="row g-3">
+            <div class="col-md-6">
+                <div class="form-group">
+                    <label>Distance (km)</label>
+                    <input asp-for="Trajectory_DistanceKm" type="number" step="0.01" class="form-control" placeholder="Ex: 15.5" />
+                    <span asp-validation-for="Trajectory_DistanceKm" class="text-danger"></span>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="form-group">
+                    <label>Durée estimée (minutes)</label>
+                    <input asp-for="Trajectory_EstimatedDurationMinutes" type="number" class="form-control" placeholder="Ex: 45" />
+                    <span asp-validation-for="Trajectory_EstimatedDurationMinutes" class="text-danger"></span>
+                </div>
             </div>
         </div>
-        <div class="col-md-6">
-            <div class="form-group">
-                <label>Durée estimée (minutes)</label>
-                <input asp-for="Trajectory_EstimatedDurationMinutes" type="number" class="form-control" placeholder="Ex: 45" />
-                <span asp-validation-for="Trajectory_EstimatedDurationMinutes" class="text-danger"></span>
-            </div>
-        </div>
-    </div>
 
-    <h4 class="mt-4">📍 Point de départ</h4>
-    <div class="row">
-        <div class="col-md-6">
-            <div class="form-group">
-                <label>Latitude départ</label>
-                <input asp-for="Trajectory_StartLatitude" type="number" step="0.00000001" class="form-control" placeholder="Ex: 33.5731" />
-                <span asp-validation-for="Trajectory_StartLatitude" class="text-danger"></span>
+        <h4><i class="fas fa-map-marker-alt me-2" style="color: var(--amber);"></i>Point de départ</h4>
+        <div class="row g-3">
+            <div class="col-md-6">
+                <div class="form-group">
+                    <label>Latitude départ</label>
+                    <input asp-for="Trajectory_StartLatitude" type="number" step="0.00000001" class="form-control" placeholder="Ex: 33.5731" />
+                    <span asp-validation-for="Trajectory_StartLatitude" class="text-danger"></span>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="form-group">
+                    <label>Longitude départ</label>
+                    <input asp-for="Trajectory_StartLongitude" type="number" step="0.00000001" class="form-control" placeholder="Ex: -7.5898" />
+                    <span asp-validation-for="Trajectory_StartLongitude" class="text-danger"></span>
+                </div>
             </div>
         </div>
-        <div class="col-md-6">
-            <div class="form-group">
-                <label>Longitude départ</label>
-                <input asp-for="Trajectory_StartLongitude" type="number" step="0.00000001" class="form-control" placeholder="Ex: -7.5898" />
-                <span asp-validation-for="Trajectory_StartLongitude" class="text-danger"></span>
-            </div>
-        </div>
-    </div>
 
-    <h4 class="mt-4">🏁 Point d'arrivée</h4>
-    <div class="row">
-        <div class="col-md-6">
-            <div class="form-group">
-                <label>Latitude arrivée</label>
-                <input asp-for="Trajectory_EndLatitude" type="number" step="0.00000001" class="form-control" placeholder="Ex: 33.5942" />
-                <span asp-validation-for="Trajectory_EndLatitude" class="text-danger"></span>
+        <h4><i class="fas fa-flag-checkered me-2" style="color: var(--amber);"></i>Point d'arrivée</h4>
+        <div class="row g-3">
+            <div class="col-md-6">
+                <div class="form-group">
+                    <label>Latitude arrivée</label>
+                    <input asp-for="Trajectory_EndLatitude" type="number" step="0.00000001" class="form-control" placeholder="Ex: 33.5942" />
+                    <span asp-validation-for="Trajectory_EndLatitude" class="text-danger"></span>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="form-group">
+                    <label>Longitude arrivée</label>
+                    <input asp-for="Trajectory_EndLongitude" type="number" step="0.00000001" class="form-control" placeholder="Ex: -7.5981" />
+                    <span asp-validation-for="Trajectory_EndLongitude" class="text-danger"></span>
+                </div>
             </div>
         </div>
-        <div class="col-md-6">
-            <div class="form-group">
-                <label>Longitude arrivée</label>
-                <input asp-for="Trajectory_EndLongitude" type="number" step="0.00000001" class="form-control" placeholder="Ex: -7.5981" />
-                <span asp-validation-for="Trajectory_EndLongitude" class="text-danger"></span>
-            </div>
-        </div>
-    </div>
 
-    <div class="row">
-        <div class="col-md-6">
-            <div class="form-group">
-                <label>Statut</label>
-                <select asp-for="Trajectory_Status" class="form-control">
-                    <option value="Active">Actif</option>
-                    <option value="Inactive">Inactif</option>
-                </select>
-                <span asp-validation-for="Trajectory_Status" class="text-danger"></span>
+        <div class="row g-3">
+            <div class="col-md-6">
+                <div class="form-group">
+                    <label>Statut</label>
+                    <select asp-for="Trajectory_Status" class="form-select">
+                        <option value="Active">Actif</option>
+                        <option value="Inactive">Inactif</option>
+                    </select>
+                    <span asp-validation-for="Trajectory_Status" class="text-danger"></span>
+                </div>
             </div>
         </div>
-    </div>
 
-    <div class="form-group mt-3">
-        <input type="submit" value="Créer" class="btn btn-primary" />
-        <a href="/Trajectories/Index" class="btn btn-secondary">Retour</a>
-    </div>
-</form>
+        <hr />
+
+        <div class="form-group d-flex gap-3 mt-3">
+            <input type="submit" value="Créer" class="btn btn-primary-custom" />
+            <a href="/Trajectories/Index" class="btn-secondary-custom">Annuler</a>
+        </div>
+    </form>
+</div>
+
+@section Scripts {
+    @{
+        await Html.RenderPartialAsync("_ValidationScriptsPartial");
+    }
+}
