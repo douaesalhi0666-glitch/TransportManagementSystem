@@ -255,12 +255,12 @@
         // Fonction pour vérifier si un code existe déjà
         async function checkCodeExists(code) {
             try {
-                const response = await fetch(`/Buses/CheckCodeExists?code=${encodeURIComponent(code)}`);
+                const response = await fetch('/Buses/CheckCodeExists?code=' + encodeURIComponent(code));
                 const data = await response.json();
                 return data.exists;
             } catch (err) {
                 console.error('Erreur:', err);
-                return true;
+                return false;
             }
         }
 
@@ -273,7 +273,7 @@
 
             if (!code || code === '') {
                 codeError.style.display = 'block';
-                codeError.innerText = '❌ Veuillez entrer un code valide.';
+                codeError.innerText = 'Veuillez entrer un code valide.';
                 submitBtn.disabled = true;
                 return false;
             }
@@ -281,7 +281,7 @@
             const exists = await checkCodeExists(code);
             if (exists) {
                 codeError.style.display = 'block';
-                codeError.innerText = '❌ Ce code existe déjà. Veuillez en choisir un autre.';
+                codeError.innerText = 'Ce code existe déjà. Veuillez en choisir un autre.';
                 submitBtn.disabled = true;
                 return false;
             } else {
@@ -297,14 +297,10 @@
             const codeInput = document.getElementById('Bus_Code');
             codeInput.value = nextCode;
 
-            // Ajouter un écouteur pour valider à chaque modification
             codeInput.addEventListener('input', validateCode);
-
-            // Valider au chargement
             await validateCode();
         }
 
-        // Lancer l'initialisation
         init();
     </script>
 }
