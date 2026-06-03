@@ -25,5 +25,17 @@ namespace TransportManagementSystem.Controllers
         {
             return View();
         }
+        public IActionResult DownloadGuide()
+        {
+            // Chemin vers le fichier PDF que vous aurez placé dans wwwroot/files/
+            var filePath = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot/files/GuideUtilisation_SEWS.pdf");
+            if (!System.IO.File.Exists(filePath))
+            {
+                // Si le fichier n'existe pas, on peut en générer un dynamiquement ou retourner une erreur
+                return NotFound("Le guide PDF n'est pas encore disponible. Veuillez contacter l'administrateur.");
+            }
+            var bytes = System.IO.File.ReadAllBytes(filePath);
+            return File(bytes, "application/pdf", "Guide_Utilisation_SEWS.pdf");
+        }
     }
 }

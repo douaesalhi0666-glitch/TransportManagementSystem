@@ -6,6 +6,7 @@
 }
 
 <style>
+    /* Vos styles (je les garde identiques à ceux que vous aviez) */
     :root {
         --navy: #0f1c2e;
         --navy-mid: #162436;
@@ -188,7 +189,6 @@
     }
 </style>
 
-<!-- Générateur de token anti-forgerie (placé ici, hors des styles) -->
 @Html.AntiForgeryToken()
 
 <div class="page-header d-flex justify-content-between align-items-center flex-wrap gap-3">
@@ -215,9 +215,11 @@
             <select id="typeFilter" class="form-select">
                 <option value="">Tous les types</option>
                 <option value="Speed">Speed</option>
-                <option value="Route Deviation">Route Deviation</option>
+                <option value="RouteDeviation">RouteDeviation</option>
                 <option value="Maintenance">Maintenance</option>
                 <option value="Overload">Overload</option>
+                <option value="UnusualDelay">UnusualDelay</option>
+                <option value="Test">Test</option>
                 <option value="Other">Other</option>
             </select>
         </div>
@@ -258,7 +260,9 @@
             {
                 var severityClass = a.SeverityScore > 0.7 ? "severity-high" : (a.SeverityScore > 0.3 ? "severity-medium" : "severity-low");
                 var severityText = a.SeverityScore > 0.7 ? "Haute" : (a.SeverityScore > 0.3 ? "Moyenne" : "Basse");
-                <tr data-id="@a.Id" data-type="@a.AnomalyType" data-severity="@severityText" data-resolved="@a.IsResolved">
+                // Forcer la valeur en minuscules "true" ou "false"
+                var resolvedLower = a.IsResolved.ToString().ToLower();
+                <tr data-id="@a.Id" data-type="@a.AnomalyType" data-severity="@severityText" data-resolved="@resolvedLower">
                     <td>@a.Timestamp.ToString("dd/MM/yyyy HH:mm")</td>
                     <td><span class="badge-severity @severityClass" style="background: linear-gradient(135deg, #06b6d4, #0891b2);">@a.AnomalyType</span></td>
                     <td>@a.Description</td>
@@ -303,23 +307,31 @@
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <script>
         $(document).ready(function() {
-        // Fonction de filtrage
         function filterTable() {
         var search = $('#searchInput').val().toLowerCase();
         var type = $('#typeFilter').val();
         var severity = $('#severityFilter').val();
         var resolved = $('#resolvedFilter').val();
 
+        // Debug
+        console.log("Filter called - resolved value =", resolved);
+
         $('#anomaliesTable tbody tr').each(function() {
         var text = $(this).text().toLowerCase();
         var rowType = $(this).data('type');
         var rowSeverity = $(this).data('severity');
-        var rowResolved = $(this).data('resolved');
+        // Récupérer l'attribut data-resolved sous forme de chaîne brute
+        var rowResolved = $(this).attr('data-resolved');
+        // Si non défini, le mettre vide
+        if (rowResolved === undefined) rowResolved = '';
+
+        // Debug pour chaque ligne
+        console.log("Row resolved attr =", rowResolved, "filter resolved =", resolved);
 
         var matchSearch = (search === '' || text.indexOf(search) !== -1);
         var matchType = (type === '' || rowType === type);
         var matchSeverity = (severity === '' || rowSeverity === severity);
-        var matchResolved = (resolved === '' || rowResolved.toString() === resolved);
+        var matchResolved = (resolved === '' || rowResolved === resolved);
 
         if (matchSearch && matchType && matchSeverity && matchResolved) {
         $(this).show();
@@ -334,36 +346,33 @@
         $('#severityFilter').on('change', filterTable);
         $('#resolvedFilter').on('change', filterTable);
 
-        // Récupération du token anti-forgerie (champ caché généré par @Html.AntiForgeryToken())
+        // Exécuter au chargement
+        filterTable();
+
         var csrfToken = $('input[name="__RequestVerificationToken"]').val();
 
-        // Résolution d'anomalie via AJAX
         $('.resolve-btn').on('click', function() {
         var btn = $(this);
         var row = btn.closest('tr');
         var anomalyId = btn.data('id');
-
         if (confirm('Marquer cette anomalie comme résolue ?')) {
         $.ajax({
         url: '/Anomaly/Resolve/' + anomalyId,
         type: 'POST',
-        headers: {
-        'RequestVerificationToken': csrfToken
-        },
+        headers: { 'RequestVerificationToken': csrfToken },
         success: function(response) {
         if (response.success) {
-        // Mise à jour de la ligne
         row.find('td:eq(6)').html('<span class="badge-resolved"><i class="fas fa-check-circle me-1"></i>Résolu</span>');
         row.find('td:eq(7)').html('<span class="text-muted">-</span>');
-        row.data('resolved', true);
-        btn.remove(); // supprime le bouton
+        row.attr('data-resolved', 'true'); // mettre à jour l'attribut
+        btn.remove();
+        filterTable(); // re-filtrer après changement
         alert('Anomalie résolue avec succès.');
         } else {
         alert('Erreur : ' + response.message);
         }
         },
-        error: function(xhr, status, error) {
-        console.error('Erreur AJAX :', status, error);
+        error: function() {
         alert('Erreur lors de la communication avec le serveur.');
         }
         });
