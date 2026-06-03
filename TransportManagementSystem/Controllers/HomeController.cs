@@ -21,21 +21,14 @@ namespace TransportManagementSystem.Controllers
         {
             return View(new ErrorViewModel { RequestId = Activity.Current?.Id ?? HttpContext.TraceIdentifier });
         }
+
         public IActionResult Guide()
         {
             return View();
         }
-        public IActionResult DownloadGuide()
-        {
-            // Chemin vers le fichier PDF que vous aurez placé dans wwwroot/files/
-            var filePath = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot/files/GuideUtilisation_SEWS.pdf");
-            if (!System.IO.File.Exists(filePath))
-            {
-                // Si le fichier n'existe pas, on peut en générer un dynamiquement ou retourner une erreur
-                return NotFound("Le guide PDF n'est pas encore disponible. Veuillez contacter l'administrateur.");
-            }
-            var bytes = System.IO.File.ReadAllBytes(filePath);
-            return File(bytes, "application/pdf", "Guide_Utilisation_SEWS.pdf");
-        }
+
+        // Plus besoin de DownloadGuide car le PDF est généré côté client.
+        // Si vous voulez garder une action pour le bouton (optionnel), vous pouvez la laisser commentée.
+        // public IActionResult DownloadGuide() { ... }
     }
 }

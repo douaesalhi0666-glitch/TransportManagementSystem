@@ -68,6 +68,7 @@
         align-items: center;
         gap: 8px;
         transition: transform 0.15s;
+        cursor: pointer;
     }
 
         .btn-pdf:hover {
@@ -79,156 +80,174 @@
 <div class="container mt-4">
     <div class="d-flex justify-content-between align-items-center flex-wrap mb-3">
         <h1><i class="fas fa-book-open me-2" style="color: #f5a623;"></i>Guide d'utilisation</h1>
-        <a href="/Home/DownloadGuide" class="btn-pdf">
+        <button id="downloadPdfBtn" class="btn-pdf">
             <i class="fas fa-file-pdf"></i> Télécharger le guide (PDF)
-        </a>
-    </div>
-    <p class="text-muted">Bienvenue dans le guide complet du Système de Gestion de Transport SEWS. Ce document vous explique pas à pas comment utiliser l’application.</p>
-    <hr />
-
-    <!-- ===================== SECTION 1 ===================== -->
-    <div class="guide-section">
-        <h2>1. Tableau de bord administrateur</h2>
-        <p>Le tableau de bord est la page d’accueil après connexion. Il vous donne une vue d’ensemble du système.</p>
-        <ul>
-            <li><strong>Cartes KPI</strong> : nombre total de bus, chauffeurs, personnels, taux d’occupation moyen.</li>
-            <li><strong>Accès rapides</strong> : liens vers les modules principaux (assignations, occupation, points de ramassage).</li>
-            <li><strong>Menu latéral</strong> : navigation vers toutes les fonctionnalités.</li>
-        </ul>
-        <div class="screenshot">
-            <img src="~/images/guide/dashboard.png" alt="Tableau de bord administrateur" />
-            <div class="screenshot-caption">Figure 1 – Tableau de bord avec indicateurs clés</div>
-        </div>
+        </button>
     </div>
 
-    <!-- ===================== SECTION 2 ===================== -->
-    <div class="guide-section">
-        <h2>2. Gestion des chauffeurs et bus</h2>
-        <h3>2.1. Assigner un chauffeur à un bus</h3>
-        <p>Allez dans <strong>Assignation bus ↔ chauffeur</strong> dans le menu. Sélectionnez un chauffeur non assigné et un bus libre, puis cliquez sur « Assigner ».</p>
-        <div class="screenshot">
-            <img src="~/images/guide/assignments_form.png" alt="Formulaire d'assignation" />
-            <div class="screenshot-caption">Figure 2 – Formulaire d’assignation chauffeur/bus</div>
-        </div>
-        <h3>2.2. Visualiser et filtrer les assignations</h3>
-        <p>Le tableau des assignations actuelles affiche tous les bus avec leur chauffeur. Utilisez la barre de recherche pour filtrer par bus ou chauffeur.</p>
-        <div class="screenshot">
-            <img src="~/images/guide/assignments_table.png" alt="Tableau des assignations avec recherche" />
-            <div class="screenshot-caption">Figure 3 – Tableau des assignations et barre de recherche</div>
-        </div>
-        <h3>2.3. Libérer un chauffeur</h3>
-        <p>Cliquez sur « Libérer chauffeur » dans la ligne du bus concerné. Le bus redevient disponible.</p>
-    </div>
+    <!-- Zone à capturer pour le PDF (sans le bouton) -->
+    <div id="guideContent">
+        <p class="text-muted">Bienvenue dans le guide complet du Système de Gestion de Transport SEWS. Ce document vous explique pas à pas comment utiliser l’application.</p>
+        <hr />
 
-    <!-- ===================== SECTION 3 ===================== -->
-    <div class="guide-section">
-        <h2>3. Occupation des bus et assignation des personnels</h2>
-        <h3>3.1. Visualiser l’occupation</h3>
-        <p>La page « Occupation des bus » affiche chaque bus sous forme de carte avec sa capacité, son taux de remplissage (barre colorée), le chauffeur et la trajectoire.</p>
-        <div class="screenshot">
-            <img src="~/images/guide/bus_cards.png" alt="Cartes des bus avec occupation" />
-            <div class="screenshot-caption">Figure 4 – Cartes des bus et barres d’occupation</div>
+        <!-- SECTION 1 -->
+        <div class="guide-section">
+            <h2>1. Tableau de bord administrateur</h2>
+            <p>Le tableau de bord est la page d’accueil après connexion. Il vous donne une vue d’ensemble du système.</p>
+            <ul>
+                <li><strong>Cartes KPI</strong> : nombre total de bus, chauffeurs, personnels, taux d’occupation moyen.</li>
+                <li><strong>Accès rapides</strong> : liens vers les modules principaux (assignations, occupation, points de ramassage).</li>
+                <li><strong>Menu latéral</strong> : navigation vers toutes les fonctionnalités.</li>
+            </ul>
+            <div class="screenshot">
+                <img src="~/images/guide/dashboard.png" alt="Tableau de bord administrateur" />
+                <div class="screenshot-caption">Figure 1 – Tableau de bord avec indicateurs clés</div>
+            </div>
         </div>
-        <h3>3.2. Voir les personnels assignés</h3>
-        <p>Cliquez sur « Voir les personnels assignés » pour ouvrir le panneau déroulant. Vous pouvez rechercher un personnel par nom, prénom ou adresse.</p>
-        <div class="screenshot">
-            <img src="~/images/guide/personnel_assigned.png" alt="Panneau des personnels assignés" />
-            <div class="screenshot-caption">Figure 5 – Liste des personnels d’un bus avec recherche</div>
-        </div>
-        <h3>3.3. Assigner un personnel à un bus</h3>
-        <p>Cliquez sur « Assigner des personnels ». Une modale s’ouvre avec la liste des personnels non encore affectés. Choisissez un personnel et cliquez sur « Assigner ».</p>
-        <!-- Note : l'image assign_personnel_modal.png n'existe pas, on utilise une autre image -->
-        <div class="screenshot">
-            <img src="~/images/guide/personnel.png" alt="Liste des personnels" />
-            <div class="screenshot-caption">Figure 6 – Exemple de liste des personnels (vue générale)</div>
-        </div>
-        <h3>3.4. Synchronisation automatique</h3>
-        <p>Utilisez le bouton « Synchroniser les assignations » pour mettre à jour les bus à partir des points de ramassage. Cela garantit la cohérence des données.</p>
-    </div>
 
-    <!-- ===================== SECTION 4 ===================== -->
-    <div class="guide-section">
-        <h2>4. Gestion des points de ramassage (stops) et IA</h2>
-        <h3>4.1. Filtrer par trajectoire</h3>
-        <p>Dans la page « Points de ramassage », sélectionnez une trajectoire spécifique ou « Toutes les trajectoires ».</p>
-        <div class="screenshot">
-            <img src="~/images/guide/trajectories.png" alt="Liste des trajectoires" />
-            <div class="screenshot-caption">Figure 7 – Gestion des trajectoires (exemple de filtre)</div>
+        <!-- SECTION 2 -->
+        <div class="guide-section">
+            <h2>2. Gestion des chauffeurs et bus</h2>
+            <h3>2.1. Assigner un chauffeur à un bus</h3>
+            <p>Allez dans <strong>Assignation bus ↔ chauffeur</strong> dans le menu. Sélectionnez un chauffeur non assigné et un bus libre, puis cliquez sur « Assigner ».</p>
+            <div class="screenshot">
+                <img src="~/images/guide/assignments_form.png" alt="Formulaire d'assignation" />
+                <div class="screenshot-caption">Figure 2 – Formulaire d’assignation chauffeur/bus</div>
+            </div>
+            <h3>2.2. Visualiser et filtrer les assignations</h3>
+            <p>Le tableau des assignations actuelles affiche tous les bus avec leur chauffeur. Utilisez la barre de recherche pour filtrer par bus ou chauffeur.</p>
+            <div class="screenshot">
+                <img src="~/images/guide/assignments_table.png" alt="Tableau des assignations avec recherche" />
+                <div class="screenshot-caption">Figure 3 – Tableau des assignations et barre de recherche</div>
+            </div>
+            <h3>2.3. Libérer un chauffeur</h3>
+            <p>Cliquez sur « Libérer chauffeur » dans la ligne du bus concerné. Le bus redevient disponible.</p>
         </div>
-        <h3>4.2. Carte interactive</h3>
-        <p>La carte Leaflet affiche :</p>
-        <ul>
-            <li><span style="color:#2ecc71;">●</span> Marqueur vert : point de départ SEWS.</li>
-            <li><span style="color:#ff8c00;">●</span> Marqueurs orange : points de ramassage existants.</li>
-            <li><span style="color:#9b59b6;">●</span> Marqueurs violets : points suggérés par l’IA.</li>
-        </ul>
-        <div class="screenshot">
-            <img src="~/images/guide/clustering_map.png" alt="Carte avec stops et suggestions" />
-            <div class="screenshot-caption">Figure 8 – Carte avec points existants (orange) et suggérés (violet)</div>
-        </div>
-        <h3>4.3. Ajouter un point manuellement</h3>
-        <p>Cliquez sur la carte → les coordonnées sont automatiquement remplies. Saisissez un nom et cliquez sur « Ajouter ce point ».</p>
-        <!-- Pas d'image spécifique, on utilise la carte -->
-        <div class="screenshot">
-            <img src="~/images/guide/clustering_map.png" alt="Ajout manuel sur la carte" />
-            <div class="screenshot-caption">Figure 9 – Cliquer sur la carte pour ajouter un point</div>
-        </div>
-        <h3>4.4. Suggestion de points par IA (clustering)</h3>
-        <p>Choisissez un nombre de clusters (ex: 4) puis cliquez sur « Suggérer des points par IA ». Des marqueurs violets apparaissent. Cliquez sur un marqueur puis sur « Créer cet arrêt » pour l’ajouter.</p>
-        <div class="screenshot">
-            <img src="~/images/guide/cluster_popup.png" alt="Popup d'un point suggéré" />
-            <div class="screenshot-caption">Figure 10 – Popup d’un point suggéré avec bouton de création</div>
-        </div>
-        <h3>4.5. Tableau des points de ramassage</h3>
-        <p>Consultez, modifiez, supprimez ou assignez des personnels aux stops via le tableau.</p>
-        <div class="screenshot">
-            <img src="~/images/guide/stops_table.png" alt="Tableau des stops" />
-            <div class="screenshot-caption">Figure 11 – Tableau des points de ramassage avec actions</div>
-        </div>
-        <h3>4.6. Assignation automatique globale</h3>
-        <p>Sélectionnez une trajectoire spécifique, puis cliquez sur « Assigner tous les personnels au point le plus proche ». Le système affecte chaque personnel non assigné au stop le plus proche.</p>
-    </div>
 
-    <!-- ===================== SECTION 5 ===================== -->
-    <div class="guide-section">
-        <h2>5. Détection et gestion des anomalies</h2>
-        <p>La page « Détection d’anomalies » liste les événements anormaux (surcharge, déviation, vitesse, maintenance).</p>
-        <h3>5.1. Filtrer les anomalies</h3>
-        <p>Utilisez les menus déroulants pour filtrer par type, sévérité ou état de résolution. La barre de recherche permet de trouver une anomalie par mot‑clé.</p>
-        <div class="screenshot">
-            <img src="~/images/guide/anomalies_table.png" alt="Tableau des anomalies avec filtres" />
-            <div class="screenshot-caption">Figure 12 – Page des anomalies (filtres et tableau)</div>
+        <!-- SECTION 3 -->
+        <div class="guide-section">
+            <h2>3. Occupation des bus et assignation des personnels</h2>
+            <h3>3.1. Visualiser l’occupation</h3>
+            <p>La page « Occupation des bus » affiche chaque bus sous forme de carte avec sa capacité, son taux de remplissage (barre colorée), le chauffeur et la trajectoire.</p>
+            <div class="screenshot">
+                <img src="~/images/guide/bus_cards.png" alt="Cartes des bus avec occupation" />
+                <div class="screenshot-caption">Figure 4 – Cartes des bus et barres d’occupation</div>
+            </div>
+            <h3>3.2. Voir les personnels assignés</h3>
+            <p>Cliquez sur « Voir les personnels assignés » pour ouvrir le panneau déroulant. Vous pouvez rechercher un personnel par nom, prénom ou adresse.</p>
+            <div class="screenshot">
+                <img src="~/images/guide/personnel_assigned.png" alt="Panneau des personnels assignés" />
+                <div class="screenshot-caption">Figure 5 – Liste des personnels d’un bus avec recherche</div>
+            </div>
+            <h3>3.3. Assigner un personnel à un bus</h3>
+            <p>Cliquez sur « Assigner des personnels ». Une modale s’ouvre avec la liste des personnels non encore affectés. Choisissez un personnel et cliquez sur « Assigner ».</p>
+            <div class="screenshot">
+                <img src="~/images/guide/personnel.png" alt="Liste des personnels" />
+                <div class="screenshot-caption">Figure 6 – Exemple de liste des personnels (vue générale)</div>
+            </div>
+            <h3>3.4. Synchronisation automatique</h3>
+            <p>Utilisez le bouton « Synchroniser les assignations » pour mettre à jour les bus à partir des points de ramassage. Cela garantit la cohérence des données.</p>
         </div>
-        <h3>5.2. Résoudre une anomalie</h3>
-        <p>Pour chaque anomalie non résolue, cliquez sur « Résoudre ». Une confirmation s’affiche, l’anomalie passe en vert et le bouton disparaît.</p>
-        <div class="screenshot">
-            <img src="~/images/guide/anomaly_resolve.png" alt="Bouton Résoudre une anomalie" />
-            <div class="screenshot-caption">Figure 13 – Bouton de résolution d’anomalie</div>
-        </div>
-        <h3>5.3. Télécharger le rapport</h3>
-        <p>Cliquez sur « Télécharger le rapport » pour exporter toutes les anomalies au format CSV.</p>
-        <!-- Pas d'image spécifique pour l'export, on réutilise anomalies_table -->
-        <div class="screenshot">
-            <img src="~/images/guide/anomalies_table.png" alt="Bouton d'export CSV" />
-            <div class="screenshot-caption">Figure 14 – Bouton d’export CSV (en haut à droite)</div>
-        </div>
-    </div>
 
-    <!-- ===================== SECTION 6 ===================== -->
-    <div class="guide-section">
-        <h2>6. Conseils et dépannage</h2>
-        <ul>
-            <li><strong>Trajectoire par défaut</strong> : elle n’apparaît pas dans le filtre car elle ne contient aucun personnel. Si vous ne voyez pas de points, sélectionnez une trajectoire valide.</li>
-            <li><strong>Clustering vide</strong> : assurez-vous d’avoir sélectionné une trajectoire spécifique avant de lancer la suggestion IA.</li>
-            <li><strong>Les coordonnées (latitude/longitude)</strong> : vous pouvez saisir avec une virgule (ex: 33,5731) – le formulaire convertit automatiquement en point avant envoi.</li>
-            <li><strong>Déconnexion</strong> : utilisez le lien « Déconnexion » dans le menu.</li>
-        </ul>
-        <div class="screenshot">
-            <img src="~/images/guide/logout.png" alt="Déconnexion" />
-            <div class="screenshot-caption">Figure 15 – Lien de déconnexion dans le menu</div>
+        <!-- SECTION 4 -->
+        <div class="guide-section">
+            <h2>4. Gestion des points de ramassage (stops) et IA</h2>
+            <h3>4.1. Filtrer par trajectoire</h3>
+            <p>Dans la page « Points de ramassage », sélectionnez une trajectoire spécifique ou « Toutes les trajectoires ».</p>
+            <div class="screenshot">
+                <img src="~/images/guide/trajectories.png" alt="Liste des trajectoires" />
+                <div class="screenshot-caption">Figure 7 – Gestion des trajectoires (exemple de filtre)</div>
+            </div>
+            <h3>4.2. Carte interactive</h3>
+            <p>La carte Leaflet affiche :</p>
+            <ul>
+                <li><span style="color:#2ecc71;">●</span> Marqueur vert : point de départ SEWS.</li>
+                <li><span style="color:#ff8c00;">●</span> Marqueurs orange : points de ramassage existants.</li>
+                <li><span style="color:#9b59b6;">●</span> Marqueurs violets : points suggérés par l’IA.</li>
+            </ul>
+            <div class="screenshot">
+                <img src="~/images/guide/clustering_map.png" alt="Carte avec stops et suggestions" />
+                <div class="screenshot-caption">Figure 8 – Carte avec points existants (orange) et suggérés (violet)</div>
+            </div>
+            <h3>4.3. Ajouter un point manuellement</h3>
+            <p>Cliquez sur la carte → les coordonnées sont automatiquement remplies. Saisissez un nom et cliquez sur « Ajouter ce point ».</p>
+            <div class="screenshot">
+                <img src="~/images/guide/clustering_map.png" alt="Ajout manuel sur la carte" />
+                <div class="screenshot-caption">Figure 9 – Cliquer sur la carte pour ajouter un point</div>
+            </div>
+            <h3>4.4. Suggestion de points par IA (clustering)</h3>
+            <p>Choisissez un nombre de clusters (ex: 4) puis cliquez sur « Suggérer des points par IA ». Des marqueurs violets apparaissent. Cliquez sur un marqueur puis sur « Créer cet arrêt » pour l’ajouter.</p>
+            <div class="screenshot">
+                <img src="~/images/guide/cluster_popup.png" alt="Popup d'un point suggéré" />
+                <div class="screenshot-caption">Figure 10 – Popup d’un point suggéré avec bouton de création</div>
+            </div>
+            <h3>4.5. Tableau des points de ramassage</h3>
+            <p>Consultez, modifiez, supprimez ou assignez des personnels aux stops via le tableau.</p>
+            <div class="screenshot">
+                <img src="~/images/guide/stops_table.png" alt="Tableau des stops" />
+                <div class="screenshot-caption">Figure 11 – Tableau des points de ramassage avec actions</div>
+            </div>
+            <h3>4.6. Assignation automatique globale</h3>
+            <p>Sélectionnez une trajectoire spécifique, puis cliquez sur « Assigner tous les personnels au point le plus proche ». Le système affecte chaque personnel non assigné au stop le plus proche.</p>
         </div>
-    </div>
 
-    <hr />
-    <p class="text-muted text-center">Document créé pour l’application SEWS Transport – version 1.0</p>
+        <!-- SECTION 5 -->
+        <div class="guide-section">
+            <h2>5. Détection et gestion des anomalies</h2>
+            <p>La page « Détection d’anomalies » liste les événements anormaux (surcharge, déviation, vitesse, maintenance).</p>
+            <h3>5.1. Filtrer les anomalies</h3>
+            <p>Utilisez les menus déroulants pour filtrer par type, sévérité ou état de résolution. La barre de recherche permet de trouver une anomalie par mot‑clé.</p>
+            <div class="screenshot">
+                <img src="~/images/guide/anomalies_table.png" alt="Tableau des anomalies avec filtres" />
+                <div class="screenshot-caption">Figure 12 – Page des anomalies (filtres et tableau)</div>
+            </div>
+            <h3>5.2. Résoudre une anomalie</h3>
+            <p>Pour chaque anomalie non résolue, cliquez sur « Résoudre ». Une confirmation s’affiche, l’anomalie passe en vert et le bouton disparaît.</p>
+            <div class="screenshot">
+                <img src="~/images/guide/anomaly_resolve.png" alt="Bouton Résoudre une anomalie" />
+                <div class="screenshot-caption">Figure 13 – Bouton de résolution d’anomalie</div>
+            </div>
+            <h3>5.3. Télécharger le rapport</h3>
+            <p>Cliquez sur « Télécharger le rapport » pour exporter toutes les anomalies au format CSV.</p>
+            <div class="screenshot">
+                <img src="~/images/guide/anomalies_table.png" alt="Bouton d'export CSV" />
+                <div class="screenshot-caption">Figure 14 – Bouton d’export CSV (en haut à droite)</div>
+            </div>
+        </div>
+
+        <!-- SECTION 6 -->
+        <div class="guide-section">
+            <h2>6. Conseils et dépannage</h2>
+            <ul>
+                <li><strong>Trajectoire par défaut</strong> : elle n’apparaît pas dans le filtre car elle ne contient aucun personnel. Si vous ne voyez pas de points, sélectionnez une trajectoire valide.</li>
+                <li><strong>Clustering vide</strong> : assurez-vous d’avoir sélectionné une trajectoire spécifique avant de lancer la suggestion IA.</li>
+                <li><strong>Les coordonnées (latitude/longitude)</strong> : vous pouvez saisir avec une virgule (ex: 33,5731) – le formulaire convertit automatiquement en point avant envoi.</li>
+                <li><strong>Déconnexion</strong> : utilisez le lien « Déconnexion » dans le menu.</li>
+            </ul>
+            <div class="screenshot">
+                <img src="~/images/guide/logout.png" alt="Déconnexion" />
+                <div class="screenshot-caption">Figure 15 – Lien de déconnexion dans le menu</div>
+            </div>
+        </div>
+
+        <hr />
+        <p class="text-muted text-center">Document créé pour l’application SEWS Transport – version 1.0</p>
+    </div>
 </div>
+
+@section Scripts {
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+    <script>
+        document.getElementById('downloadPdfBtn').addEventListener('click', function() {
+        var element = document.getElementById('guideContent');
+        var opt = {
+        margin:        [0.5, 0.5, 0.5, 0.5],
+        filename:     'Guide_Utilisation_SEWS.pdf',
+        image:        { type: 'jpeg', quality: 0.98 },
+        html2canvas:  { scale: 2, useCORS: true },
+        jsPDF:        { unit: 'in', format: 'a4', orientation: 'portrait' }
+        };
+        html2pdf().set(opt).from(element).save();
+        });
+    </script>
+}
