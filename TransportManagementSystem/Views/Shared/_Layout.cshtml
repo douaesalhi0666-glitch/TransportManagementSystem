@@ -111,7 +111,7 @@
             }
 
             .sews-logo {
-                height: 50px;
+                height: 90px;
                 width: auto;
             }
 
@@ -140,6 +140,10 @@
                 .toggle-sidebar {
                     display: block;
                 }
+
+                .sews-logo {
+                    height: 50px;
+                }
             }
     </style>
 </head>
@@ -147,6 +151,8 @@
     @{
         var role = Context.Session.GetString("UserRole");
         var isAdmin = (role == "Admin");
+        var currentController = ViewContext.RouteData.Values["controller"]?.ToString();
+        var currentAction = ViewContext.RouteData.Values["action"]?.ToString();
     }
 
     @if (isAdmin)
@@ -158,34 +164,34 @@
                 <small>Administration</small>
             </div>
             <ul class="components">
-                <li class="@(ViewContext.RouteData.Values["controller"]?.ToString() == "Dashboard" && ViewContext.RouteData.Values["action"]?.ToString() == "AdminDashboard" ? "active" : "")">
+                <li class="@(currentController == "Dashboard" && currentAction == "AdminDashboard" ? "active" : "")">
                     <a href="/Dashboard/AdminDashboard"><i class="fas fa-tachometer-alt"></i> Tableau de bord</a>
                 </li>
-                <li class="@(ViewContext.RouteData.Values["controller"]?.ToString() == "Personnel" ? "active" : "")">
+                <li class="@(currentController == "Personnel" ? "active" : "")">
                     <a href="/Personnel/Index"><i class="fas fa-users"></i> Personnel</a>
                 </li>
-                <li class="@(ViewContext.RouteData.Values["controller"]?.ToString() == "Drivers" ? "active" : "")">
+                <li class="@(currentController == "Drivers" ? "active" : "")">
                     <a href="/Drivers/Index"><i class="fas fa-truck"></i> Chauffeurs</a>
                 </li>
-                <li class="@(ViewContext.RouteData.Values["controller"]?.ToString() == "Buses" ? "active" : "")">
+                <li class="@(currentController == "Buses" ? "active" : "")">
                     <a href="/Buses/Index"><i class="fas fa-bus"></i> Bus</a>
                 </li>
-                <li>
+                <li class="@(currentController == "Assignments" ? "active" : "")">
                     <a href="/Assignments/Index"><i class="fas fa-user-cog"></i> Assignation bus ↔ chauffeur</a>
                 </li>
-                <li>
+                <li class="@(currentController == "TrajectoryAssignment" ? "active" : "")">
                     <a href="/TrajectoryAssignment/BusOccupancy"><i class="fas fa-chart-line"></i> Occupation des bus</a>
                 </li>
-                <li class="@(ViewContext.RouteData.Values["controller"]?.ToString() == "Trajectories" ? "active" : "")">
+                <li class="@(currentController == "Trajectories" ? "active" : "")">
                     <a href="/Trajectories/Index"><i class="fas fa-map-marked-alt"></i> Trajets</a>
                 </li>
-                <li>
+                <li class="@(currentController == "Clustering" && currentAction == "DefinePickupPoints" ? "active" : "")">
                     <a href="/Clustering/DefinePickupPoints"><i class="fas fa-map-pin"></i> Points de ramassage</a>
                 </li>
-                <li>
+                <li class="@(currentController == "Clustering" && currentAction == "DispatcherView" ? "active" : "")">
                     <a href="/Clustering/DispatcherView"><i class="fas fa-route"></i> Gestion des arrêts</a>
                 </li>
-                <li>
+                <li class="@(currentController == "Anomaly" ? "active" : "")">
                     <a href="/Anomaly/Index"><i class="fas fa-exclamation-triangle"></i> Détection d'anomalies</a>
                 </li>
                 <li>
