@@ -1,6 +1,7 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using System.Linq;
+using System.Text;
 using System.Threading.Tasks;
 using TransportManagementSystem.Data;
 using TransportManagementSystem.Models;
@@ -36,17 +37,25 @@ namespace TransportManagementSystem.Controllers
             return View(anomaly);
         }
 
-        // POST: Anomaly/Resolve/5
+        // POST: Anomaly/Resolve/5 (supporte AJAX et requête normale)
         [HttpPost]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> Resolve(int id)
         {
             var anomaly = await _context.AnomalyLogs.FindAsync(id);
             if (anomaly == null)
+            {
+                if (Request.Headers["X-Requested-With"] == "XMLHttpRequest")
+                    return Json(new { success = false, message = "Anomalie non trouvée." });
                 return NotFound();
+            }
 
             anomaly.IsResolved = true;
             await _context.SaveChangesAsync();
+
+            // Si la requête est AJAX, retourne un JSON
+            if (Request.Headers["X-Requested-With"] == "XMLHttpRequest")
+                return Json(new { success = true, message = "Anomalie résolue." });
 
             TempData["Success"] = "Anomalie marquée comme résolue.";
             return RedirectToAction(nameof(Index));
@@ -65,6 +74,25 @@ namespace TransportManagementSystem.Controllers
                 TempData["Success"] = "Anomalie supprimée.";
             }
             return RedirectToAction(nameof(Index));
+        }
+
+        // GET: Anomaly/Export
+        [HttpGet]
+        public async Task<IActionResult> Export()
+        {
+            var anomalies = await _context.AnomalyLogs
+                .OrderByDescending(a => a.Timestamp)
+                .ToListAsync();
+
+            var csv = new StringBuilder();
+            csv.AppendLine("Id,Timestamp,Type,Description,BusId,PersonnelId,SeverityScore,IsResolved");
+            foreach (var a in anomalies)
+            {
+                csv.AppendLine($"{a.Id},{a.Timestamp:yyyy-MM-dd HH:mm:ss},{a.AnomalyType},{a.Description},{a.BusId},{a.PersonnelId},{a.SeverityScore},{a.IsResolved}");
+            }
+
+            var bytes = Encoding.UTF8.GetBytes(csv.ToString());
+            return File(bytes, "text/csv", $"anomalies_{DateTime.Now:yyyyMMdd_HHmmss}.csv");
         }
     }
 }

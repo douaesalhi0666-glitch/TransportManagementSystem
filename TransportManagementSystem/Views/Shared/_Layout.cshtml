@@ -11,7 +11,6 @@
     <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
     <style>
-            /* Vos styles existants (je les conserve) */
             .admin-sidebar {
                 position: fixed;
                 top: 0;
@@ -142,10 +141,6 @@
                     display: block;
                 }
             }
-
-            .normal-layout {
-                /* rien de spécial */
-            }
     </style>
 </head>
 <body>
@@ -191,7 +186,10 @@
                     <a href="/Clustering/DispatcherView"><i class="fas fa-route"></i> Gestion des arrêts</a>
                 </li>
                 <li>
-                    <a href="/Dashboard/AdminDashboard#anomaly-section" id="anomalyNavLink"><i class="fas fa-exclamation-triangle"></i> Détection d'anomalies</a>
+                    <a href="/Anomaly/Index"><i class="fas fa-exclamation-triangle"></i> Détection d'anomalies</a>
+                </li>
+                <li>
+                    <a href="/Home/Guide"><i class="fas fa-book-open"></i> Guide d'utilisation</a>
                 </li>
                 <li>
                     <a href="/Account/Logout"><i class="fas fa-sign-out-alt"></i> Déconnexion</a>
@@ -220,11 +218,6 @@
         <script>
                 document.getElementById('toggleSidebarBtn')?.addEventListener('click', function () {
                     document.getElementById('adminSidebar').classList.toggle('active');
-                });
-                document.getElementById('anomalyNavLink')?.addEventListener('click', function() {
-                    if (window.innerWidth <= 768) {
-                        document.getElementById('adminSidebar').classList.remove('active');
-                    }
                 });
         </script>
     }
@@ -283,7 +276,7 @@
     <script src="~/lib/bootstrap/js/bootstrap.bundle.min.js"></script>
     <script src="~/js/site.js" asp-append-version="true"></script>
 
-    <!-- Script anti-retour après déconnexion -->
+    <!-- Script anti-retour après déconnexion (préservé) -->
     <script>
         function verifierSessionEtRediriger() {
         fetch('/Account/CheckSession')
@@ -298,14 +291,12 @@
         });
         }
 
-        // Vérifier la session à chaque fois que la page est chargée (même depuis le cache)
         window.addEventListener('pageshow', function (event) {
         if (event.persisted) {
         verifierSessionEtRediriger();
         }
         });
 
-        // Intercepter le bouton "Retour" du navigateur
         history.pushState(null, null, location.href);
         window.addEventListener('popstate', function () {
         verifierSessionEtRediriger();

@@ -159,7 +159,7 @@
 </div>
 
 <div class="form-container">
-    <form asp-action="Create">
+    <form asp-action="Create" id="createTrajectoryForm">
         <div asp-validation-summary="ModelOnly" class="text-danger"></div>
 
         <div class="alert-info-custom">
@@ -218,14 +218,14 @@
             <div class="col-md-6">
                 <div class="form-group">
                     <label>Latitude départ</label>
-                    <input asp-for="Trajectory_StartLatitude" type="number" step="0.00000001" class="form-control" placeholder="Ex: 33.5731" />
+                    <input asp-for="Trajectory_StartLatitude" type="text" class="form-control" placeholder="Ex: 33.5731" />
                     <span asp-validation-for="Trajectory_StartLatitude" class="text-danger"></span>
                 </div>
             </div>
             <div class="col-md-6">
                 <div class="form-group">
                     <label>Longitude départ</label>
-                    <input asp-for="Trajectory_StartLongitude" type="number" step="0.00000001" class="form-control" placeholder="Ex: -7.5898" />
+                    <input asp-for="Trajectory_StartLongitude" type="text" class="form-control" placeholder="Ex: -7.5898" />
                     <span asp-validation-for="Trajectory_StartLongitude" class="text-danger"></span>
                 </div>
             </div>
@@ -236,14 +236,14 @@
             <div class="col-md-6">
                 <div class="form-group">
                     <label>Latitude arrivée</label>
-                    <input asp-for="Trajectory_EndLatitude" type="number" step="0.00000001" class="form-control" placeholder="Ex: 33.5942" />
+                    <input asp-for="Trajectory_EndLatitude" type="text" class="form-control" placeholder="Ex: 33.5942" />
                     <span asp-validation-for="Trajectory_EndLatitude" class="text-danger"></span>
                 </div>
             </div>
             <div class="col-md-6">
                 <div class="form-group">
                     <label>Longitude arrivée</label>
-                    <input asp-for="Trajectory_EndLongitude" type="number" step="0.00000001" class="form-control" placeholder="Ex: -7.5981" />
+                    <input asp-for="Trajectory_EndLongitude" type="text" class="form-control" placeholder="Ex: -7.5981" />
                     <span asp-validation-for="Trajectory_EndLongitude" class="text-danger"></span>
                 </div>
             </div>
@@ -275,4 +275,18 @@
     @{
         await Html.RenderPartialAsync("_ValidationScriptsPartial");
     }
+    <script>
+        // Convertit les virgules en points dans les champs de coordonnées avant soumission
+        document.getElementById('createTrajectoryForm').addEventListener('submit', function(e) {
+            var latStart = document.querySelector('#Trajectory_StartLatitude');
+            var lngStart = document.querySelector('#Trajectory_StartLongitude');
+            var latEnd = document.querySelector('#Trajectory_EndLatitude');
+            var lngEnd = document.querySelector('#Trajectory_EndLongitude');
+
+            if (latStart && latStart.value) latStart.value = latStart.value.replace(',', '.');
+            if (lngStart && lngStart.value) lngStart.value = lngStart.value.replace(',', '.');
+            if (latEnd && latEnd.value) latEnd.value = latEnd.value.replace(',', '.');
+            if (lngEnd && lngEnd.value) lngEnd.value = lngEnd.value.replace(',', '.');
+        });
+    </script>
 }

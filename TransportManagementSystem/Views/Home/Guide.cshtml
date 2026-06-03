@@ -1,0 +1,232 @@
+﻿@{
+    ViewData["Title"] = "Guide d'utilisation";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+<style>
+    .guide-section {
+        margin-bottom: 3rem;
+        padding-bottom: 1rem;
+        border-bottom: 1px solid #e2e8f0;
+    }
+
+        .guide-section h2 {
+            font-family: 'Sora', sans-serif;
+            font-size: 1.6rem;
+            font-weight: 600;
+            color: var(--navy);
+            margin-bottom: 1rem;
+        }
+
+        .guide-section h3 {
+            font-family: 'Sora', sans-serif;
+            font-size: 1.2rem;
+            font-weight: 600;
+            color: var(--amber);
+            margin-top: 1.5rem;
+            margin-bottom: 0.8rem;
+        }
+
+    .screenshot {
+        margin: 1rem 0;
+        border-radius: 12px;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        max-width: 100%;
+        height: auto;
+        border: 1px solid #e2e8f0;
+    }
+
+    .step-number {
+        display: inline-block;
+        width: 28px;
+        height: 28px;
+        background: linear-gradient(135deg, #f5a623, #d97706);
+        color: white;
+        text-align: center;
+        line-height: 28px;
+        border-radius: 50%;
+        font-weight: bold;
+        margin-right: 10px;
+    }
+
+    .alert-note {
+        background: #f0f9ff;
+        border-left: 4px solid #3b82f6;
+        padding: 0.75rem 1rem;
+        border-radius: 10px;
+        margin: 1rem 0;
+    }
+</style>
+
+<div class="container mt-4">
+    <h1><i class="fas fa-book-open me-2" style="color: #f5a623;"></i>Guide d'utilisation</h1>
+    <p class="lead">Bienvenue dans le guide complet du Système de Gestion de Transport SEWS – version administrateur.</p>
+    <hr />
+
+    <!-- SOMMAIRE -->
+    <div class="alert-note mb-4">
+        <strong><i class="fas fa-list"></i> Sommaire</strong>
+        <ul class="mb-0 mt-2">
+            <li><a href="#section1">1. Tableau de bord administrateur</a></li>
+            <li><a href="#section2">2. Gestion du personnel</a></li>
+            <li><a href="#section3">3. Gestion des chauffeurs</a></li>
+            <li><a href="#section4">4. Gestion des bus</a></li>
+            <li><a href="#section5">5. Assignation chauffeur ↔ bus</a></li>
+            <li><a href="#section6">6. Occupation des bus et assignation des personnels</a></li>
+            <li><a href="#section7">7. Gestion des trajets (Trajectoires)</a></li>
+            <li><a href="#section8">8. Points de ramassage et IA (Clustering)</a></li>
+            <li><a href="#section9">9. Gestion des arrêts (DispatcherView)</a></li>
+            <li><a href="#section10">10. Détection et résolution des anomalies</a></li>
+            <li><a href="#section11">11. Déconnexion</a></li>
+        </ul>
+    </div>
+
+    <!-- SECTION 1 : TABLEAU DE BORD -->
+    <div id="section1" class="guide-section">
+        <h2><span class="step-number">1</span> Tableau de bord administrateur</h2>
+        <p>Le tableau de bord est la page d'accueil après connexion. Il permet d'avoir une vue d'ensemble :</p>
+        <ul>
+            <li>Indicateurs clés (total bus, chauffeurs, personnels, assignations actives).</li>
+            <li>Accès rapides aux modules via les cartes.</li>
+            <li>Notifications récentes (succès, alertes).</li>
+        </ul>
+        <p><strong>Capture recommandée :</strong> écran du tableau de bord avec les cartes KPI visibles.</p>
+        <img src="~/images/guide/dashboard.png" class="screenshot" alt="Tableau de bord administrateur" />
+        <p class="text-muted">Figure 1 – Vue d’ensemble du tableau de bord.</p>
+    </div>
+
+    <!-- SECTION 2 : PERSONNEL -->
+    <div id="section2" class="guide-section">
+        <h2><span class="step-number">2</span> Gestion du personnel</h2>
+        <p>Cette page liste tous les employés. Vous pouvez :</p>
+        <ul>
+            <li>Ajouter un nouveau personnel (nom, prénom, adresse, coordonnées GPS).</li>
+            <li>Modifier ou supprimer un personnel.</li>
+            <li>Voir l’historique des assignations.</li>
+        </ul>
+        <p><strong>Capture recommandée :</strong> écran de la liste des personnels avec le formulaire d’ajout.</p>
+        <img src="~/images/guide/personnel.png" class="screenshot" alt="Gestion du personnel" />
+    </div>
+
+    <!-- SECTION 3 : CHAUFFEURS -->
+    <div id="section3" class="guide-section">
+        <h2><span class="step-number">3</span> Gestion des chauffeurs</h2>
+        <p>Module permettant de gérer les chauffeurs : ajout, modification, suppression, visualisation du bus assigné.</p>
+        <p><strong>Capture recommandée :</strong> liste des chauffeurs avec leurs informations et le statut.</p>
+        <img src="~/images/guide/drivers.png" class="screenshot" alt="Gestion des chauffeurs" />
+    </div>
+
+    <!-- SECTION 4 : BUS -->
+    <div id="section4" class="guide-section">
+        <h2><span class="step-number">4</span> Gestion des bus</h2>
+        <p>Liste des bus avec plaque, code, capacité, chauffeur actuel, trajectoire. Actions : modifier, supprimer, voir assignations.</p>
+        <p><strong>Capture recommandée :</strong> tableau des bus avec les boutons d’action.</p>
+        <img src="~/images/guide/buses.png" class="screenshot" alt="Gestion des bus" />
+    </div>
+
+    <!-- SECTION 5 : ASSIGNATION CHAUFFEUR ↔ BUS -->
+    <div id="section5" class="guide-section">
+        <h2><span class="step-number">5</span> Assignation chauffeur ↔ bus</h2>
+        <p>Cette page permet d’affecter un chauffeur à un bus et de visualiser les assignations actuelles.</p>
+        <h3>Formulaire d’assignation</h3>
+        <p>Deux listes déroulantes : chauffeurs non assignés et bus libres. Cliquez sur "Assigner".</p>
+        <h3>Tableau des assignations</h3>
+        <p>Chaque ligne affiche bus, plaque, chauffeur et un bouton "Libérer chauffeur".</p>
+        <h3>Barre de recherche</h3>
+        <p>Permet de filtrer en temps réel par bus, plaque ou nom du chauffeur.</p>
+        <p><strong>Captures recommandées :</strong> formulaire + tableau, et la barre de recherche active.</p>
+        <img src="~/images/guide/assignments_form.png" class="screenshot" alt="Formulaire d'assignation" />
+        <img src="~/images/guide/assignments_table.png" class="screenshot" alt="Tableau des assignations avec recherche" />
+    </div>
+
+    <!-- SECTION 6 : OCCUPATION DES BUS ET ASSIGNATION PERSONNELS -->
+    <div id="section6" class="guide-section">
+        <h2><span class="step-number">6</span> Occupation des bus et assignation des personnels</h2>
+        <p>Chaque bus est affiché dans une carte avec :</p>
+        <ul>
+            <li>Chauffeur, trajectoire, capacité.</li>
+            <li>Barre de progression indiquant le taux d’occupation.</li>
+            <li>Bouton "Voir les personnels assignés" (panneau déroulant avec tableau et recherche).</li>
+            <li>Bouton "Assigner des personnels" (modale listant les personnels non assignés).</li>
+        </ul>
+        <p>Un bouton "Synchroniser" permet de mettre à jour les assignations à partir des points de ramassage.</p>
+        <p><strong>Captures recommandées :</strong> vue des cartes des bus, panneau déroulant des personnels, modale d’assignation.</p>
+        <img src="~/images/guide/bus_cards.png" class="screenshot" alt="Cartes des bus" />
+        <img src="~/images/guide/personnel_assigned.png" class="screenshot" alt="Personnels assignés avec recherche" />
+        <img src="~/images/guide/assign_personnel_modal.png" class="screenshot" alt="Modale assignation personnel" />
+    </div>
+
+    <!-- SECTION 7 : TRAJETS -->
+    <div id="section7" class="guide-section">
+        <h2><span class="step-number">7</span> Gestion des trajets (Trajectoires)</h2>
+        <p>Liste des trajectoires existantes. Vous pouvez en créer (nom, code, description, points de départ/arrivée).</p>
+        <p><strong>Capture recommandée :</strong> formulaire d’ajout de trajet et tableau des trajets.</p>
+        <img src="~/images/guide/trajectories.png" class="screenshot" alt="Gestion des trajets" />
+    </div>
+
+    <!-- SECTION 8 : POINTS DE RAMASSAGE ET IA -->
+    <div id="section8" class="guide-section">
+        <h2><span class="step-number">8</span> Points de ramassage et IA (Clustering)</h2>
+        <p>Page avancée intégrant une carte Leaflet et un algorithme de clustering K‑means.</p>
+        <h3>Filtre par trajectoire</h3>
+        <p>Sélectionnez une trajectoire spécifique pour ne voir que ses points.</p>
+        <h3>Carte interactive</h3>
+        <p>Marqueur vert (SEWS), orange (stops existants), violet (stops suggérés par IA).</p>
+        <h3>Ajout manuel</h3>
+        <p>Cliquez sur la carte → les coordonnées se remplissent → saisissez le nom → "Ajouter".</p>
+        <h3>Suggestion IA (Clustering)</h3>
+        <p>Entrez un nombre de clusters (k) et cliquez sur "Suggérer des points". Des marqueurs violets apparaissent. Cliquez sur un marqueur pour créer l’arrêt.</p>
+        <h3>Tableau des points</h3>
+        <p>Liste des stops avec actions (modifier, supprimer, assigner, voir personnels).</p>
+        <p><strong>Captures recommandées :</strong> carte avec points orange + violet, popup de suggestion, tableau des stops.</p>
+        <img src="~/images/guide/clustering_map.png" class="screenshot" alt="Carte avec points de ramassage et suggestions IA" />
+        <img src="~/images/guide/cluster_popup.png" class="screenshot" alt="Popup de point suggéré" />
+        <img src="~/images/guide/stops_table.png" class="screenshot" alt="Tableau des points de ramassage" />
+    </div>
+
+    <!-- SECTION 9 : GESTION DES ARRÊTS (DISPATCHER VIEW) -->
+    <div id="section9" class="guide-section">
+        <h2><span class="step-number">9</span> Gestion des arrêts (DispatcherView)</h2>
+        <p>Vue alternative pour visualiser et assigner les personnels aux arrêts (souvent utilisée par le répartiteur).</p>
+        <p><strong>Capture recommandée :</strong> page DispatcherView avec la liste des arrêts et personnels.</p>
+        <img src="~/images/guide/dispatcher.png" class="screenshot" alt="Gestion des arrêts" />
+    </div>
+
+    <!-- SECTION 10 : DÉTECTION ET RÉSOLUTION DES ANOMALIES -->
+    <div id="section10" class="guide-section">
+        <h2><span class="step-number">10</span> Détection et résolution des anomalies</h2>
+        <p>Page listant toutes les anomalies détectées automatiquement (surcharge, déviation, vitesse, maintenance).</p>
+        <h3>Filtres</h3>
+        <p>Par type d’anomalie, sévérité (Haute/Moyenne/Basse), résolu/non résolu, et recherche textuelle.</p>
+        <h3>Actions</h3>
+        <ul>
+            <li>Cliquer sur "Résoudre" pour marquer une anomalie comme traitée (mise à jour dynamique sans rechargement).</li>
+            <li>Bouton "Télécharger le rapport" : export CSV de toutes les anomalies.</li>
+        </ul>
+        <p><strong>Captures recommandées :</strong> tableau des anomalies avec filtres, bouton "Résoudre", confirmation.</p>
+        <img src="~/images/guide/anomalies_table.png" class="screenshot" alt="Liste des anomalies" />
+        <img src="~/images/guide/anomaly_resolve.png" class="screenshot" alt="Bouton Résoudre" />
+    </div>
+
+    <!-- SECTION 11 : DÉCONNEXION -->
+    <div id="section11" class="guide-section">
+        <h2><span class="step-number">11</span> Déconnexion</h2>
+        <p>Le bouton "Déconnexion" dans le menu latéral termine la session et redirige vers la page de login. La session est également protégée contre la navigation arrière (cache désactivé).</p>
+        <p><strong>Capture recommandée :</strong> menu avec l’option Déconnexion.</p>
+        <img src="~/images/guide/logout.png" class="screenshot" alt="Menu Déconnexion" />
+    </div>
+
+    <hr />
+    <div class="alert-note">
+        <i class="fas fa-lightbulb me-2"></i> <strong>Conseils :</strong>
+        <ul class="mb-0 mt-2">
+            <li>Utilisez les barres de recherche dans chaque tableau pour filtrer rapidement.</li>
+            <li>La fonction IA de clustering nécessite qu’une trajectoire spécifique soit sélectionnée (pas "Toutes").</li>
+            <li>Les anomalies sont générées automatiquement par le service AnomalyDetectionService. Vous pouvez aussi en créer manuellement (non recommandé).</li>
+        </ul>
+    </div>
+
+    <div class="mt-5 mb-5 text-center">
+        <a href="/Dashboard/AdminDashboard" class="btn btn-secondary-custom"><i class="fas fa-arrow-left"></i> Retour au tableau de bord</a>
+    </div>
+</div>
