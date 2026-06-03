@@ -341,7 +341,7 @@ namespace TransportManagementSystem.Controllers
         }
 
         [HttpPost]
-        public async Task<IActionResult> UpdateBusLocation([FromBody] LocationUpdateModel model)
+        public async Task<IActionResult> UpdateBusLocation([FromBody] BusLocationUpdateModel model)
         {
             var driverIdStr = HttpContext.Session.GetString("DriverId");
             if (string.IsNullOrEmpty(driverIdStr))

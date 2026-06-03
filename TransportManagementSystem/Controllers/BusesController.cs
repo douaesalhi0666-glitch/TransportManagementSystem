@@ -4,6 +4,7 @@ using TransportManagementSystem.Data;
 using TransportManagementSystem.Models;
 using TransportManagementSystem.Services;
 using System;
+using System.Text.RegularExpressions;
 
 namespace TransportManagementSystem.Controllers
 {
@@ -87,6 +88,42 @@ namespace TransportManagementSystem.Controllers
                 }
             }
             return View(bus);
+        }
+
+        // ==============================
+        // MÉTHODES POUR LA CRÉATION (GetNextCode et CheckCodeExists)
+        // ==============================
+
+        [HttpGet]
+        public async Task<IActionResult> GetNextCode()
+        {
+            var allCodes = await _context.Buses.Select(b => b.Bus_Code).ToListAsync();
+            int maxNumber = 0;
+
+            foreach (var code in allCodes)
+            {
+                var match = Regex.Match(code, @"\d+");
+                if (match.Success)
+                {
+                    int num = int.Parse(match.Value);
+                    if (num > maxNumber) maxNumber = num;
+                }
+            }
+
+            string nextCode = $"BUS-{(maxNumber + 1).ToString("D3")}";
+            return Ok(new { nextCode = nextCode });
+        }
+
+        [HttpGet]
+        public async Task<IActionResult> CheckCodeExists(string code)
+        {
+            if (string.IsNullOrEmpty(code))
+            {
+                return Ok(new { exists = false });
+            }
+
+            var exists = await _context.Buses.AnyAsync(b => b.Bus_Code == code);
+            return Ok(new { exists = exists });
         }
 
         [HttpGet]
@@ -252,7 +289,7 @@ namespace TransportManagementSystem.Controllers
         }
 
         [HttpPost]
-        public async Task<IActionResult> UpdateBusLocation([FromBody] LocationUpdateModel model)
+        public async Task<IActionResult> UpdateBusLocation([FromBody] BusLocationUpdateModel model)
         {
             var driverIdStr = HttpContext.Session.GetString("DriverId");
             if (string.IsNullOrEmpty(driverIdStr))
@@ -276,7 +313,7 @@ namespace TransportManagementSystem.Controllers
         }
 
         // =================================================================
-        // MÉTHODE POUR LE DASHBOARD PERSONNEL (sans fragments)
+        // MÉTHODE POUR LE DASHBOARD PERSONNEL
         // =================================================================
         [HttpGet]
         public async Task<IActionResult> GetPersonnelDashboardData()
@@ -299,7 +336,6 @@ namespace TransportManagementSystem.Controllers
             TrajectoryStop? stop = null;
             string stopName = "Non défini";
 
-            // Chercher via PersonnelTrajectoryAssignments
             if (trajectory == null)
             {
                 var assignment = await _context.PersonnelTrajectoryAssignments
@@ -315,7 +351,6 @@ namespace TransportManagementSystem.Controllers
                 }
             }
 
-            // Si arrêt direct dans personnel
             if (stop == null && personnel.AssignedStopId.HasValue)
             {
                 stop = await _context.TrajectoryStops.FindAsync(personnel.AssignedStopId.Value);
@@ -330,26 +365,22 @@ namespace TransportManagementSystem.Controllers
             if (trajectory == null)
                 return NotFound("Aucune trajectoire assignée.");
 
-            // Récupérer le bus assigné et son chauffeur
             Bus? assignedBus = personnel.AssignedBus;
             string driverName = "Non assigné";
             if (assignedBus?.CurrentDriver != null)
                 driverName = $"{assignedBus.CurrentDriver.Driver_FirstName} {assignedBus.CurrentDriver.Driver_LastName}";
 
-            // Récupérer tous les bus actifs sur cette trajectoire (via la trajectoire, pas via fragments)
             var buses = await _context.Buses
                 .Where(b => b.Bus_CurrentLatitude != null && b.Bus_CurrentLongitude != null)
                 .Select(b => new { b.Bus_Id, b.Bus_Code, b.Bus_PlateNumber, b.Bus_Status, lat = b.Bus_CurrentLatitude, lng = b.Bus_CurrentLongitude, b.Bus_LastLocationUpdateTime })
                 .ToListAsync();
 
-            // Récupérer tous les arrêts de la trajectoire
             var stopsList = await _context.TrajectoryStops
                 .Where(s => s.TS_TrajectoryId == trajectory.Trajectory_Id)
                 .OrderBy(s => s.TS_OrderIndex)
                 .Select(s => new { s.TS_Id, s.TS_Name, s.TS_OrderIndex, s.TS_Latitude, s.TS_Longitude })
                 .ToListAsync();
 
-            // Coordonnées de référence pour alertes (l'arrêt du personnel ou début trajectoire)
             double? refLat = null;
             double? refLng = null;
             if (stop != null)
@@ -363,7 +394,6 @@ namespace TransportManagementSystem.Controllers
                 refLng = (double)trajectory.Trajectory_StartLongitude.Value;
             }
 
-            // Calculer ETA pour chaque bus (optionnel, garde le service)
             var busesWithETA = new List<object>();
             if (refLat.HasValue && refLng.HasValue)
             {
@@ -428,7 +458,10 @@ namespace TransportManagementSystem.Controllers
                     assignedBus.Bus_PlateNumber,
                     assignedBus.Bus_Brand,
                     assignedBus.Bus_Model,
-                    assignedBus.Bus_Capacity
+                    assignedBus.Bus_Capacity,
+                    // ADD THESE TWO LINES FOR THE BUS LOCATION
+                    lat = assignedBus.Bus_CurrentLatitude,
+                    lng = assignedBus.Bus_CurrentLongitude
                 } : null,
                 assignedDriver = driverName,
                 stopName = stopName,
@@ -507,5 +540,11 @@ namespace TransportManagementSystem.Controllers
         public int? Bus_Capacity { get; set; }
         public string Bus_Status { get; set; } = string.Empty;
         public long? Bus_CurrentDriverId { get; set; }
+    }
+
+    public class BusLocationUpdateModel
+    {
+        public decimal Latitude { get; set; }
+        public decimal Longitude { get; set; }
     }
 }
