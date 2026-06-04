@@ -237,11 +237,14 @@
         padding: 8px 18px;
         font-weight: 600;
         font-size: 0.85rem;
+        transition: transform 0.15s, box-shadow 0.15s;
+        cursor: pointer;
     }
 
         .btn-export-excel:hover {
             background: linear-gradient(135deg, #155d27, #1e7e34);
             transform: translateY(-1px);
+            box-shadow: 0 2px 6px rgba(30, 126, 52, 0.3);
         }
 
     .btn-export-pdf {
@@ -252,11 +255,14 @@
         padding: 8px 18px;
         font-weight: 600;
         font-size: 0.85rem;
+        transition: transform 0.15s, box-shadow 0.15s;
+        cursor: pointer;
     }
 
         .btn-export-pdf:hover {
             background: linear-gradient(135deg, #a71d2a, #c82333);
             transform: translateY(-1px);
+            box-shadow: 0 2px 6px rgba(200, 35, 51, 0.3);
         }
 
     .search-input:focus, .form-select:focus {
@@ -309,6 +315,18 @@
             <button id="resetFilter" class="btn btn-secondary-custom w-100">
                 <i class="fas fa-undo-alt me-1"></i>Réinitialiser
             </button>
+        </div>
+    </div>
+    <div class="row g-3 mt-3">
+        <div class="col-md-12 text-end">
+            <div class="export-buttons d-flex justify-content-end gap-2">
+                <button id="exportExcelBtn" class="btn-export-excel">
+                    <i class="fas fa-file-excel me-2"></i>Excel
+                </button>
+                <button id="exportPdfBtn" class="btn-export-pdf">
+                    <i class="fas fa-file-pdf me-2"></i>PDF
+                </button>
+            </div>
         </div>
     </div>
 </div>
@@ -744,8 +762,7 @@
         Personnel_Longitude: $('#edit_Longitude').val() === '' ? null : parseFloat($('#edit_Longitude').val()),
         HomeAddress: $('#edit_HomeAddress').val(),
         IsMotorized: $('#edit_IsMotorized').is(':checked'),
-        // CRITICAL: Include the assignment fields
-        AssignedStopId: $('#edit_AssignedStopId').val() === '' ? null : parseInt($('#edit_AssignedStopId').val()),
+        // CRITICAL: Include the assignment fields                    AssignedStopId: $('#edit_AssignedStopId').val() === '' ? null : parseInt($('#edit_AssignedStopId').val()),
         AssignedTrajectoryId: $('#edit_AssignedTrajectoryId').val() === '' ? null : parseInt($('#edit_AssignedTrajectoryId').val()),
         AssignedBusId: $('#edit_AssignedBusId').val() === '' ? null : parseInt($('#edit_AssignedBusId').val()),
         IsAssigned: $('#edit_IsAssigned').val() === 'true'

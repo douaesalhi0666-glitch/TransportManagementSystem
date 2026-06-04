@@ -225,7 +225,31 @@
         font-size: 0.75rem;
         margin-top: 8px;
     }
+
+    /* Position the logo in top-right corner */
+    .logo-top-right {
+        position: fixed;
+        top: 20px;
+        right: 30px;
+        z-index: 1100;
+    }
+
+        .logo-top-right img {
+            height: 80px;
+            width: auto;
+        }
+
+    @@media (max-width: 768px) {
+        .logo-top-right img {
+            height: 50px;
+        }
+    }
 </style>
+
+<!-- ONLY ADDED THIS LOGO -->
+<div class="logo-top-right">
+    <img src="~/images/sews_logo.png" alt="SEWS" />
+</div>
 
 <div class="dash-bg">
     <div class="position-relative" style="z-index:1;">

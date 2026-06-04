@@ -347,6 +347,22 @@
         .btn-primary-custom:hover {
             box-shadow: 0 4px 12px rgba(37, 99, 235, 0.3);
         }
+
+    .topbar-right {
+        display: flex;
+        align-items: center;
+    }
+
+    .sews-logo {
+        height: 80px;
+        width: auto;
+    }
+
+    @@media (max-width: 768px) {
+        .sews-logo {
+            height: 50px;
+        }
+    }
 </style>
 
 <div class="personnel-sidebar" id="personnelSidebar">
@@ -374,9 +390,14 @@
 </div>
 
 <div class="admin-topbar">
-    <button class="toggle-sidebar" id="toggleSidebarBtn">☰</button>
-    <div class="user-info">
-        <span><i class="fas fa-user-circle me-1" style="color: var(--amber);"></i>Bonjour, <strong>@ViewBag.UserName</strong></span>
+    <div class="topbar-left">
+        <button class="toggle-sidebar" id="toggleSidebarBtn">☰</button>
+        <div class="user-info">
+            <span><i class="fas fa-user-circle me-1" style="color: var(--amber);"></i>Bonjour, <strong>@ViewBag.UserName</strong></span>
+        </div>
+    </div>
+    <div class="topbar-right">
+        <img src="~/images/sews_logo.png" alt="SEWS" class="sews-logo" />
     </div>
 </div>
 
@@ -474,11 +495,9 @@
         function updateMapMarkers(data) {
         if (!mapInitialized) return;
 
-        // Remove existing bus marker
         if (busMarker) map.removeLayer(busMarker);
         if (personStopMarker) map.removeLayer(personStopMarker);
 
-        // Add personnel's assigned bus ONLY
         if (data.assignedBus && data.assignedBus.lat && data.assignedBus.lng) {
         const busIcon = L.divIcon({ html: '🚌', iconSize: [32, 32], className: 'bus-marker' });
         busMarker = L.marker([data.assignedBus.lat, data.assignedBus.lng], { icon: busIcon })
@@ -486,7 +505,6 @@
         busMarker.addTo(map);
         }
 
-        // Add personnel's stop marker
         if (data.personnelStop) {
         let etaText = "";
         if (data.assignedBus && data.assignedBus.lat && data.assignedBus.lng) {
@@ -498,8 +516,6 @@
         personStopMarker = L.marker([data.personnelStop.tS_Latitude, data.personnelStop.tS_Longitude], { icon: stopIcon })
         .bindPopup('<b>Votre arr\u00EAt : ' + data.personnelStop.tS_Name + '</b>' + etaText);
         personStopMarker.addTo(map);
-
-        // Center map on personnel's stop
         map.setView([data.personnelStop.tS_Latitude, data.personnelStop.tS_Longitude], 14);
         } else if (data.assignedBus && data.assignedBus.lat && data.assignedBus.lng) {
         map.setView([data.assignedBus.lat, data.assignedBus.lng], 13);
@@ -517,7 +533,6 @@
         currentMotorizedStatus = data.isMotorized === true;
         currentTrajectoryId = data.trajectory.trajectory_Id;
 
-        // Only create HTML structure once
         if (!mapInitialized) {
         let html = `
         <div class="dash-bg">
@@ -570,7 +585,6 @@
         initMap();
         }
 
-        // Update cards with data
         document.getElementById('trajectoryInfo').innerHTML = `
         <strong>${data.trajectory.trajectory_Name}</strong><br/>
         Code: ${data.trajectory.trajectory_Code}<br/>
@@ -612,7 +626,6 @@
         `;
         document.getElementById('assignmentInfo').innerHTML = assignmentHtml;
 
-        // Update map markers
         updateMapMarkers(data);
 
         if (checkInterval) clearInterval(checkInterval);
@@ -637,7 +650,6 @@
         if (data.assignedBus && data.assignedBus.lat && data.assignedBus.lng) {
         const distance = haversine(refLat, refLng, data.assignedBus.lat, data.assignedBus.lng);
 
-        // Update bus marker popup with ETA
         if (busMarker) {
         const etaMin = Math.round(distance / 1000 / SPEED_KMH * 60);
         busMarker.bindPopup('<b>' + data.assignedBus.bus_Code + '</b><br/>Plaque: ' + data.assignedBus.bus_PlateNumber + '<br/>Distance: ' + Math.round(distance) + ' mètres<br/>ETA: ' + etaMin + ' min');
